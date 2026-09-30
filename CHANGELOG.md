@@ -25,3 +25,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   time, or when it runs again, as configured.
 - Any threshold can be fixed in the settings instead of learned.
 - The state survives a restart.
+- A Statistics tab on the settings page shows the energy each plug used
+  yesterday, last week, last month and last year, with the total. A day, week
+  or month is shown only once it has been counted from its start; a year once
+  it is over, marked if the plug joined partway through.

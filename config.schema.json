@@ -174,5 +174,7 @@
         "description": "How much of the Matter library's own logging to show. Info and debug appear only with Homebridge debug logging on."
       }
     }
-  }
+  },
+  "customUi": true,
+  "customUiPath": "./homebridge-ui"
 }

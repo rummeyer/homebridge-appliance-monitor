@@ -1,0 +1,140 @@
+<!--
+  Settings page shown inside the Homebridge UI.
+
+  Runs in an iframe the host provides; `homebridge.*` is injected by it. The
+  host supplies Bootstrap and the active theme, so styling stays minimal.
+
+  The host draws the ordinary settings form itself, below this page, so the
+  Statistics tab hides it rather than covering it.
+-->
+<style>
+  .om-hidden { display: none; }
+  .om-hint   { font-size: .8rem; opacity: .7; }
+  .om-tabs   { margin-bottom: 1rem; }
+  .om-tabs .nav-link { cursor: pointer; }
+  .om-table  { width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .om-table th, .om-table td { padding: .3rem .5rem .3rem 0; }
+  .om-table th:not(:first-child), .om-table td:not(:first-child) { text-align: right; }
+  .om-table tfoot td { border-top: 1px solid rgba(128,128,128,.5); font-weight: 600; }
+</style>
+
+<ul class="nav nav-tabs om-tabs" role="tablist">
+  <li class="nav-item"><button type="button" class="nav-link active" id="om-tab-settings" role="tab">Settings</button></li>
+  <li class="nav-item"><button type="button" class="nav-link" id="om-tab-stats" role="tab">Statistics</button></li>
+</ul>
+
+<div class="card mb-3 om-hidden" id="om-stats-card">
+  <div class="card-body">
+    <h5 class="card-title">Energy used</h5>
+    <div id="om-stats"></div>
+    <p class="om-hint mb-0" id="om-stats-note">
+      A day, week or month is shown once a plug has been counted from its very start, so a plug
+      added today has its first day tomorrow after midnight. A year is shown once it is over,
+      even if the plug joined partway through. Counted from the plugs' power readings while
+      Homebridge is running.
+    </p>
+    <p class="om-hint mb-0 om-hidden" id="om-stats-none">No plugs configured yet.</p>
+  </div>
+</div>
+
+<script>
+  (async () => {
+    await homebridge.showSchemaForm();
+
+    /** kWh from Wh, with as many decimals as are worth reading. */
+    const kwh = (wattHours) => {
+      if (wattHours === null) {
+        return '';
+      }
+      const value = wattHours / 1000;
+      return `${value.toFixed(value < 10 ? 2 : 1)} kWh`;
+    };
+
+    function cell(row, text, tag = 'td') {
+      const element = document.createElement(tag);
+      element.textContent = text;
+      row.append(element);
+    }
+
+    async function showStats() {
+      const box = document.getElementById('om-stats');
+      const [config] = await homebridge.getPluginConfig();
+      const names = (config?.devices ?? [])
+        .map((device) => (typeof device?.name === 'string' ? device.name.trim() : ''))
+        .filter((name) => name);
+      document.getElementById('om-stats-none').classList.toggle('om-hidden', names.length > 0);
+      document.getElementById('om-stats-note').classList.toggle('om-hidden', names.length === 0);
+      box.innerHTML = '';
+      if (names.length === 0) {
+        return;
+      }
+
+      let table;
+      try {
+        table = await homebridge.request('/statistics', { names });
+      } catch (error) {
+        box.textContent = `Could not read the statistics: ${error?.message ?? error}`;
+        return;
+      }
+
+      const element = document.createElement('table');
+      element.className = 'om-table';
+      const head = element.createTHead().insertRow();
+      cell(head, 'Plug', 'th');
+      for (const { label } of table.periods) {
+        cell(head, label, 'th');
+      }
+      const body = element.createTBody();
+      for (const { name, values, partial } of table.rows) {
+        const row = body.insertRow();
+        cell(row, name);
+        values.forEach((value, column) => cell(row, `${kwh(value)}${partial[column] ? ' ¹' : ''}`));
+      }
+      const { total } = table;
+      const foot = element.createTFoot().insertRow();
+      cell(foot, 'Total');
+      total.values.forEach((value, column) => {
+        const marks = `${total.partial[column] ? ' ¹' : ''}${total.missing[column] ? ' *' : ''}`;
+        cell(foot, value === null ? '' : `${kwh(value)}${marks}`);
+      });
+      box.append(element);
+
+      const shown = (flags) => total.values.some((value, column) => value !== null && flags[column]);
+      for (const [flags, text] of [
+        [total.partial, '¹ Part of the year: counted from the day the plug was added.'],
+        [total.missing, '* Without the plugs that have not been counted for the whole period.'],
+      ]) {
+        if (shown(flags)) {
+          const note = document.createElement('p');
+          note.className = 'om-hint mt-2 mb-1';
+          note.textContent = text;
+          box.append(note);
+        }
+      }
+    }
+
+    /**
+     * Switch between the tabs. Only Settings shows the host's form. The
+     * statistics are read afresh on every visit, since the plugin keeps
+     * writing them while the page is open.
+     */
+    const TABS = { settings: null, stats: 'om-stats-card' };
+    function showTab(name) {
+      for (const [tab, panel] of Object.entries(TABS)) {
+        document.getElementById(`om-tab-${tab}`).classList.toggle('active', tab === name);
+        if (panel) {
+          document.getElementById(panel).classList.toggle('om-hidden', tab !== name);
+        }
+      }
+      if (name === 'settings') {
+        void homebridge.showSchemaForm();
+        return;
+      }
+      homebridge.hideSchemaForm();
+      void showStats();
+    }
+    for (const tab of Object.keys(TABS)) {
+      document.getElementById(`om-tab-${tab}`).addEventListener('click', () => showTab(tab));
+    }
+  })();
+</script>

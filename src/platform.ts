@@ -13,6 +13,9 @@ import {
 } from './config.ts';
 import type { DeviceConfig, MatterLogLevel, OutletMonitorPlatformConfig } from './config.ts';
 import type { CycleState, Transition } from './cycle.ts';
+import { EnergyMeter } from './energy.ts';
+import type { DeviceEnergy } from './energy.ts';
+import { readJson, writeJson } from './json-file.ts';
 import type { Learned } from './learn.ts';
 import { activePowerValues, describeNode, MatterController } from './matter.ts';
 import type { AttributeReport } from './matter.ts';
@@ -28,11 +31,14 @@ const STATE_NAMES: Record<CycleState, string> = { off: 'Off', running: 'Running'
 
 /** How often time is let pass for the monitors, which see no readings while a machine is quiet. */
 const TICK_MS = 5000;
+/** How often the energy counted so far is written down. */
+const SAVE_ENERGY_MS = 5 * 60_000;
 
 interface Appliance {
   device: DeviceConfig;
   monitor: DeviceMonitor;
   accessory: ApplianceAccessory;
+  energy: EnergyMeter;
 }
 
 /**
@@ -51,6 +57,9 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
   #recorder: PowerRecorder | undefined;
   #store: DeviceStore | undefined;
   #ticker: NodeJS.Timeout | undefined;
+  #energySaver: NodeJS.Timeout | undefined;
+  /** Energy per plug as last saved, including plugs no longer configured, whose history is kept. */
+  #ledger: Record<string, DeviceEnergy> = {};
 
   // Plain fields rather than parameter properties, so that Node can run this
   // file directly — which is how the tests load it.
@@ -66,6 +75,8 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     });
     this.api.on('shutdown', () => {
       clearInterval(this.#ticker);
+      clearInterval(this.#energySaver);
+      this.#saveEnergy();
       void this.#controller?.stop();
     });
   }
@@ -102,12 +113,16 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
       this.log.info(`Recording power readings to ${this.#recorder.path}`);
     }
     this.#store = new DeviceStore(join(this.#dataPath, 'devices.json'));
+    const ledger = readJson(this.#energyPath);
+    this.#ledger = ledger !== null && typeof ledger === 'object' ? (ledger as Record<string, DeviceEnergy>) : {};
     this.#ticker = setInterval(() => {
       const now = Date.now();
-      for (const { monitor } of this.#appliances.values()) {
+      for (const { monitor, energy } of this.#appliances.values()) {
         monitor.tick(now);
+        energy.tick(now);
       }
     }, TICK_MS);
+    this.#energySaver = setInterval(() => this.#saveEnergy(), SAVE_ENERGY_MS);
 
     const registry = new NodeRegistry(join(this.#dataPath, 'nodes.json'));
     // One after the other: commissioning several plugs at once would open
@@ -248,7 +263,7 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
       );
     }
 
-    const appliance = { device, monitor, accessory: handle };
+    const appliance = { device, monitor, accessory: handle, energy: new EnergyMeter(this.#ledger[device.name]) };
     this.#appliances.set(device.name, appliance);
     return appliance;
   }
@@ -261,7 +276,31 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     const watts = activePowerWatts(report.value);
     this.log.debug(`${device.name}: ${formatWatts(watts)} (endpoint ${report.endpointId})`);
     this.#recorder?.record(device.name, report.endpointId, watts);
-    monitor.reading(Date.now(), watts);
+    const now = Date.now();
+    monitor.reading(now, watts);
+    appliance.energy.reading(now, watts);
+  }
+
+  get #energyPath(): string {
+    return join(this.#dataPath, 'energy.json');
+  }
+
+  /** Writes what each plug has used, for the Statistics tab of the settings page. */
+  #saveEnergy(): void {
+    if (this.#appliances.size === 0) {
+      return;
+    }
+    const now = Date.now();
+    for (const { device, energy } of this.#appliances.values()) {
+      energy.tick(now);
+      energy.prune(now);
+      this.#ledger[device.name] = energy.record;
+    }
+    try {
+      writeJson(this.#energyPath, this.#ledger);
+    } catch (error) {
+      this.log.warn(`Could not save the energy statistics: ${message(error)}`);
+    }
   }
 
   #onTransition(device: DeviceConfig, accessory: ApplianceAccessory, transition: Transition): void {

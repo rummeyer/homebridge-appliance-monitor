@@ -81,6 +81,23 @@ default names are the appliance's name followed by "Running" and "Finished".
 A rename in the Home app is kept. While a plug cannot be reached, its sensors
 are shown as not responding.
 
+## Statistics
+
+The settings page has a **Statistics** tab: the energy each plug used
+yesterday, last week (Monday to Sunday), last month and last year, one row per
+plug and the total below.
+
+A day, week or month is shown only once a plug has been counted from its very
+start, and left empty until then: a plug added today has its first day
+tomorrow after midnight. A year is shown once it is over even if the plug
+joined partway through, marked ¹ as part of a year: a plug added in September
+2026 shows its 2026 from the 1st of January 2027. Where some plugs have a
+value and others do not yet, the total adds up those that have, and is marked
+with an asterisk.
+
+The energy is worked out from the power readings, per local calendar day,
+while Homebridge is running. Time it was not running is not counted.
+
 ## Requirements
 
 - Homebridge 2 on Node.js 22, 24 or 26.
@@ -189,6 +206,8 @@ All files are kept in the Homebridge storage folder, under `outlet-monitor/`:
 - `devices.json`: what each appliance has learned, and the state it is in, so
   that Finished survives a restart. Remove an appliance's `learned` entry
   (with the child bridge stopped) to have it learn afresh.
+- `energy.json`: watt-hours per plug and day, for the Statistics tab. Written
+  every five minutes. Plugs removed from the config keep their history here.
 - `power.csv`: `time,device,endpoint,watts`, one line per reading.
 
 On every start, matter.js logs warnings about the test vendor ID `0xFFF1` (see

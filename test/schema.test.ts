@@ -54,3 +54,12 @@ test('every threshold the plugin uses can be fixed on the settings page, and no 
   assert.deepEqual(Object.keys(device.thresholds.properties).sort(), Object.keys(LEARNING_DEFAULTS).sort());
   assert.equal(Number(device.thresholds.properties.startSeconds.placeholder), LEARNING_DEFAULTS.startSeconds);
 });
+
+test('the custom settings page is where the schema says, and is published', () => {
+  assert.equal(schema.customUi, true);
+  const page = new URL(`../${schema.customUiPath.replace(/^\.\//, '')}/`, import.meta.url);
+  assert.ok(readFileSync(new URL('server.js', page), 'utf8').includes('/statistics'));
+  assert.ok(readFileSync(new URL('public/index.html', page), 'utf8').includes("'/statistics'"));
+  assert.ok(pkg.files.includes('homebridge-ui'), 'shipped in the package');
+  assert.ok(pkg.dependencies['@homebridge/plugin-ui-utils'], 'and what it needs is installed with it');
+});
