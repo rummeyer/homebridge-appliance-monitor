@@ -2,7 +2,7 @@
   "pluginAlias": "OutletMonitor",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, such as the Eve Energy or the Shelly Plug PM Gen3, through the standard Matter power measurement. This first version pairs the plugs, lists what they offer, and logs and records their power draw — nothing appears in HomeKit yet. Run it as a child bridge.",
+  "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, such as the Eve Energy or the Shelly Plug PM Gen3, and shows each appliance in HomeKit as Running or Finished. It learns each appliance's thresholds from its first cycle. Run it as a child bridge.",
   "footerDisplay": "The plugs stay in Apple Home: this plugin joins them as a second controller (Matter multi-admin). For devices on Thread, the Raspberry Pi needs a route to the Thread network — on Raspberry Pi OS Bookworm it has one already; the README says how to check.",
   "schema": {
     "type": "object",
@@ -18,13 +18,15 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": ["name"],
+          "required": [
+            "name"
+          ],
           "properties": {
             "name": {
               "title": "Name",
               "type": "string",
               "placeholder": "Washing machine",
-              "description": "Used in the log and the recording. A paired plug is remembered by this name, so renaming it means pairing it again."
+              "description": "Used for the sensors, in the log and in the recording. A paired plug is remembered by this name, so renaming it means pairing it again."
             },
             "pairingCode": {
               "title": "Pairing code",
@@ -32,6 +34,97 @@
               "placeholder": "3497-011-2332",
               "pattern": "^\\s*((\\d[\\s-]*){11}|(\\d[\\s-]*){21}|MT:[0-9A-Z.\\-]+)\\s*$",
               "description": "In the Home app: the plug's settings → Turn On Pairing Mode. The code is valid for 15 minutes, so save and restart the child bridge straight away. Only needed once; it can be removed after pairing."
+            },
+            "runningSensor": {
+              "title": "Running sensor",
+              "type": "boolean",
+              "default": true,
+              "description": "An occupancy sensor that detects while the appliance runs."
+            },
+            "runningName": {
+              "title": "Running sensor name",
+              "type": "string",
+              "placeholder": "<name> Running",
+              "condition": {
+                "functionBody": "return model.devices[arrayIndices].runningSensor !== false;"
+              }
+            },
+            "finishedSensor": {
+              "title": "Finished sensor",
+              "type": "boolean",
+              "default": true,
+              "description": "A contact sensor that opens when the appliance is finished. The Home app can notify you when it opens."
+            },
+            "finishedName": {
+              "title": "Finished sensor name",
+              "type": "string",
+              "placeholder": "<name> Finished",
+              "condition": {
+                "functionBody": "return model.devices[arrayIndices].finishedSensor !== false;"
+              }
+            },
+            "finishedReset": {
+              "title": "Finished goes back to Off",
+              "type": "string",
+              "default": "off-level",
+              "oneOf": [
+                {
+                  "title": "When the appliance is switched off (learned off level)",
+                  "enum": [
+                    "off-level"
+                  ]
+                },
+                {
+                  "title": "After a set time",
+                  "enum": [
+                    "timeout"
+                  ]
+                },
+                {
+                  "title": "Only when it runs again",
+                  "enum": [
+                    "next-start"
+                  ]
+                }
+              ],
+              "description": "An appliance that drops to nothing by itself when done has no level to be switched off from; it stays Finished until it runs again."
+            },
+            "finishedResetMinutes": {
+              "title": "Minutes until Off",
+              "type": "integer",
+              "default": 60,
+              "minimum": 1,
+              "condition": {
+                "functionBody": "return model.devices[arrayIndices].finishedReset === 'timeout';"
+              }
+            },
+            "thresholds": {
+              "title": "Fixed thresholds",
+              "type": "object",
+              "description": "Optional. Leave a field empty to have it learned from the appliance's cycles; fill it in to use your value instead.",
+              "properties": {
+                "runWatts": {
+                  "title": "Running above (W)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "offWatts": {
+                  "title": "Switched off at or below (W)",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "startSeconds": {
+                  "title": "Running after (seconds above, added up)",
+                  "type": "integer",
+                  "minimum": 0,
+                  "placeholder": "60"
+                },
+                "finishSeconds": {
+                  "title": "Finished after (seconds of quiet)",
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
             }
           }
         }
@@ -47,11 +140,36 @@
         "type": "string",
         "default": "warn",
         "oneOf": [
-          { "title": "Errors only", "enum": ["error"] },
-          { "title": "Warnings", "enum": ["warn"] },
-          { "title": "Notices", "enum": ["notice"] },
-          { "title": "Info", "enum": ["info"] },
-          { "title": "Debug", "enum": ["debug"] }
+          {
+            "title": "Errors only",
+            "enum": [
+              "error"
+            ]
+          },
+          {
+            "title": "Warnings",
+            "enum": [
+              "warn"
+            ]
+          },
+          {
+            "title": "Notices",
+            "enum": [
+              "notice"
+            ]
+          },
+          {
+            "title": "Info",
+            "enum": [
+              "info"
+            ]
+          },
+          {
+            "title": "Debug",
+            "enum": [
+              "debug"
+            ]
+          }
         ],
         "description": "How much of the Matter library's own logging to show. Info and debug appear only with Homebridge debug logging on."
       }

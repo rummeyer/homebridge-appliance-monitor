@@ -9,7 +9,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { MATTER_LOG_LEVELS, parsePairingCode } from '../src/config.ts';
+import { DEFAULT_RESET_MINUTES, MATTER_LOG_LEVELS, parsePairingCode, RESET_MODES } from '../src/config.ts';
+import { LEARNING_DEFAULTS } from '../src/monitor.ts';
 import { PLATFORM_NAME } from '../src/settings.ts';
 
 const schema = JSON.parse(readFileSync(new URL('../config.schema.json', import.meta.url), 'utf8'));
@@ -40,4 +41,16 @@ test('the log levels offered are the ones the plugin understands', () => {
 test('the package is a Homebridge platform plugin', () => {
   assert.ok(pkg.keywords.includes('homebridge-plugin'));
   assert.equal(pkg.name, 'homebridge-outlet-monitor');
+});
+
+test('the resets offered are the ones the plugin understands, with the same default', () => {
+  const offered = device.finishedReset.oneOf.map((option: { enum: string[] }) => option.enum[0]);
+  assert.deepEqual([...offered].sort(), [...RESET_MODES].sort());
+  assert.equal(device.finishedReset.default, 'off-level');
+  assert.equal(device.finishedResetMinutes.default, DEFAULT_RESET_MINUTES);
+});
+
+test('every threshold the plugin uses can be fixed on the settings page, and no other', () => {
+  assert.deepEqual(Object.keys(device.thresholds.properties).sort(), Object.keys(LEARNING_DEFAULTS).sort());
+  assert.equal(Number(device.thresholds.properties.startSeconds.placeholder), LEARNING_DEFAULTS.startSeconds);
 });

@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ACTIVE_POWER, activePowerWatts, ELECTRICAL_POWER_MEASUREMENT, formatWatts, isActivePower } from '../src/power.ts';
+import {
+  ACTIVE_POWER,
+  activePowerWatts,
+  ELECTRICAL_POWER_MEASUREMENT,
+  formatDuration,
+  formatWatts,
+  isActivePower,
+} from '../src/power.ts';
 
 test('only ActivePower of Electrical Power Measurement is a power reading', () => {
   assert.equal(isActivePower(ELECTRICAL_POWER_MEASUREMENT, ACTIVE_POWER), true);
@@ -24,4 +31,13 @@ test('watts are shown with sensible precision', () => {
   assert.equal(formatWatts(0.4), '0.40 W');
   assert.equal(formatWatts(2150.04), '2150.0 W');
   assert.equal(formatWatts(undefined), 'no reading');
+});
+
+test('durations read the way a person would say them', () => {
+  assert.equal(formatDuration(45), '45 s');
+  assert.equal(formatDuration(600), '10 min');
+  assert.equal(formatDuration(590), '9 min 50 s');
+  assert.equal(formatDuration(1800), '30 min');
+  assert.equal(formatDuration(4980), '1 h 23 min');
+  assert.equal(formatDuration(7200), '2 h');
 });

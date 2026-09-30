@@ -1,6 +1,8 @@
 import type { PlatformConfig } from 'homebridge';
 import { ManualPairingCodeCodec, QrPairingCodeCodec } from '@matter/main/types';
 
+import type { CycleParams, ResetMode, ResetOptions } from './cycle.ts';
+
 /** One plug, as configured in Homebridge's config.json. */
 export interface DeviceConfig {
   /**
@@ -19,6 +21,33 @@ export interface DeviceConfig {
    * the code in place inside that time.
    */
   pairingCode?: string;
+  /** Show "running" in HomeKit, as an occupancy sensor. On by default. */
+  runningSensor?: boolean;
+  /** Show "finished" in HomeKit, as a contact sensor that opens. On by default. */
+  finishedSensor?: boolean;
+  /** Names for the two sensors; default "<name> Running" and "<name> Finished". */
+  runningName?: string;
+  finishedName?: string;
+  /** When "finished" goes back to off. See ResetMode. Default `off-level`. */
+  finishedReset?: ResetMode;
+  /** For the `timeout` reset. */
+  finishedResetMinutes?: number;
+  /**
+   * Fixed values instead of learned ones, each on its own. Anything left out
+   * is learned from the appliance's cycles.
+   */
+  thresholds?: Partial<CycleParams>;
+}
+
+export const RESET_MODES: readonly ResetMode[] = ['off-level', 'timeout', 'next-start'];
+export const DEFAULT_RESET_MINUTES = 60;
+
+/** The reset a device asked for, with the defaults filled in. */
+export function resetOptions(device: DeviceConfig): ResetOptions {
+  return {
+    mode: device.finishedReset ?? 'off-level',
+    minutes: device.finishedResetMinutes ?? DEFAULT_RESET_MINUTES,
+  };
 }
 
 export type MatterLogLevel = 'debug' | 'info' | 'notice' | 'warn' | 'error';
@@ -80,7 +109,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -90,6 +119,26 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (pairingCode !== undefined && pairingCode !== '') {
     if (typeof pairingCode !== 'string' || parsePairingCode(pairingCode) === undefined) {
       problems.push(`${label} has a pairing code that is not a valid Matter setup code`);
+    }
+  }
+  if (finishedReset !== undefined && !RESET_MODES.includes(finishedReset)) {
+    problems.push(`${label} has an unknown finishedReset "${String(finishedReset)}"`);
+  }
+  if (
+    finishedResetMinutes !== undefined &&
+    (typeof finishedResetMinutes !== 'number' || !(finishedResetMinutes > 0))
+  ) {
+    problems.push(`${label} needs finishedResetMinutes above 0`);
+  }
+  if (thresholds !== undefined && thresholds !== null) {
+    for (const [key, value] of Object.entries(thresholds)) {
+      if (value !== undefined && value !== null && (typeof value !== 'number' || !(value >= 0))) {
+        problems.push(`${label} has a threshold ${key} that is not a number of 0 or more`);
+      }
+    }
+    const { runWatts, offWatts } = thresholds;
+    if (typeof runWatts === 'number' && typeof offWatts === 'number' && offWatts >= runWatts) {
+      problems.push(`${label} has an off level (${offWatts} W) that is not below the running level (${runWatts} W)`);
     }
   }
   return problems;

@@ -1,5 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { readJson, writeJson } from './json-file.ts';
 
 /**
  * Which Matter node each configured plug became when it was paired.
@@ -10,11 +9,16 @@ import { dirname } from 'node:path';
  */
 export class NodeRegistry {
   readonly #path: string;
-  readonly #nodes: Map<string, bigint>;
+  readonly #nodes = new Map<string, bigint>();
 
   constructor(path: string) {
     this.#path = path;
-    this.#nodes = load(path);
+    const data = readJson(path) as Record<string, unknown> | undefined;
+    for (const [name, id] of Object.entries(data ?? {})) {
+      if (typeof id === 'string' && /^\d+$/.test(id)) {
+        this.#nodes.set(name, BigInt(id));
+      }
+    }
   }
 
   get(name: string): bigint | undefined {
@@ -36,29 +40,7 @@ export class NodeRegistry {
     return [...this.#nodes.entries()];
   }
 
-  /** Written to a temporary file first, so a crash cannot leave half a file. */
   #save(): void {
-    mkdirSync(dirname(this.#path), { recursive: true });
-    const data = Object.fromEntries([...this.#nodes].map(([name, id]) => [name, id.toString()]));
-    const temp = `${this.#path}.tmp`;
-    writeFileSync(temp, `${JSON.stringify(data, null, 2)}\n`);
-    renameSync(temp, this.#path);
+    writeJson(this.#path, Object.fromEntries([...this.#nodes].map(([name, id]) => [name, id.toString()])));
   }
-}
-
-function load(path: string): Map<string, bigint> {
-  let text: string;
-  try {
-    text = readFileSync(path, 'utf8');
-  } catch {
-    return new Map();
-  }
-  const nodes = new Map<string, bigint>();
-  const data = JSON.parse(text) as Record<string, unknown>;
-  for (const [name, id] of Object.entries(data)) {
-    if (typeof id === 'string' && /^\d+$/.test(id)) {
-      nodes.set(name, BigInt(id));
-    }
-  }
-  return nodes;
 }

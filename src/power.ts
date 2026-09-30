@@ -34,3 +34,18 @@ export const hex = (value: number, width = 4): string => `0x${value.toString(16)
 /** Watts with as many decimals as are useful at that size. */
 export const formatWatts = (watts: number | undefined): string =>
   watts === undefined ? 'no reading' : `${watts.toFixed(watts < 10 ? 2 : 1)} W`;
+
+/** "45 s", "9 min 50 s", "1 h 23 min". */
+export function formatDuration(seconds: number): string {
+  const total = Math.round(seconds);
+  if (total < 60) {
+    return `${total} s`;
+  }
+  const minutes = Math.floor(total / 60);
+  if (minutes < 60) {
+    const rest = total % 60;
+    return rest === 0 ? `${minutes} min` : `${minutes} min ${rest} s`;
+  }
+  const rest = minutes % 60;
+  return rest === 0 ? `${Math.floor(minutes / 60)} h` : `${Math.floor(minutes / 60)} h ${rest} min`;
+}
