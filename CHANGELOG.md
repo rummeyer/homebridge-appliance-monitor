@@ -6,6 +6,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-09-30
+
+The first published version.
+
 ### Added
 
 - Pairs Matter plugs as a second controller, using the setup code from the
@@ -44,10 +48,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   page may save, is skipped; a phase that is wrong is skipped with a warning,
   and costs only itself, not the plug.
 
-### Changed
-
 - Readings are recorded to a file per day under `power/`, kept for 14 days
-  by default (`recordDays`), instead of one `power.csv` that grew without end.
-- The log is shorter: one line per plug on start, the full list of what a
-  plug offers only once when it is paired, no single readings, and matter.js's
-  expected start-up warnings only with debug logging.
+  by default (`recordDays`).
+- A short log: one line per plug on start, the full list of what a plug
+  offers only once when it is paired, then only what changes. matter.js's
+  expected start-up warnings only show with debug logging.
+
+[Unreleased]: https://github.com/rummeyer/homebridge-outlet-monitor/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/rummeyer/homebridge-outlet-monitor/releases/tag/v0.4.1

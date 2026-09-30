@@ -56,5 +56,19 @@
     "@types/node": "^22.20.4",
     "homebridge": "^2.4.0",
     "typescript": "^5.9.3"
-  }
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/rummeyer"
+    },
+    {
+      "type": "paypal",
+      "url": "https://paypal.me/rummeyer"
+    },
+    {
+      "type": "buymeacoffee",
+      "url": "https://buymeacoffee.com/rummeyer"
+    }
+  ]
 }
