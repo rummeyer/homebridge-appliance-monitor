@@ -1,10 +1,12 @@
+process.env.TZ = 'Europe/Berlin';
+
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 
-import { csvLine, PowerRecorder } from '../src/recorder.ts';
+import { csvLine, parseLine, PowerRecorder, readSamples } from '../src/recorder.ts';
 import { NodeRegistry } from '../src/registry.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'outlet-monitor-'));
@@ -25,18 +27,64 @@ test('a missing registry file is an empty registry', () => {
   assert.deepEqual(new NodeRegistry(join(dir, 'nope.json')).entries(), []);
 });
 
-test('the recording has a header once and one line per reading', () => {
-  const path = join(dir, 'power.csv');
-  const at = new Date('2026-09-30T12:00:00Z');
-  new PowerRecorder(path).record('Washer', 1, 2.15, at);
-  new PowerRecorder(path).record('Washer', 2, undefined, at);
+test('the recording is a file per local day, with a header once', () => {
+  const power = join(dir, 'power-days');
+  const recorder = new PowerRecorder(power);
+  recorder.record('Washer', 1, 2.15, new Date('2026-09-30T21:59:00Z')); // 23:59 in Berlin
+  recorder.record('Washer', 2, undefined, new Date('2026-09-30T22:01:00Z')); // 00:01 the next day
+  new PowerRecorder(power).record('Washer', 1, 3, new Date('2026-09-30T22:02:00Z'));
 
+  assert.deepEqual(readdirSync(power).sort(), ['2026-09-30.csv', '2026-10-01.csv']);
   assert.equal(
-    readFileSync(path, 'utf8'),
+    readFileSync(join(power, '2026-10-01.csv'), 'utf8'),
     'time,device,endpoint,watts\n' +
-      '2026-09-30T12:00:00.000Z,Washer,1,2.15\n' +
-      '2026-09-30T12:00:00.000Z,Washer,2,\n',
+      '2026-09-30T22:01:00.000Z,Washer,2,\n' +
+      '2026-09-30T22:02:00.000Z,Washer,1,3\n',
   );
+});
+
+test('days older than kept are deleted when a new day starts', () => {
+  const power = join(dir, 'power-prune');
+  const recorder = new PowerRecorder(power, 3);
+  for (const day of ['2026-09-01', '2026-09-27', '2026-09-28', 'notes']) {
+    writeFileSync(join(power, day.includes('-') ? `${day}.csv` : day), '');
+  }
+  recorder.record('Washer', 1, 1, new Date('2026-09-30T10:00:00Z'));
+  assert.deepEqual(readdirSync(power).sort(), ['2026-09-28.csv', '2026-09-30.csv', 'notes']);
+});
+
+test("a device's readings come back in order, starting with the one in effect", () => {
+  const power = join(dir, 'power-read');
+  const recorder = new PowerRecorder(power);
+  const at = (text: string) => new Date(text);
+  recorder.record('Coffee', 2, 2.5, at('2026-09-30T20:00:00Z'));
+  recorder.record('Bad, "oben"', 1, 99, at('2026-09-30T23:00:00Z'));
+  recorder.record('Coffee', 2, 1000, at('2026-10-01T05:00:00Z'));
+  recorder.record('Coffee', 2, undefined, at('2026-10-01T05:00:30Z'));
+  recorder.record('Coffee', 2, 3, at('2026-10-01T05:01:00Z'));
+
+  const from = Date.parse('2026-10-01T04:00:00Z');
+  const to = Date.parse('2026-10-01T06:00:00Z');
+  assert.deepEqual(readSamples(power, 'Coffee', from, to), [
+    { at: from, watts: 2.5 },
+    { at: Date.parse('2026-10-01T05:00:00Z'), watts: 1000 },
+    { at: Date.parse('2026-10-01T05:01:00Z'), watts: 3 },
+  ]);
+  assert.deepEqual(readSamples(power, 'Bad, "oben"', 0, to), [{ at: Date.parse('2026-09-30T23:00:00Z'), watts: 99 }]);
+  assert.deepEqual(readSamples(join(dir, 'nothing-here'), 'Coffee', from, to), []);
+});
+
+test('lines read back as written, and anything else is skipped', () => {
+  const at = new Date('2026-10-01T05:00:00Z');
+  assert.deepEqual(parseLine(csvLine(at, 'Bad, "oben"', 1, 2.5).trimEnd()), {
+    at: at.getTime(),
+    device: 'Bad, "oben"',
+    endpoint: 1,
+    watts: 2.5,
+  });
+  assert.equal(parseLine('time,device,endpoint,watts'), undefined);
+  assert.equal(parseLine(''), undefined);
+  assert.equal(parseLine('garbage'), undefined);
 });
 
 test('a name with a comma or quote does not break the columns', () => {

@@ -1,24 +1,59 @@
 /**
  * Backend for the plugin's settings page in the Homebridge UI.
  *
- * Serves the Statistics tab: the energy each plug used in the last complete
- * day, week, month and year. Read from the file the plugin writes rather
- * than asked of the running plugin, which is a separate process this page
- * has no line to. The plugin writes every five minutes, so the numbers can
- * trail by that much — which matters only for a period that ended just now.
+ * Serves the Statistics tab — the energy each plug used in the last complete
+ * day, week, month and year — and the Curve tab: a plug's recorded power
+ * draw, the levels it dwells at, and a power range for a stretch picked on
+ * it. All read from the files the plugin writes rather than asked of the
+ * running plugin, which is a separate process this page has no line to.
+ * Energy is written every five minutes, readings as they come.
  */
 import { join } from 'node:path';
 
 import { HomebridgePluginUiServer } from '@homebridge/plugin-ui-utils';
 
+import { bandFor, thin } from '../dist/curve.js';
 import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
+import { findLevels } from '../dist/phases.js';
+import { readSamples } from '../dist/recorder.js';
+
+/** Points drawn across the chart: about two per pixel of a wide settings page. */
+const CHART_BUCKETS = 600;
+const MAX_HOURS = 24 * 14;
 
 class OutletMonitorUiServer extends HomebridgePluginUiServer {
   constructor() {
     super();
     this.onRequest('/statistics', (request) => this.statistics(request));
+    this.onRequest('/curve', (request) => this.curve(request));
+    this.onRequest('/band', (request) => this.band(request));
     this.ready();
+  }
+
+  get powerDir() {
+    return this.homebridgeStoragePath ? join(this.homebridgeStoragePath, 'outlet-monitor', 'power') : undefined;
+  }
+
+  /** A plug's last hours, thinned for drawing, and the levels found in them. */
+  async curve(request) {
+    const name = String(request?.name ?? '');
+    const hours = Math.min(Math.max(Number(request?.hours) || 24, 1), MAX_HOURS);
+    const to = Date.now();
+    const from = to - hours * 3_600_000;
+    const samples = this.powerDir ? readSamples(this.powerDir, name, from, to) : [];
+    return { from, to, points: thin(samples, from, to, CHART_BUCKETS), levels: findLevels(samples, to) };
+  }
+
+  /** The power range for a stretch picked on the chart, or null if the plug drew nothing then. */
+  async band(request) {
+    const name = String(request?.name ?? '');
+    const from = Number(request?.from);
+    const to = Number(request?.to);
+    if (!this.powerDir || !Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+      return null;
+    }
+    return bandFor(readSamples(this.powerDir, name, from, to), from, to) ?? null;
   }
 
   /** The table for the plugs named, in the order the page lists them. */

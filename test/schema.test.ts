@@ -11,6 +11,8 @@ import test from 'node:test';
 
 import { DEFAULT_RESET_MINUTES, MATTER_LOG_LEVELS, parsePairingCode, RESET_MODES } from '../src/config.ts';
 import { LEARNING_DEFAULTS } from '../src/monitor.ts';
+import { DEFAULT_HOLD_SECONDS, DEFAULT_MIN_SECONDS } from '../src/phases.ts';
+import { DEFAULT_RECORD_DAYS } from '../src/recorder.ts';
 import { PLATFORM_NAME } from '../src/settings.ts';
 
 const schema = JSON.parse(readFileSync(new URL('../config.schema.json', import.meta.url), 'utf8'));
@@ -62,4 +64,12 @@ test('the custom settings page is where the schema says, and is published', () =
   assert.ok(readFileSync(new URL('public/index.html', page), 'utf8').includes("'/statistics'"));
   assert.ok(pkg.files.includes('homebridge-ui'), 'shipped in the package');
   assert.ok(pkg.dependencies['@homebridge/plugin-ui-utils'], 'and what it needs is installed with it');
+});
+
+test('a phase on the settings page has the defaults the plugin falls back to', () => {
+  const phase = device.phases.items.properties;
+  assert.equal(phase.minSeconds.default, DEFAULT_MIN_SECONDS);
+  assert.equal(phase.holdSeconds.default, DEFAULT_HOLD_SECONDS);
+  assert.equal(phase.sensor.default, true);
+  assert.equal(schema.schema.properties.recordDays.default, DEFAULT_RECORD_DAYS);
 });

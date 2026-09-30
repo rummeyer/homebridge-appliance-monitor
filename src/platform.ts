@@ -5,6 +5,7 @@ import type { API, DynamicPlatformPlugin, Logging, PlatformAccessory } from 'hom
 import { ApplianceAccessory } from './accessory.ts';
 import {
   duplicateNames,
+  hasSensors,
   isChildBridgeProcess,
   MATTER_LOG_LEVELS,
   parsePairingCode,
@@ -20,6 +21,8 @@ import type { Learned } from './learn.ts';
 import { activePowerValues, describeNode, MatterController } from './matter.ts';
 import type { AttributeReport } from './matter.ts';
 import { DeviceMonitor } from './monitor.ts';
+import { PhaseTracker } from './phases.ts';
+import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower } from './power.ts';
 import { PowerRecorder } from './recorder.ts';
 import { NodeRegistry } from './registry.ts';
@@ -37,8 +40,10 @@ const SAVE_ENERGY_MS = 5 * 60_000;
 interface Appliance {
   device: DeviceConfig;
   monitor: DeviceMonitor;
-  accessory: ApplianceAccessory;
+  /** None for a plug with every sensor turned off, which is only counted. */
+  accessory: ApplianceAccessory | undefined;
   energy: EnergyMeter;
+  phases: PhaseTracker[];
 }
 
 /**
@@ -58,6 +63,8 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
   #store: DeviceStore | undefined;
   #ticker: NodeJS.Timeout | undefined;
   #energySaver: NodeJS.Timeout | undefined;
+  /** Set on shutdown, when every plug disconnecting is expected and not worth a line. */
+  #stopping = false;
   /** Energy per plug as last saved, including plugs no longer configured, whose history is kept. */
   #ledger: Record<string, DeviceEnergy> = {};
 
@@ -74,6 +81,7 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
       });
     });
     this.api.on('shutdown', () => {
+      this.#stopping = true;
       clearInterval(this.#ticker);
       clearInterval(this.#energySaver);
       this.#saveEnergy();
@@ -109,17 +117,21 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     this.#controller = controller;
 
     if (this.config.recordPower !== false) {
-      this.#recorder = new PowerRecorder(join(this.#dataPath, 'power.csv'));
-      this.log.info(`Recording power readings to ${this.#recorder.path}`);
+      const days = Number.isInteger(this.config.recordDays) && this.config.recordDays! > 0 ? this.config.recordDays : undefined;
+      this.#recorder = new PowerRecorder(join(this.#dataPath, 'power'), days);
+      this.log.debug(`Recording power readings to ${this.#recorder.dir}`);
     }
     this.#store = new DeviceStore(join(this.#dataPath, 'devices.json'));
     const ledger = readJson(this.#energyPath);
     this.#ledger = ledger !== null && typeof ledger === 'object' ? (ledger as Record<string, DeviceEnergy>) : {};
     this.#ticker = setInterval(() => {
       const now = Date.now();
-      for (const { monitor, energy } of this.#appliances.values()) {
-        monitor.tick(now);
-        energy.tick(now);
+      for (const appliance of this.#appliances.values()) {
+        appliance.monitor.tick(now);
+        appliance.energy.tick(now);
+        for (const tracker of appliance.phases) {
+          this.#onPhase(appliance, tracker, tracker.tick(now));
+        }
       }
     }, TICK_MS);
     this.#energySaver = setInterval(() => this.#saveEnergy(), SAVE_ENERGY_MS);
@@ -182,55 +194,95 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
       }
       registry.set(device.name, nodeId);
       this.log.info(`${device.name}: paired as node ${nodeId}. The pairing code can now be removed from the config.`);
-    } else if (device.pairingCode) {
-      this.log.debug(`${device.name}: already paired as node ${nodeId}; ignoring the pairing code.`);
     }
 
     const appliance = this.#appliance(device);
-    let described = false;
+    const store = this.#store!;
+    let introduced = false;
+    let reachable: boolean | undefined;
     await controller.connect(nodeId, {
       onState: (state) => {
-        this.log.info(`${device.name}: ${state.toLowerCase().replace(/_/g, ' ')}`);
-        appliance.accessory.setReachable(state === 'Connected');
+        const connected = state === 'Connected';
+        appliance.accessory?.setReachable(connected);
+        // Only a change worth knowing about: lost after having been there, or
+        // back after being lost. The steps in between (reconnecting,
+        // waiting for discovery) and the start-up connect are left out.
+        if (!this.#stopping && reachable !== undefined && connected !== reachable) {
+          if (connected) {
+            this.log.info(`${device.name}: reachable again`);
+          } else if (state === 'Disconnected') {
+            this.log.warn(`${device.name}: unreachable`);
+          }
+        }
+        if (connected || state === 'Disconnected') {
+          reachable = connected;
+        }
       },
       onReady: (node) => {
-        if (!described) {
-          described = true;
-          this.log.info(`${device.name}: structure`);
+        // A device reports changes only, so without this nothing would be
+        // known until the first change after every (re)connection.
+        const current = activePowerValues(node);
+        for (const report of current) {
+          this.#onAttribute(appliance, report);
+        }
+        if (introduced) {
+          return;
+        }
+        introduced = true;
+        appliance.accessory?.setInfo(node.basicInformation ?? {});
+        // Everything the plug offers, once: when it is new. After that it is
+        // one line per start.
+        if (!store.get(device.name).described) {
           for (const line of describeNode(node)) {
             this.log.info(`${device.name}:   ${line}`);
           }
-          appliance.accessory.setInfo(node.basicInformation ?? {});
+          store.update(device.name, { described: true });
         }
-        // A device reports changes only, so without this nothing would be
-        // known until the first change after every (re)connection.
-        for (const report of activePowerValues(node)) {
-          this.#onAttribute(appliance, report);
-        }
+        const watts = current.map(({ value }) => activePowerWatts(value)).find((value) => value !== undefined);
+        this.log.info(
+          [
+            `${device.name}: ${node.basicInformation?.productName ?? 'connected'}`,
+            formatWatts(watts),
+            STATE_NAMES[appliance.monitor.state],
+            this.#learnedSummary(appliance),
+          ].join(', '),
+        );
       },
       onAttribute: (report) => this.#onAttribute(appliance, report),
     });
+  }
+
+  /** "learning", or "learned from 3 cycles". */
+  #learnedSummary({ device }: Appliance): string {
+    const { learned, cycles } = this.#store?.get(device.name) ?? {};
+    if (!learned) {
+      return 'learning';
+    }
+    const count = cycles ?? 1;
+    return `learned from ${count} cycle${count === 1 ? '' : 's'}`;
   }
 
   /** The HomeKit accessory and the monitor for one plug, created once it is paired. */
   #appliance(device: DeviceConfig): Appliance {
     const store = this.#store!;
     const record = store.get(device.name);
-    const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:${device.name}`);
-
-    let accessory = this.#cached.get(uuid);
-    if (accessory) {
-      accessory.displayName = device.name;
-    } else {
-      accessory = new this.api.platformAccessory(device.name, uuid);
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      this.#cached.set(uuid, accessory);
-    }
-
     const initial =
       record.state !== undefined && record.since !== undefined ? { state: record.state, since: record.since } : undefined;
-    const handle = new ApplianceAccessory(this.api, accessory, device, initial?.state ?? 'off');
-    this.api.updatePlatformAccessories([accessory]);
+
+    let handle: ApplianceAccessory | undefined;
+    if (hasSensors(device)) {
+      const uuid = this.#uuid(device.name);
+      let accessory = this.#cached.get(uuid);
+      if (accessory) {
+        accessory.displayName = device.name;
+      } else {
+        accessory = new this.api.platformAccessory(device.name, uuid);
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+        this.#cached.set(uuid, accessory);
+      }
+      handle = new ApplianceAccessory(this.api, accessory, device, initial?.state ?? 'off');
+      this.api.updatePlatformAccessories([accessory]);
+    }
 
     const monitor = new DeviceMonitor(
       {
@@ -254,16 +306,13 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
       },
     );
 
-    if (record.learned) {
-      this.#logLearned(device, record.learned, record.cycles ?? 1, 'using');
-    } else {
-      this.log.info(
-        `${device.name}: learning. Run the appliance once; until then Finished comes ` +
-          `up to ${formatDuration(monitor.params.finishSeconds)} after the end.`,
-      );
-    }
-
-    const appliance = { device, monitor, accessory: handle, energy: new EnergyMeter(this.#ledger[device.name]) };
+    const appliance = {
+      device,
+      monitor,
+      accessory: handle,
+      energy: new EnergyMeter(this.#ledger[device.name]),
+      phases: (device.phases ?? []).map((phase) => new PhaseTracker({ ...phase, name: phase.name.trim() })),
+    };
     this.#appliances.set(device.name, appliance);
     return appliance;
   }
@@ -274,11 +323,27 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     }
     const { device, monitor } = appliance;
     const watts = activePowerWatts(report.value);
-    this.log.debug(`${device.name}: ${formatWatts(watts)} (endpoint ${report.endpointId})`);
     this.#recorder?.record(device.name, report.endpointId, watts);
     const now = Date.now();
     monitor.reading(now, watts);
     appliance.energy.reading(now, watts);
+    for (const tracker of appliance.phases) {
+      this.#onPhase(appliance, tracker, tracker.reading(now, watts));
+    }
+  }
+
+  #onPhase(appliance: Appliance, tracker: PhaseTracker, change: PhaseChange | undefined): void {
+    if (!change) {
+      return;
+    }
+    appliance.accessory?.setPhase(tracker.name, change.active);
+    const { device } = appliance;
+    if (change.active) {
+      this.log.info(`${device.name}: ${tracker.name}`);
+    } else {
+      const lasted = change.since === undefined ? '' : ` after ${formatDuration((change.at - change.since) / 1000)}`;
+      this.log.info(`${device.name}: ${tracker.name} ended${lasted}`);
+    }
   }
 
   get #energyPath(): string {
@@ -303,8 +368,8 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  #onTransition(device: DeviceConfig, accessory: ApplianceAccessory, transition: Transition): void {
-    accessory.update(transition.to);
+  #onTransition(device: DeviceConfig, accessory: ApplianceAccessory | undefined, transition: Transition): void {
+    accessory?.update(transition.to);
     this.#store?.update(device.name, { state: transition.to, since: transition.at });
 
     const { cycle } = transition;
@@ -318,21 +383,25 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  #logLearned(device: DeviceConfig, learned: Learned, cycles: number, verb = 'learned'): void {
+  #logLearned(device: DeviceConfig, learned: Learned, cycles: number): void {
     const { runWatts, offWatts, finishSeconds } = learned.params;
     const rest = learned.hasStandby
       ? `back to off below ${formatWatts(offWatts)} (it rests at ${formatWatts(learned.restWatts)})`
       : 'it drops to nothing by itself when done, so Finished stays until the next start';
     this.log.info(
-      `${device.name}: ${verb} from ${cycles} cycle${cycles === 1 ? '' : 's'} — running above ${formatWatts(runWatts)}, ` +
+      `${device.name}: learned from ${cycles} cycle${cycles === 1 ? '' : 's'} — running above ${formatWatts(runWatts)}, ` +
         `finished after ${formatDuration(finishSeconds)} of quiet (longest pause ` +
         `${formatDuration(learned.longestPauseSeconds)}), ${rest}.`,
     );
   }
 
-  /** Drops accessories whose plug was removed from config.json. */
+  #uuid(name: string): string {
+    return this.api.hap.uuid.generate(`${PLUGIN_NAME}:${name}`);
+  }
+
+  /** Drops accessories whose plug was removed from config.json, or shows nothing any more. */
   #prune(devices: DeviceConfig[]): void {
-    const wanted = new Set(devices.map(({ name }) => this.api.hap.uuid.generate(`${PLUGIN_NAME}:${name}`)));
+    const wanted = new Set(devices.filter(hasSensors).map(({ name }) => this.#uuid(name)));
     const stale = [...this.#cached.entries()].filter(([uuid]) => !wanted.has(uuid));
     if (stale.length === 0) {
       return;

@@ -11,6 +11,8 @@ export interface DeviceRecord {
   /** Where it was, so that "finished" survives Homebridge restarting. */
   state?: CycleState;
   since?: number;
+  /** Whether everything the plug offers has been logged, which is done once. */
+  described?: boolean;
 }
 
 /**
@@ -40,8 +42,8 @@ export class DeviceStore {
 
   /** Forgets what was learned, so the next cycle is learned afresh. */
   forget(name: string): void {
-    const { state, since } = this.get(name);
-    this.#records[name] = { state, since };
+    const { state, since, described } = this.get(name);
+    this.#records[name] = { state, since, described };
     writeJson(this.#path, this.#records);
   }
 }

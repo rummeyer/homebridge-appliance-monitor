@@ -2,6 +2,7 @@ import type { PlatformConfig } from 'homebridge';
 import { ManualPairingCodeCodec, QrPairingCodeCodec } from '@matter/main/types';
 
 import type { CycleParams, ResetMode, ResetOptions } from './cycle.ts';
+import type { PhaseConfig } from './phases.ts';
 
 /** One plug, as configured in Homebridge's config.json. */
 export interface DeviceConfig {
@@ -25,9 +26,6 @@ export interface DeviceConfig {
   runningSensor?: boolean;
   /** Show "finished" in HomeKit, as a contact sensor that opens. On by default. */
   finishedSensor?: boolean;
-  /** Names for the two sensors; default "<name> Running" and "<name> Finished". */
-  runningName?: string;
-  finishedName?: string;
   /** When "finished" goes back to off. See ResetMode. Default `off-level`. */
   finishedReset?: ResetMode;
   /** For the `timeout` reset. */
@@ -37,6 +35,17 @@ export interface DeviceConfig {
    * is learned from the appliance's cycles.
    */
   thresholds?: Partial<CycleParams>;
+  /** What the appliance is doing inside a cycle, by power band. See phases.ts. */
+  phases?: PhaseConfig[];
+}
+
+/** Whether a device shows anything in HomeKit; one with nothing is only counted. */
+export function hasSensors(device: DeviceConfig): boolean {
+  return (
+    device.runningSensor !== false ||
+    device.finishedSensor !== false ||
+    (device.phases ?? []).some((phase) => phase.sensor !== false)
+  );
 }
 
 export const RESET_MODES: readonly ResetMode[] = ['off-level', 'timeout', 'next-start'];
@@ -60,6 +69,8 @@ export interface OutletMonitorPlatformConfig extends PlatformConfig {
    * of a real wash cycle, and this is where that recording comes from.
    */
   recordPower?: boolean;
+  /** How many days of recordings to keep, one file each. */
+  recordDays?: number;
   /** How much of matter.js's own logging reaches the Homebridge log. */
   matterLogLevel?: MatterLogLevel;
 }
@@ -109,7 +120,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds, phases } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -139,6 +150,33 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
     const { runWatts, offWatts } = thresholds;
     if (typeof runWatts === 'number' && typeof offWatts === 'number' && offWatts >= runWatts) {
       problems.push(`${label} has an off level (${offWatts} W) that is not below the running level (${runWatts} W)`);
+    }
+  }
+  if (phases !== undefined && phases !== null) {
+    if (!Array.isArray(phases)) {
+      problems.push(`${label} has phases that are not a list`);
+    } else {
+      const seen = new Set<string>();
+      for (const [index, phase] of phases.entries()) {
+        const what = `${label} phase ${typeof phase?.name === 'string' && phase.name.trim() ? `"${phase.name}"` : index + 1}`;
+        if (typeof phase?.name !== 'string' || phase.name.trim() === '') {
+          problems.push(`${what} has no name`);
+        } else if (seen.has(phase.name.trim())) {
+          problems.push(`${what} is there twice`);
+        } else {
+          seen.add(phase.name.trim());
+        }
+        const { minWatts, maxWatts } = phase ?? {};
+        if (typeof minWatts !== 'number' || typeof maxWatts !== 'number' || !(minWatts >= 0) || !(maxWatts > minWatts)) {
+          problems.push(`${what} needs a power range, from at least 0 W to more than that`);
+        }
+        for (const key of ['minSeconds', 'holdSeconds'] as const) {
+          const value = phase?.[key];
+          if (value !== undefined && value !== null && (typeof value !== 'number' || !(value >= 0))) {
+            problems.push(`${what} has a ${key} that is not a number of 0 or more`);
+          }
+        }
+      }
     }
   }
   return problems;

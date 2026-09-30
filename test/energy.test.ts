@@ -48,19 +48,20 @@ test('no reading is no power: nothing is counted until the next one', () => {
   assert.equal(meter.record.days['2026-10-01'], 50);
 });
 
-test('the periods are the last complete day, Monday-to-Sunday week, month and year', () => {
+test('the periods are today so far, and the last complete Monday-to-Sunday week, month and year', () => {
   const periods = lastPeriods(new Date(local('2026-10-07T15:30:00'))); // a Wednesday
-  const shown = periods.map(({ kind, label, start, end }) => [
+  const shown = periods.map(({ kind, label, dates, start, end }) => [
     kind,
     label,
+    dates,
     start.toDateString(),
     end.toDateString(),
   ]);
   assert.deepEqual(shown, [
-    ['day', 'Yesterday', 'Tue Oct 06 2026', 'Wed Oct 07 2026'],
-    ['week', 'Last week', 'Mon Sep 28 2026', 'Mon Oct 05 2026'],
-    ['month', 'September 2026', 'Tue Sep 01 2026', 'Thu Oct 01 2026'],
-    ['year', '2025', 'Wed Jan 01 2025', 'Thu Jan 01 2026'],
+    ['day', 'Today', '7 Oct 2026', 'Wed Oct 07 2026', 'Thu Oct 08 2026'],
+    ['week', 'Last Week', '28 Sept – 4 Oct 2026', 'Mon Sep 28 2026', 'Mon Oct 05 2026'],
+    ['month', 'Last Month', 'September 2026', 'Tue Sep 01 2026', 'Thu Oct 01 2026'],
+    ['year', 'Last Year', '2025', 'Wed Jan 01 2025', 'Thu Jan 01 2026'],
   ]);
 });
 
@@ -71,36 +72,38 @@ test('on a Monday, last week is the one that ended last night', () => {
 });
 
 test('a period is shown only if it was counted from its first moment', () => {
-  const [day] = lastPeriods(new Date(local('2026-10-02T12:00:00')));
+  const [today] = lastPeriods(new Date(local('2026-10-02T12:00:00')));
   const energy = (since: string): DeviceEnergy => ({
     since: local(since),
     days: { '2026-09-30': 100, '2026-10-01': 500, '2026-10-02': 50 },
   });
-  assert.equal(periodTotal(energy('2026-10-01T19:46:00'), day!), undefined, 'started that evening');
-  assert.equal(periodTotal(energy('2026-10-01T00:00:00'), day!), 500, 'from midnight is from the start');
-  assert.equal(periodTotal(energy('2026-09-15T00:00:00'), day!), 500);
+  assert.equal(periodTotal(energy('2026-10-02T08:00:00'), today!), undefined, 'started this morning');
+  assert.equal(periodTotal(energy('2026-10-02T00:00:00'), today!), 50, 'from midnight is from the start');
+  assert.equal(periodTotal(energy('2026-09-15T00:00:00'), today!), 50, 'so far today');
 });
 
 test('the table has a row per plug, and a total of what is there', () => {
   const now = new Date(local('2026-10-07T12:00:00'));
   const ledger: Record<string, DeviceEnergy> = {
-    Washer: { since: local('2026-09-01T00:00:00'), days: { '2026-09-10': 1200, '2026-10-06': 800 } },
+    Washer: { since: local('2026-09-01T00:00:00'), days: { '2026-09-10': 1200, '2026-10-06': 800, '2026-10-07': 300 } },
     Dryer: { since: local('2026-10-06T09:00:00'), days: { '2026-10-06': 2000 } },
+    Lamp: { since: local('2026-10-07T11:00:00'), days: { '2026-10-07': 12 } },
   };
-  const table = statistics(ledger, ['Washer', 'Dryer', 'Desk'], now);
+  const table = statistics(ledger, ['Washer', 'Dryer', 'Lamp', 'Desk'], now);
 
   assert.deepEqual(
     table.periods.map(({ label }) => label),
-    ['Yesterday', 'Last week', 'September 2026', '2025'],
+    ['Today', 'Last Week', 'Last Month', 'Last Year'],
   );
   const none = [false, false, false, false];
   assert.deepEqual(table.rows, [
-    { name: 'Washer', values: [800, 0, 1200, null], partial: none },
-    { name: 'Dryer', values: [null, null, null, null], partial: none },
+    { name: 'Washer', values: [300, 0, 1200, null], partial: none },
+    { name: 'Dryer', values: [0, null, null, null], partial: none }, // counted all of today, used nothing yet
+    { name: 'Lamp', values: [12, null, null, null], partial: none }, // added this morning: today from then
     { name: 'Desk', values: [null, null, null, null], partial: none },
   ]);
   assert.deepEqual(table.total, {
-    values: [800, 0, 1200, null],
+    values: [312, 0, 1200, null],
     missing: [true, true, true, true],
     partial: none,
   });
@@ -116,10 +119,10 @@ test('a year the plug joined partway through is shown once it is over, marked as
   assert.equal(during.rows[0]!.values[3], null, 'not while 2026 is still going');
 
   const after = statistics(ledger, ['Washer', 'Dryer'], new Date(local('2027-01-02T08:00:00')));
-  assert.equal(after.periods[3]!.label, '2026');
+  assert.equal(after.periods[3]!.dates, '2026');
   assert.deepEqual(after.rows[0], {
     name: 'Washer',
-    values: [9, 0, 400, 500], // December, and a week with nothing used
+    values: [0, 0, 400, 500], // nothing yet today, a week with nothing used, December, part of 2026
     partial: [false, false, false, true],
   });
   assert.deepEqual(after.rows[1]!.values, [null, null, null, null], 'a plug added after the year has none of it');

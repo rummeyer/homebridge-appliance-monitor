@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { duplicateNames, isChildBridgeProcess, parsePairingCode, validateDeviceConfig } from '../src/config.ts';
+import { duplicateNames, hasSensors, isChildBridgeProcess, parsePairingCode, validateDeviceConfig } from '../src/config.ts';
 
 // The CHIP test device's codes: discriminator 3840, passcode 20202021.
 const MANUAL = '34970112332';
@@ -49,4 +49,44 @@ test('a child bridge is recognised by the title Homebridge gives its process', (
   assert.equal(isChildBridgeProcess('homebridge: child bridge'), true, 'before the plugin is known');
   assert.equal(isChildBridgeProcess('homebridge'), false);
   assert.equal(isChildBridgeProcess('node'), false);
+});
+
+test('phases need a name, once each, and a range that goes up', () => {
+  const problems = (phases: unknown) => validateDeviceConfig({ name: 'Coffee', phases }, 0);
+  assert.deepEqual(problems([{ name: 'Heating', minWatts: 700, maxWatts: 1400 }]), []);
+  assert.deepEqual(problems([{ name: 'Heating', minWatts: 700, maxWatts: 1400, minSeconds: 3, holdSeconds: 20 }]), []);
+  assert.match(problems([{ name: '', minWatts: 1, maxWatts: 2 }])[0]!, /phase 1 has no name/);
+  assert.match(
+    problems([
+      { name: 'Heating', minWatts: 700, maxWatts: 1400 },
+      { name: 'Heating', minWatts: 1, maxWatts: 2 },
+    ])[0]!,
+    /"Heating" is there twice/,
+  );
+  assert.match(problems([{ name: 'Brewing', minWatts: 400, maxWatts: 200 }])[0]!, /"Brewing" needs a power range/);
+  assert.match(problems([{ name: 'Brewing', minWatts: 200, maxWatts: 400, holdSeconds: -1 }])[0]!, /holdSeconds/);
+  assert.match(problems('Heating')[0]!, /not a list/);
+});
+
+test('a plug shows something in HomeKit unless every sensor is off', () => {
+  assert.equal(hasSensors({ name: 'Lamp' }), true);
+  assert.equal(hasSensors({ name: 'Lamp', runningSensor: false, finishedSensor: false }), false);
+  assert.equal(
+    hasSensors({
+      name: 'Coffee',
+      runningSensor: false,
+      finishedSensor: false,
+      phases: [{ name: 'Brewing', minWatts: 150, maxWatts: 700 }],
+    }),
+    true,
+  );
+  assert.equal(
+    hasSensors({
+      name: 'Coffee',
+      runningSensor: false,
+      finishedSensor: false,
+      phases: [{ name: 'Brewing', minWatts: 150, maxWatts: 700, sensor: false }],
+    }),
+    false,
+  );
 });

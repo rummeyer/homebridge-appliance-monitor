@@ -47,14 +47,14 @@ test('Running occupies, Finished opens, Off does neither', () => {
   assert.equal(contact(accessory), 1, 'open: the Home app notifies on opening');
 });
 
-test('the sensors are named after the appliance unless named in the config', () => {
+test('the sensors are named after the appliance when they are new', () => {
   const accessory = platformAccessory();
-  new ApplianceAccessory(api, accessory, { name: 'Washer', finishedName: 'Laundry done' }, 'off');
+  new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'off');
   assert.equal(name(accessory, Service.OccupancySensor, 'running'), 'Washer Running');
-  assert.equal(name(accessory, Service.ContactSensor, 'finished'), 'Laundry done');
+  assert.equal(name(accessory, Service.ContactSensor, 'finished'), 'Washer Finished');
 });
 
-test('a rename in the Home app survives a restart; a new name in the config does not', () => {
+test('a rename in the Home app survives a restart', () => {
   const accessory = platformAccessory();
   const device: DeviceConfig = { name: 'Washer' };
   new ApplianceAccessory(api, accessory, device, 'off');
@@ -64,9 +64,6 @@ test('a rename in the Home app survives a restart; a new name in the config does
 
   new ApplianceAccessory(api, accessory, device, 'off');
   assert.equal(name(accessory, Service.ContactSensor, 'finished'), 'Waschmaschine fertig');
-
-  new ApplianceAccessory(api, accessory, { ...device, finishedName: 'Done' }, 'off');
-  assert.equal(name(accessory, Service.ContactSensor, 'finished'), 'Done');
 });
 
 test('a sensor turned off in the config leaves a restored accessory', () => {
@@ -106,4 +103,28 @@ test('firmware versions are cut to what HomeKit accepts', () => {
   assert.equal(firmware('3.5.0'), '3.5.0');
   assert.equal(firmware('v2'), undefined);
   assert.equal(firmware(undefined), undefined);
+});
+
+test('each phase is an occupancy sensor of its own, and a removed one goes', () => {
+  const accessory = platformAccessory();
+  const device: DeviceConfig = {
+    name: 'Coffee',
+    phases: [
+      { name: 'Heating', minWatts: 700, maxWatts: 1400 },
+      { name: 'Brewing', minWatts: 150, maxWatts: 700 },
+      { name: 'Hidden', minWatts: 1, maxWatts: 5, sensor: false },
+    ],
+  };
+  const handle = new ApplianceAccessory(api, accessory, device, 'off');
+  const phase = (name: string) => accessory.getServiceById(Service.OccupancySensor, `phase:${name}`);
+
+  assert.equal(phase('Heating')!.getCharacteristic(Characteristic.ConfiguredName).value, 'Coffee Heating');
+  assert.equal(phase('Hidden'), undefined, 'no sensor where none is wanted');
+  handle.setPhase('Heating', true);
+  assert.equal(phase('Heating')!.getCharacteristic(Characteristic.OccupancyDetected).value, 1);
+  assert.equal(phase('Brewing')!.getCharacteristic(Characteristic.OccupancyDetected).value, 0);
+
+  new ApplianceAccessory(api, accessory, { ...device, phases: device.phases!.slice(1) }, 'off');
+  assert.equal(phase('Heating'), undefined, 'removed from the config, removed from the accessory');
+  assert.ok(phase('Brewing'));
 });

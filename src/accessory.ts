@@ -13,7 +13,7 @@ export interface DeviceInfo {
 
 /**
  * One appliance in HomeKit: "running" as an occupancy sensor, "finished" as a
- * contact sensor that opens.
+ * contact sensor that opens, and an occupancy sensor for each phase.
  *
  * Sensors rather than switches: the Home app offers notifications for them
  * without an automation ("Washing machine Finished opened"), and nobody can
@@ -24,6 +24,7 @@ export class ApplianceAccessory {
   readonly #accessory: PlatformAccessory;
   readonly #running: Service | undefined;
   readonly #finished: Service | undefined;
+  readonly #phases = new Map<string, Service>();
 
   constructor(api: API, accessory: PlatformAccessory, device: DeviceConfig, state: CycleState) {
     this.#api = api;
@@ -36,15 +37,44 @@ export class ApplianceAccessory {
       Service.OccupancySensor,
       'running',
       device.runningSensor !== false,
-      device.runningName?.trim() || `${device.name} Running`,
+      `${device.name} Running`,
     );
     this.#finished = this.#sensor(
       Service.ContactSensor,
       'finished',
       device.finishedSensor !== false,
-      device.finishedName?.trim() || `${device.name} Finished`,
+      `${device.name} Finished`,
     );
+
+    const wanted = new Set<string>();
+    for (const phase of device.phases ?? []) {
+      const name = phase.name.trim();
+      const subtype = `phase:${name}`;
+      wanted.add(subtype);
+      const service = this.#sensor(Service.OccupancySensor, subtype, phase.sensor !== false, `${device.name} ${name}`);
+      if (service) {
+        this.#phases.set(name, service);
+      }
+    }
+    for (const service of [...this.#accessory.services]) {
+      if (service.subtype?.startsWith('phase:') && !wanted.has(service.subtype)) {
+        this.#accessory.removeService(service);
+      }
+    }
+
     this.update(state);
+    for (const name of this.#phases.keys()) {
+      this.setPhase(name, false);
+    }
+  }
+
+  /** A phase, occupied while it lasts. */
+  setPhase(name: string, active: boolean): void {
+    const { Characteristic } = this.#api.hap;
+    this.#phases.get(name)?.updateCharacteristic(
+      Characteristic.OccupancyDetected,
+      active ? Characteristic.OccupancyDetected.OCCUPANCY_DETECTED : Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED,
+    );
   }
 
   update(state: CycleState): void {
@@ -66,7 +96,7 @@ export class ApplianceAccessory {
   /** Greys the sensors out in the Home app while the plug cannot be reached. */
   setReachable(reachable: boolean): void {
     const { Characteristic } = this.#api.hap;
-    for (const service of [this.#running, this.#finished]) {
+    for (const service of [this.#running, this.#finished, ...this.#phases.values()]) {
       service?.updateCharacteristic(Characteristic.StatusActive, reachable);
     }
   }
@@ -102,21 +132,18 @@ export class ApplianceAccessory {
       }
       return undefined;
     }
-    const service = existing ?? this.#accessory.addService(type, name, subtype);
-    service.setCharacteristic(Characteristic.StatusActive, true);
-
-    // The name is set when the sensor is new or the config names it
-    // differently than last time — not on every start, which would undo a
-    // rename in the Home app.
-    const names = (this.#accessory.context.names ??= {}) as Record<string, string>;
-    if (!existing || names[subtype] !== name) {
-      service.setCharacteristic(Characteristic.Name, name);
-      if (!service.testCharacteristic(Characteristic.ConfiguredName)) {
-        service.addOptionalCharacteristic(Characteristic.ConfiguredName);
-      }
-      service.setCharacteristic(Characteristic.ConfiguredName, name);
-      names[subtype] = name;
+    if (existing) {
+      existing.setCharacteristic(Characteristic.StatusActive, true);
+      return existing;
     }
+    // Named once, when it is new. Renaming is done in the Home app, and a
+    // name set on every start would undo it.
+    const service = this.#accessory.addService(type, name, subtype);
+    if (!service.testCharacteristic(Characteristic.ConfiguredName)) {
+      service.addOptionalCharacteristic(Characteristic.ConfiguredName);
+    }
+    service.setCharacteristic(Characteristic.ConfiguredName, name);
+    service.setCharacteristic(Characteristic.StatusActive, true);
     return service;
   }
 }

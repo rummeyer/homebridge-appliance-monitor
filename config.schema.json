@@ -39,29 +39,13 @@
               "title": "Running sensor",
               "type": "boolean",
               "default": true,
-              "description": "An occupancy sensor that detects while the appliance runs."
-            },
-            "runningName": {
-              "title": "Running sensor name",
-              "type": "string",
-              "placeholder": "<name> Running",
-              "condition": {
-                "functionBody": "return model.devices[arrayIndices].runningSensor !== false;"
-              }
+              "description": "An occupancy sensor that detects while the appliance runs. It is named after the plug, followed by Running; rename it in the Home app."
             },
             "finishedSensor": {
               "title": "Finished sensor",
               "type": "boolean",
               "default": true,
-              "description": "A contact sensor that opens when the appliance is finished. The Home app can notify you when it opens."
-            },
-            "finishedName": {
-              "title": "Finished sensor name",
-              "type": "string",
-              "placeholder": "<name> Finished",
-              "condition": {
-                "functionBody": "return model.devices[arrayIndices].finishedSensor !== false;"
-              }
+              "description": "A contact sensor that opens when the appliance is finished; the Home app can notify you when it opens. It is named after the plug, followed by Finished; rename it in the Home app."
             },
             "finishedReset": {
               "title": "Finished goes back to Off",
@@ -125,6 +109,55 @@
                   "minimum": 0
                 }
               }
+            },
+            "phases": {
+              "title": "Phases",
+              "type": "array",
+              "description": "What the appliance does inside a cycle, told apart by power: heating, spinning, a coffee running through. Easiest to add from the Curve tab, by picking a level or a stretch of time on the recorded curve.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "minWatts",
+                  "maxWatts"
+                ],
+                "properties": {
+                  "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "placeholder": "Heating",
+                    "description": "Its sensor is named after the plug, followed by this; rename it in the Home app."
+                  },
+                  "minWatts": {
+                    "title": "From (W)",
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "maxWatts": {
+                    "title": "Below (W)",
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "minSeconds": {
+                    "title": "On after (seconds in the range, added up)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 5
+                  },
+                  "holdSeconds": {
+                    "title": "Off after (seconds out of the range)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 30
+                  },
+                  "sensor": {
+                    "title": "Show in HomeKit",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "As an occupancy sensor, occupied while the phase lasts."
+                  }
+                }
+              }
             }
           }
         }
@@ -133,7 +166,14 @@
         "title": "Record power readings",
         "type": "boolean",
         "default": true,
-        "description": "Append every reading to outlet-monitor/power.csv in the Homebridge storage folder."
+        "description": "Write every reading to a file per day under outlet-monitor/power in the Homebridge storage folder. The Curve tab needs it."
+      },
+      "recordDays": {
+        "title": "Days of recordings to keep",
+        "type": "integer",
+        "default": 14,
+        "minimum": 1,
+        "description": "One file per day under outlet-monitor/power. The Curve tab shows what is kept."
       },
       "matterLogLevel": {
         "title": "matter.js log level",

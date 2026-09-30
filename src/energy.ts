@@ -1,19 +1,18 @@
 /**
  * Energy used per plug, per calendar day, and the totals the settings page
- * shows for the last complete day, week, month and year.
+ * shows for today so far and the last complete week, month and year.
  *
  * Worked out from the power readings rather than read from the plug's own
  * meter: every plug that reports watts can be counted this way, and the
  * readings are already here. Readings are a step function — a plug reports
  * when its draw changes — so energy is the last reading times the time since.
  *
- * Days are local calendar days, as on an electricity bill. A day, week or
- * month is only shown once it has been counted from its first moment: a plug
- * first counted this afternoon has no "yesterday", and no "today" either
- * until tomorrow makes it yesterday. A year is the exception — waiting for a
- * whole one would leave the column empty for up to two years — so a year the
- * plug joined partway through is shown too, once it is over, and marked as
- * part of a year. Time Homebridge was not running is not counted, and does
+ * Days are local calendar days, as on an electricity bill. Today is shown
+ * from the plug's first reading of the day, so one added at noon shows its
+ * afternoon. A week or a month is only shown if it has been counted from its
+ * first moment. A year is shown once it is over even if the plug joined
+ * partway through — waiting for a whole one would leave the column empty for
+ * up to two years — and marked as part of a year. Time Homebridge was not running is not counted, and does
  * not make a period incomplete.
  */
 
@@ -97,15 +96,17 @@ export interface Period {
   kind: PeriodKind;
   /** What the column is headed. */
   label: string;
+  /** Which dates that is, for a tooltip: "28 Sep – 4 Oct 2026". */
+  dates: string;
   /** Local midnight at the start, and at the day after the end. */
   start: Date;
   end: Date;
 }
 
-/** The last complete day, week (Monday to Sunday), month and year before `now`. */
+/** Today so far, and the last complete week (Monday to Sunday), month and year before `now`. */
 export function lastPeriods(now: Date): Period[] {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
   // getDay() is 0 on Sunday; this Monday is 0–6 days back.
   const thisMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
   const lastMonday = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), thisMonday.getDate() - 7);
@@ -114,16 +115,32 @@ export function lastPeriods(now: Date): Period[] {
   const thisYear = new Date(today.getFullYear(), 0, 1);
   const lastYear = new Date(today.getFullYear() - 1, 0, 1);
 
+  const lastSunday = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), thisMonday.getDate() - 1);
+  const short = (date: Date) => date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
   return [
-    { kind: 'day', label: 'Yesterday', start: yesterday, end: today },
-    { kind: 'week', label: 'Last week', start: lastMonday, end: thisMonday },
+    {
+      kind: 'day',
+      label: 'Today',
+      dates: today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      start: today,
+      end: tomorrow,
+    },
+    {
+      kind: 'week',
+      label: 'Last Week',
+      dates: `${short(lastMonday)} – ${short(lastSunday)} ${lastSunday.getFullYear()}`,
+      start: lastMonday,
+      end: thisMonday,
+    },
     {
       kind: 'month',
-      label: lastMonth.toLocaleString('en', { month: 'long', year: 'numeric' }),
+      label: 'Last Month',
+      dates: lastMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
       start: lastMonth,
       end: thisMonth,
     },
-    { kind: 'year', label: String(lastYear.getFullYear()), start: lastYear, end: thisYear },
+    { kind: 'year', label: 'Last Year', dates: String(lastYear.getFullYear()), start: lastYear, end: thisYear },
   ];
 }
 
@@ -143,16 +160,16 @@ export function periodTotal(energy: DeviceEnergy, period: Period): number | unde
   return total;
 }
 
-/** A year the plug was only counted for part of: from `since` to its end. */
-export function partYearTotal(energy: DeviceEnergy, period: Period): number | undefined {
-  if (period.kind !== 'year' || energy.since === 0 || energy.since >= period.end.getTime()) {
+/** A period the plug was only counted for part of, from `since` on. */
+function partTotal(energy: DeviceEnergy, period: Period): number | undefined {
+  if (energy.since === 0 || energy.since >= period.end.getTime()) {
     return undefined;
   }
   return periodTotal({ ...energy, since: period.start.getTime() }, period);
 }
 
 export interface Statistics {
-  periods: { kind: PeriodKind; label: string }[];
+  periods: { kind: PeriodKind; label: string; dates: string }[];
   /**
    * Watt-hours per plug and period; null where the period is not complete.
    * `partial` marks a year the plug was only counted for part of.
@@ -179,8 +196,13 @@ export function statistics(ledger: Record<string, DeviceEnergy>, names: string[]
       if (whole !== undefined) {
         return { value: whole, partial: false };
       }
-      const part = partYearTotal(energy, period);
-      return part !== undefined ? { value: part, partial: true } : { value: null, partial: false };
+      // Today from the first reading, unmarked: today is a part anyway. A
+      // year once it is over, marked. A week or a month only whole.
+      const part = period.kind === 'day' || period.kind === 'year' ? partTotal(energy, period) : undefined;
+      if (part === undefined) {
+        return { value: null, partial: false };
+      }
+      return { value: part, partial: period.kind === 'year' };
     });
     return { name, values: cells.map(({ value }) => value), partial: cells.map(({ partial }) => partial) };
   });
@@ -192,5 +214,5 @@ export function statistics(ledger: Record<string, DeviceEnergy>, names: string[]
     missing: periods.map((_, column) => rows.some(({ values }) => values[column] === null)),
     partial: periods.map((_, column) => rows.some(({ partial }) => partial[column])),
   };
-  return { periods: periods.map(({ kind, label }) => ({ kind, label })), rows, total };
+  return { periods: periods.map(({ kind, label, dates }) => ({ kind, label, dates })), rows, total };
 }

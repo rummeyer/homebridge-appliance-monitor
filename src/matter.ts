@@ -210,6 +210,19 @@ export function show(value: unknown): string {
 }
 
 /**
+ * Warnings matter.js gives on every start or pairing that are expected for a
+ * controller like this one, and so not worth a yellow line each time: it has
+ * no vendor ID of its own, no Bluetooth, and no access to the certificate
+ * ledger it would check a new plug's attestation against.
+ */
+const EXPECTED = [
+  /Using development values for some BasicInformation attributes/,
+  /Using test vendor ID/,
+  /BLE is not enabled/,
+  /Attestation finding accepted/,
+];
+
+/**
  * Sends matter.js's own log lines to the Homebridge log instead of stdout.
  *
  * matter.js logs to the console by default, which a child bridge would show
@@ -225,7 +238,9 @@ function routeMatterLogging(log: Logging, level: MatterLogLevel): void {
   destination.write = (formatted, message) => {
     // Homebridge adds its own timestamp, and the level shows in the colour.
     const text = formatted.replace(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ [A-Z]+ /, '');
-    if (message.level >= LogLevel.ERROR) {
+    if (EXPECTED.some((pattern) => pattern.test(text))) {
+      log.debug(text);
+    } else if (message.level >= LogLevel.ERROR) {
       log.error(text);
     } else if (message.level >= LogLevel.WARN) {
       log.warn(text);

@@ -68,32 +68,63 @@ What was learned is logged and kept in `outlet-monitor/devices.json`. Any
 threshold can be fixed in the settings instead, each on its own; the rest are
 still learned.
 
-## In the Home app
+## Phases
 
-Each appliance is one accessory with two sensors:
+Inside a cycle an appliance does different things, and many of them can be
+told apart by power alone. A coffee machine keeps warm at 2 W, heats at
+1000 W, and draws 300 W while a coffee runs through; a washing machine heats
+at 2000 W and spins at 400. A **phase** is one of these: a range of power, and
+how long the draw has to be in it.
+
+Phases are ranges, not thresholds, because the order does not hold: drawing
+a coffee is less than heating. And a phase ends only once the draw has been
+out of its range for a while (30 seconds by default), because a heating
+element switched by a thermostat goes on and off every few seconds.
+
+The easiest way to set one up is the **Curve** tab of the settings page. It
+shows a plug's recorded power, from the last hour to the last two weeks, with
+the levels the plug dwells at as green bands:
+
+- click a band to make that level a phase, or
+- drag across the chart over something the appliance did (a coffee at
+  7:02, a spin) to take the range it drew then.
+
+Name the phase, adjust the range if you like, add it, and save. Each phase
+can have an occupancy sensor in HomeKit, occupied while it lasts, and its
+start and end are logged.
+
+
+
+Each appliance is one accessory with these sensors:
 
 - **Running**: an occupancy sensor, occupied while the appliance runs.
 - **Finished**: a contact sensor, open while it is finished. The Home app can
   notify you when it opens, with no automation needed.
+- One occupancy sensor for each phase, if it has any.
 
-Both are on by default and can be turned off or renamed in the settings. The
-default names are the appliance's name followed by "Running" and "Finished".
-A rename in the Home app is kept. While a plug cannot be reached, its sensors
-are shown as not responding.
+Running and Finished are on by default, and each sensor can be turned off in
+the settings. A new sensor is named after the appliance, followed by
+"Running", "Finished" or the phase's name: "Coffee machine Heating", say. To
+call it something else, rename it in the Home app; the plugin never sets the
+name again. While a plug cannot be reached, its sensors are shown as not
+responding.
+
+A plug with every sensor turned off, a lamp say, does not appear in HomeKit at
+all, and is still counted in the statistics.
 
 ## Statistics
 
-The settings page has a **Statistics** tab: the energy each plug used
-yesterday, last week (Monday to Sunday), last month and last year, one row per
-plug and the total below.
+The settings page has a **Statistics** tab with the energy each plug used
+**Today** so far, and in the **Last Week** (Monday to Sunday), **Last Month**
+and **Last Year**, one row per plug and the total below. Point at a heading
+for its dates.
 
-A day, week or month is shown only once a plug has been counted from its very
-start, and left empty until then: a plug added today has its first day
-tomorrow after midnight. A year is shown once it is over even if the plug
-joined partway through, marked ¹ as part of a year: a plug added in September
-2026 shows its 2026 from the 1st of January 2027. Where some plugs have a
-value and others do not yet, the total adds up those that have, and is marked
-with an asterisk.
+Today counts from a plug's first reading of the day, so a plug added at noon
+shows its afternoon. A week or a month is shown only if a plug has been
+counted for all of it, and left empty until then. A year is shown once it is over even if the plug joined partway
+through, marked ¹ as part of a year: a plug added in September 2026 shows its
+2026 from the 1st of January 2027. Where some plugs have a value and others do
+not yet, the total adds up those that have, and is marked with an asterisk.
 
 The energy is worked out from the power readings, per local calendar day,
 while Homebridge is running. Time it was not running is not counted.
@@ -184,16 +215,16 @@ works.
 | `devices[].name` | — | Name of the accessory, and of the sensors, log lines and recording. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
 | `devices[].runningSensor` | `true` | Show the Running occupancy sensor. |
-| `devices[].runningName` | `<name> Running` | Its name. |
 | `devices[].finishedSensor` | `true` | Show the Finished contact sensor. |
-| `devices[].finishedName` | `<name> Finished` | Its name. |
 | `devices[].finishedReset` | `off-level` | Finished goes back to Off: `off-level` when switched off, `timeout` after a set time, `next-start` only when it runs again. |
 | `devices[].finishedResetMinutes` | `60` | The time for `timeout`. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.offWatts` | learned | Switched off at or below this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `recordPower` | `true` | Append each reading to `outlet-monitor/power.csv`. |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, `maxWatts`, and optionally `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
+| `recordPower` | `true` | Write each reading to a file per day under `outlet-monitor/power/`. The Curve tab needs it. |
+| `recordDays` | `14` | How many days of those files to keep. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
 
 ## Files
@@ -208,11 +239,22 @@ All files are kept in the Homebridge storage folder, under `outlet-monitor/`:
   (with the child bridge stopped) to have it learn afresh.
 - `energy.json`: watt-hours per plug and day, for the Statistics tab. Written
   every five minutes. Plugs removed from the config keep their history here.
-- `power.csv`: `time,device,endpoint,watts`, one line per reading.
+- `power/`: one file per day, `time,device,endpoint,watts`, one line per
+  reading. Older than `recordDays` is deleted.
 
-On every start, matter.js logs warnings about the test vendor ID `0xFFF1` (see
-above) and about Bluetooth not being enabled. Both are expected: a hobby
-controller has no vendor ID of its own, and pairing here never uses Bluetooth.
+## The log
+
+On each start, one line per plug: what it is, what it draws, its state, and
+whether it has learned yet. Everything a plug offers is listed once, when it
+is paired. After that the log has the changes: Running, Finished, Off, each
+phase starting and ending, what was learned, and a plug that became
+unreachable or came back. The single readings are in the recordings, not in
+the log.
+
+matter.js warns on every start about the test vendor ID `0xFFF1` (see above),
+about Bluetooth not being enabled, and, when pairing, about not checking the
+plug's certificates against the Matter ledger. All of it is expected for a
+controller like this one, so it only shows with Homebridge's debug logging.
 
 ## Licence
 
