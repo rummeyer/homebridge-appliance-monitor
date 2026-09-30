@@ -1,0 +1,60 @@
+{
+  "pluginAlias": "OutletMonitor",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, such as the Eve Energy or the Shelly Plug PM Gen3, through the standard Matter power measurement. This first version pairs the plugs, lists what they offer, and logs and records their power draw — nothing appears in HomeKit yet. Run it as a child bridge.",
+  "footerDisplay": "The plugs stay in Apple Home: this plugin joins them as a second controller (Matter multi-admin). For devices on Thread, the Raspberry Pi needs a route to the Thread network — on Raspberry Pi OS Bookworm it has one already; the README says how to check.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "Outlet Monitor",
+        "description": "Only the log prefix."
+      },
+      "devices": {
+        "title": "Plugs",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "placeholder": "Washing machine",
+              "description": "Used in the log and the recording. A paired plug is remembered by this name, so renaming it means pairing it again."
+            },
+            "pairingCode": {
+              "title": "Pairing code",
+              "type": "string",
+              "placeholder": "3497-011-2332",
+              "pattern": "^\\s*((\\d[\\s-]*){11}|(\\d[\\s-]*){21}|MT:[0-9A-Z.\\-]+)\\s*$",
+              "description": "In the Home app: the plug's settings → Turn On Pairing Mode. The code is valid for 15 minutes, so save and restart the child bridge straight away. Only needed once; it can be removed after pairing."
+            }
+          }
+        }
+      },
+      "recordPower": {
+        "title": "Record power readings",
+        "type": "boolean",
+        "default": true,
+        "description": "Append every reading to outlet-monitor/power.csv in the Homebridge storage folder."
+      },
+      "matterLogLevel": {
+        "title": "matter.js log level",
+        "type": "string",
+        "default": "warn",
+        "oneOf": [
+          { "title": "Errors only", "enum": ["error"] },
+          { "title": "Warnings", "enum": ["warn"] },
+          { "title": "Notices", "enum": ["notice"] },
+          { "title": "Info", "enum": ["info"] },
+          { "title": "Debug", "enum": ["debug"] }
+        ],
+        "description": "How much of the Matter library's own logging to show. Info and debug appear only with Homebridge debug logging on."
+      }
+    }
+  }
+}

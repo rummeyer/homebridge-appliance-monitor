@@ -1,0 +1,57 @@
+{
+  "name": "homebridge-outlet-monitor",
+  "displayName": "Outlet Monitor",
+  "version": "0.1.1",
+  "description": "Homebridge plugin that watches the power draw of Matter smart plugs and tells HomeKit when an appliance is running or finished",
+  "license": "MIT",
+  "author": "Oliver Rummeyer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rummeyer/homebridge-outlet-monitor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rummeyer/homebridge-outlet-monitor/issues"
+  },
+  "homepage": "https://github.com/rummeyer/homebridge-outlet-monitor#readme",
+  "main": "dist/index.js",
+  "type": "module",
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0",
+    "homebridge": "^2.0.0"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "matter",
+    "thread",
+    "eve-energy",
+    "shelly",
+    "power-monitoring",
+    "washing-machine",
+    "homekit"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "npm run build && node --test test/*.test.ts",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run clean && npm test"
+  },
+  "files": [
+    "dist",
+    "config.schema.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@matter/main": "^0.17.9",
+    "@matter/nodejs": "^0.17.9",
+    "@project-chip/matter.js": "^0.17.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "homebridge": "^2.4.0",
+    "typescript": "^5.9.3"
+  }
+}
