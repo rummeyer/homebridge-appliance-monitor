@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { duplicateNames, hasSensors, isChildBridgeProcess, parsePairingCode, validateDeviceConfig } from '../src/config.ts';
+import {
+  duplicateNames,
+  hasSensors,
+  isChildBridgeProcess,
+  parsePairingCode,
+  usablePhases,
+  validateDeviceConfig,
+} from '../src/config.ts';
+import type { PhaseConfig } from '../src/phases.ts';
 
 // The CHIP test device's codes: discriminator 3840, passcode 20202021.
 const MANUAL = '34970112332';
@@ -51,22 +59,43 @@ test('a child bridge is recognised by the title Homebridge gives its process', (
   assert.equal(isChildBridgeProcess('node'), false);
 });
 
-test('phases need a name, once each, and a range that goes up', () => {
-  const problems = (phases: unknown) => validateDeviceConfig({ name: 'Coffee', phases }, 0);
-  assert.deepEqual(problems([{ name: 'Heating', minWatts: 700, maxWatts: 1400 }]), []);
-  assert.deepEqual(problems([{ name: 'Heating', minWatts: 700, maxWatts: 1400, minSeconds: 3, holdSeconds: 20 }]), []);
-  assert.match(problems([{ name: '', minWatts: 1, maxWatts: 2 }])[0]!, /phase 1 has no name/);
-  assert.match(
-    problems([
-      { name: 'Heating', minWatts: 700, maxWatts: 1400 },
-      { name: 'Heating', minWatts: 1, maxWatts: 2 },
-    ])[0]!,
-    /"Heating" is there twice/,
-  );
-  assert.match(problems([{ name: 'Brewing', minWatts: 400, maxWatts: 200 }])[0]!, /"Brewing" needs a power range/);
-  assert.match(problems([{ name: 'Brewing', minWatts: 200, maxWatts: 400, holdSeconds: -1 }])[0]!, /holdSeconds/);
-  assert.match(problems('Heating')[0]!, /not a list/);
+test('phases need a name, once each, and a range that goes up; a wrong one costs only itself', () => {
+  const check = (phases: unknown) => usablePhases({ name: 'Coffee', phases: phases as PhaseConfig[] });
+  const heating = { name: 'Heating', minWatts: 700, maxWatts: 1400 };
+
+  assert.deepEqual(check([heating]), {
+    phases: [{ ...heating, minSeconds: undefined, holdSeconds: undefined }],
+    problems: [],
+  });
+  assert.deepEqual(check([{ ...heating, name: ' Heating ', minSeconds: 3, holdSeconds: null }]).phases, [
+    { ...heating, minSeconds: 3, holdSeconds: undefined },
+  ]);
+
+  const mixed = check([
+    heating,
+    { name: '', minWatts: 1, maxWatts: 2 },
+    { name: 'Heating', minWatts: 1, maxWatts: 2 },
+    { name: 'Brewing', minWatts: 400, maxWatts: 200 },
+    { name: 'Rinse', minWatts: 200, maxWatts: 400, holdSeconds: -1 },
+  ]);
+  assert.deepEqual(mixed.phases.map(({ name }) => name), ['Heating']);
+  assert.equal(mixed.problems.length, 4);
+  assert.match(mixed.problems[0]!, /phase 2 has no name/);
+  assert.match(mixed.problems[1]!, /"Heating" is there twice/);
+  assert.match(mixed.problems[2]!, /"Brewing" needs its "below" to be more than its "from"/);
+  assert.match(mixed.problems[3]!, /holdSeconds/);
+  assert.match(check('Heating').problems[0]!, /not a list/);
 });
+
+test('the empty phase the settings page offers is skipped without a word', () => {
+  assert.deepEqual(check0([{ sensor: true }, {}, null, { name: '  ', minWatts: null, maxWatts: null, sensor: true }]), {
+    phases: [],
+    problems: [],
+  });
+  assert.deepEqual(validateDeviceConfig({ name: 'Coffee', phases: [{ sensor: true }] }, 0), [], 'and the plug is fine');
+});
+
+const check0 = (phases: unknown) => usablePhases({ name: 'Coffee', phases: phases as PhaseConfig[] });
 
 test('a plug shows something in HomeKit unless every sensor is off', () => {
   assert.equal(hasSensors({ name: 'Lamp' }), true);
@@ -89,4 +118,17 @@ test('a plug shows something in HomeKit unless every sensor is off', () => {
     }),
     false,
   );
+  assert.equal(
+    hasSensors({ name: 'Lamp', runningSensor: false, finishedSensor: false, phases: [{ sensor: true } as PhaseConfig] }),
+    false,
+    'an empty phase is no sensor',
+  );
+});
+
+test('a phase may leave out its upper end, not its lower one', () => {
+  const check = (phase: object) => usablePhases({ name: 'Coffee', phases: [phase as PhaseConfig] });
+  assert.deepEqual(check({ name: 'Heating', minWatts: 1000, minSeconds: 5, holdSeconds: 30, sensor: true }).phases, [
+    { name: 'Heating', minWatts: 1000, maxWatts: undefined, minSeconds: 5, holdSeconds: 30, sensor: true },
+  ]);
+  assert.match(check({ name: 'Heating', maxWatts: 1400 }).problems[0]!, /needs a "from"/);
 });

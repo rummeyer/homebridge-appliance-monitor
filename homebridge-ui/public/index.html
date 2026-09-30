@@ -69,7 +69,7 @@
           <input class="form-control form-control-sm" id="om-phase-min" type="number" min="0" step="any">
         </label>
         <label class="form-label mb-0">Below (W)
-          <input class="form-control form-control-sm" id="om-phase-max" type="number" min="0" step="any">
+          <input class="form-control form-control-sm" id="om-phase-max" type="number" min="0" step="any" placeholder="no limit">
         </label>
         <label class="form-label mb-0">On after (s)
           <input class="form-control form-control-sm" id="om-phase-on" type="number" min="0" value="5">
@@ -298,8 +298,8 @@
       // Phases already set up.
       for (const phase of phases) {
         const min = Number(phase.minWatts);
-        const max = Number(phase.maxWatts);
-        if (!(max > min)) {
+        const max = phase.maxWatts == null || phase.maxWatts === '' ? top : Number(phase.maxWatts);
+        if (!(min >= 0) || !(max > min)) {
           continue;
         }
         chart.append(svg('rect', { x: PAD.left, width: plotW, y: yOf(max), height: Math.max(2, yOf(min) - yOf(max)), class: 'om-phase' }));
@@ -376,7 +376,8 @@
       const message = document.getElementById('om-phase-msg');
       const name = document.getElementById('om-phase-name').value.trim();
       const minWatts = Number(document.getElementById('om-phase-min').value);
-      const maxWatts = Number(document.getElementById('om-phase-max').value);
+      const maxText = document.getElementById('om-phase-max').value.trim();
+      const maxWatts = maxText === '' ? undefined : Number(maxText);
       const minSeconds = Number(document.getElementById('om-phase-on').value);
       const holdSeconds = Number(document.getElementById('om-phase-off').value);
       const sensor = document.getElementById('om-phase-sensor').checked;
@@ -384,8 +385,8 @@
         message.textContent = 'Give the phase a name.';
         return;
       }
-      if (!(minWatts >= 0 && maxWatts > minWatts)) {
-        message.textContent = '"Below" has to be more than "From".';
+      if (!(minWatts >= 0) || (maxWatts !== undefined && !(maxWatts > minWatts))) {
+        message.textContent = '"Below" has to be more than "From", or empty for no upper end.';
         return;
       }
       const configs = await homebridge.getPluginConfig();
@@ -399,7 +400,7 @@
         message.textContent = `${current.name} already has a phase called "${name}".`;
         return;
       }
-      device.phases.push({ name, minWatts, maxWatts, minSeconds, holdSeconds, sensor });
+      device.phases.push({ name, minWatts, ...(maxWatts === undefined ? {} : { maxWatts }), minSeconds, holdSeconds, sensor });
       await homebridge.updatePluginConfig(configs);
       message.textContent = 'Added. Save, and restart the child bridge, to use it.';
       document.getElementById('om-phase-name').value = '';

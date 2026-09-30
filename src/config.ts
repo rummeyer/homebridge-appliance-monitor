@@ -44,7 +44,7 @@ export function hasSensors(device: DeviceConfig): boolean {
   return (
     device.runningSensor !== false ||
     device.finishedSensor !== false ||
-    (device.phases ?? []).some((phase) => phase.sensor !== false)
+    usablePhases(device).phases.some((phase) => phase.sensor !== false)
   );
 }
 
@@ -120,7 +120,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds, phases } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -152,34 +152,71 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
       problems.push(`${label} has an off level (${offWatts} W) that is not below the running level (${runWatts} W)`);
     }
   }
-  if (phases !== undefined && phases !== null) {
-    if (!Array.isArray(phases)) {
-      problems.push(`${label} has phases that are not a list`);
-    } else {
-      const seen = new Set<string>();
-      for (const [index, phase] of phases.entries()) {
-        const what = `${label} phase ${typeof phase?.name === 'string' && phase.name.trim() ? `"${phase.name}"` : index + 1}`;
-        if (typeof phase?.name !== 'string' || phase.name.trim() === '') {
-          problems.push(`${what} has no name`);
-        } else if (seen.has(phase.name.trim())) {
-          problems.push(`${what} is there twice`);
-        } else {
-          seen.add(phase.name.trim());
-        }
-        const { minWatts, maxWatts } = phase ?? {};
-        if (typeof minWatts !== 'number' || typeof maxWatts !== 'number' || !(minWatts >= 0) || !(maxWatts > minWatts)) {
-          problems.push(`${what} needs a power range, from at least 0 W to more than that`);
-        }
-        for (const key of ['minSeconds', 'holdSeconds'] as const) {
-          const value = phase?.[key];
-          if (value !== undefined && value !== null && (typeof value !== 'number' || !(value >= 0))) {
-            problems.push(`${what} has a ${key} that is not a number of 0 or more`);
-          }
-        }
+  return problems;
+}
+
+/**
+ * The phases of a device that can be used, and why any others cannot.
+ *
+ * Checked apart from the device, because a phase that is wrong should cost
+ * that phase, not the whole plug. And an entry with neither a name nor a
+ * range is skipped without a word: the settings page offers an empty phase
+ * under every plug, and may save it as it is.
+ */
+export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; problems: string[] } {
+  const phases: PhaseConfig[] = [];
+  const problems: string[] = [];
+  const list: unknown = device.phases;
+  if (list === undefined || list === null) {
+    return { phases, problems };
+  }
+  if (!Array.isArray(list)) {
+    return { phases, problems: [`"${device.name}" has phases that are not a list`] };
+  }
+  const seen = new Set<string>();
+  for (const [index, entry] of list.entries()) {
+    const phase = (entry ?? {}) as Partial<PhaseConfig>;
+    const name = typeof phase.name === 'string' ? phase.name.trim() : '';
+    const { minWatts, maxWatts } = phase;
+    const hasRange = (minWatts !== undefined && minWatts !== null) || (maxWatts !== undefined && maxWatts !== null);
+    if (!name && !hasRange) {
+      continue;
+    }
+    const what = `"${device.name}" phase ${name ? `"${name}"` : index + 1}`;
+    const wrong: string[] = [];
+    if (!name) {
+      wrong.push('has no name');
+    } else if (seen.has(name)) {
+      wrong.push('is there twice');
+    }
+    const open = maxWatts === undefined || maxWatts === null;
+    if (typeof minWatts !== 'number' || !(minWatts >= 0)) {
+      wrong.push('needs a "from" of 0 W or more');
+    } else if (!open && !(typeof maxWatts === 'number' && maxWatts > minWatts)) {
+      wrong.push('needs its "below" to be more than its "from", or empty for no upper end');
+    }
+    for (const key of ['minSeconds', 'holdSeconds'] as const) {
+      const value = phase[key];
+      if (value !== undefined && value !== null && (typeof value !== 'number' || !(value >= 0))) {
+        wrong.push(`has a ${key} that is not a number of 0 or more`);
       }
     }
+    if (wrong.length > 0) {
+      problems.push(`${what} ${wrong.join(', and ')}`);
+      continue;
+    }
+    seen.add(name);
+    phases.push({
+      ...phase,
+      name,
+      minWatts: minWatts!,
+      maxWatts: typeof maxWatts === 'number' ? maxWatts : undefined,
+      // Empty number fields arrive as null; those mean the default.
+      minSeconds: typeof phase.minSeconds === 'number' ? phase.minSeconds : undefined,
+      holdSeconds: typeof phase.holdSeconds === 'number' ? phase.holdSeconds : undefined,
+    });
   }
-  return problems;
+  return { phases, problems };
 }
 
 /** Names must be unique: they are what a paired plug is remembered by. */

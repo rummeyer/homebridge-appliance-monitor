@@ -15,7 +15,8 @@ import type { Sample } from './learn.ts';
 export interface PhaseConfig {
   name: string;
   minWatts: number;
-  maxWatts: number;
+  /** No upper end if left out: "heating is 1000 W and up". */
+  maxWatts?: number;
   /** How long the draw has to be in the band, added up, before the phase is on. */
   minSeconds?: number;
   /**
@@ -81,7 +82,7 @@ export class PhaseTracker {
   }
 
   #inBand(watts: number): boolean {
-    return watts >= this.#phase.minWatts && watts < this.#phase.maxWatts;
+    return watts >= this.#phase.minWatts && watts < (this.#phase.maxWatts ?? Infinity);
   }
 
   #advance(at: number): void {

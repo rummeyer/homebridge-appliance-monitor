@@ -113,13 +113,13 @@
             "phases": {
               "title": "Phases",
               "type": "array",
+              "listItems": 0,
               "description": "What the appliance does inside a cycle, told apart by power: heating, spinning, a coffee running through. Easiest to add from the Curve tab, by picking a level or a stretch of time on the recorded curve.",
               "items": {
                 "type": "object",
                 "required": [
                   "name",
-                  "minWatts",
-                  "maxWatts"
+                  "minWatts"
                 ],
                 "properties": {
                   "name": {
@@ -136,19 +136,21 @@
                   "maxWatts": {
                     "title": "Below (W)",
                     "type": "number",
-                    "minimum": 0
+                    "minimum": 0,
+                    "placeholder": "no upper end",
+                    "description": "Leave empty for \"from and up\", as for heating."
                   },
                   "minSeconds": {
                     "title": "On after (seconds in the range, added up)",
                     "type": "integer",
                     "minimum": 0,
-                    "default": 5
+                    "placeholder": "5"
                   },
                   "holdSeconds": {
                     "title": "Off after (seconds out of the range)",
                     "type": "integer",
                     "minimum": 0,
-                    "default": 30
+                    "placeholder": "30"
                   },
                   "sensor": {
                     "title": "Show in HomeKit",

@@ -66,10 +66,20 @@ test('the custom settings page is where the schema says, and is published', () =
   assert.ok(pkg.dependencies['@homebridge/plugin-ui-utils'], 'and what it needs is installed with it');
 });
 
-test('a phase on the settings page has the defaults the plugin falls back to', () => {
+test('a phase on the settings page shows the defaults the plugin falls back to', () => {
   const phase = device.phases.items.properties;
-  assert.equal(phase.minSeconds.default, DEFAULT_MIN_SECONDS);
-  assert.equal(phase.holdSeconds.default, DEFAULT_HOLD_SECONDS);
+  // Placeholders, not defaults: a default would fill the empty phase the page
+  // offers under every plug, and it would no longer be empty.
+  assert.equal(Number(phase.minSeconds.placeholder), DEFAULT_MIN_SECONDS);
+  assert.equal(Number(phase.holdSeconds.placeholder), DEFAULT_HOLD_SECONDS);
+  assert.equal(phase.minSeconds.default, undefined);
+  assert.equal(phase.holdSeconds.default, undefined);
   assert.equal(phase.sensor.default, true);
   assert.equal(schema.schema.properties.recordDays.default, DEFAULT_RECORD_DAYS);
+});
+
+test('a plug starts with no phases on the settings page, only the button to add one', () => {
+  // The Homebridge UI's form offers one empty entry in every list unless told
+  // otherwise, and it would show under every plug.
+  assert.equal(device.phases.listItems, 0);
 });

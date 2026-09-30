@@ -222,7 +222,7 @@ works.
 | `devices[].thresholds.offWatts` | learned | Switched off at or below this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, `maxWatts`, and optionally `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
 | `recordPower` | `true` | Write each reading to a file per day under `outlet-monitor/power/`. The Curve tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |

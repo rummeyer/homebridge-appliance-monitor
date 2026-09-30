@@ -8,6 +8,7 @@ import {
   hasSensors,
   isChildBridgeProcess,
   MATTER_LOG_LEVELS,
+  usablePhases,
   parsePairingCode,
   resetOptions,
   validateDeviceConfig,
@@ -157,7 +158,12 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
         this.log.error(`Ignoring plug: ${problem}`);
       }
       if (problems.length === 0) {
-        valid.push({ ...device, name: device.name.trim() });
+        const named = { ...device, name: device.name.trim() };
+        const { phases, problems: phaseProblems } = usablePhases(named);
+        for (const problem of phaseProblems) {
+          this.log.warn(`Ignoring phase: ${problem}`);
+        }
+        valid.push({ ...named, phases });
       }
     }
     for (const name of duplicateNames(valid)) {
@@ -311,7 +317,7 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
       monitor,
       accessory: handle,
       energy: new EnergyMeter(this.#ledger[device.name]),
-      phases: (device.phases ?? []).map((phase) => new PhaseTracker({ ...phase, name: phase.name.trim() })),
+      phases: (device.phases ?? []).map((phase) => new PhaseTracker(phase)),
     };
     this.#appliances.set(device.name, appliance);
     return appliance;

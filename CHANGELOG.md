@@ -39,6 +39,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   the appliance did, to add it as a phase.
 - A plug with every sensor turned off does not appear in HomeKit, and is
   still counted in the statistics.
+- A phase can leave out its upper end: heating is 1000 W and up.
+- A plug starts with no phases on the settings page. An empty phase, as the
+  page may save, is skipped; a phase that is wrong is skipped with a warning,
+  and costs only itself, not the plug.
 
 ### Changed
 

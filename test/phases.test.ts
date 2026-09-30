@@ -98,3 +98,12 @@ test('a moment in the band is not the phase', () => {
   const changes = track(coffee, [[0, 2.5], [10, 300], [13, 2.5], [100, 300], [102, 2.5]], 200);
   assert.deepEqual(changes, []);
 });
+
+test('a phase with no upper end is everything from its lower one up', () => {
+  const heating = new PhaseTracker({ name: 'Heating', minWatts: 700 });
+  const changes = track(heating, [[0, 2.5], [10, 2200], [40, 2.5]], 100);
+  assert.deepEqual(changes.map(({ active, at }) => [active, at / S]), [
+    [true, 15],
+    [false, 70],
+  ]);
+});
