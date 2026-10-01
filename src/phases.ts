@@ -27,6 +27,11 @@ export interface PhaseConfig {
   holdSeconds?: number;
   /** Show it in HomeKit, as an occupancy sensor. On by default. */
   sensor?: boolean;
+  /**
+   * Count it on the Statistics tab, instead of the appliance's finished
+   * cycles: a coffee drawn rather than a morning's use of the machine.
+   */
+  count?: boolean;
 }
 
 export const DEFAULT_MIN_SECONDS = 5;

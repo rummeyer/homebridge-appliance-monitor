@@ -164,6 +164,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "As an occupancy sensor, occupied while the phase lasts."
+                  },
+                  "count": {
+                    "title": "Count in statistics",
+                    "type": "boolean",
+                    "description": "Show how often this phase happened on the Statistics tab, instead of the finished cycles. If more than one phase is ticked, the first one counts."
                   }
                 }
               }

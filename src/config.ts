@@ -216,6 +216,9 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
         wrong.push(`has a ${key} that is not a number of 0 or more`);
       }
     }
+    if (phase.count !== undefined && phase.count !== null && typeof phase.count !== 'boolean') {
+      wrong.push('has a count that is not on or off');
+    }
     if (wrong.length > 0) {
       problems.push(`${what} ${wrong.join(', and ')}`);
       continue;

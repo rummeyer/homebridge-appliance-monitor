@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- The Statistics tab counts how often each appliance finished, or how often
+  a phase ticked "Count in statistics" happened — coffees drawn rather than
+  mornings the machine was on. All of them are counted all along, so ticking
+  another phase loses nothing.
+
 ## [0.6.1] — 2026-10-01
 
 ### Changed

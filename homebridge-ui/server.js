@@ -14,6 +14,7 @@ import { HomebridgePluginUiServer } from '@homebridge/plugin-ui-utils';
 
 import { bandFor, phaseSpans, thin } from '../dist/curve.js';
 import { usablePhases } from '../dist/config.js';
+import { shownCount } from '../dist/counts.js';
 import { findDataDir } from '../dist/data-dir.js';
 import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
@@ -67,19 +68,31 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     return bandFor(readSamples(this.powerDir, name, from, to), from, to) ?? null;
   }
 
-  /** The table for the plugs named, in the order the page lists them. */
+  /** The table for the plugs named, in the order the page lists them, with what each has counted. */
   async statistics(request) {
-    const names = Array.isArray(request?.names) ? request.names.filter((name) => typeof name === 'string') : [];
-    const dir = this.homebridgeStoragePath;
-    let ledger = {};
-    if (dir) {
+    const devices = Array.isArray(request?.devices)
+      ? request.devices.filter((device) => typeof device?.name === 'string')
+      : [];
+    const names = devices.map(({ name }) => name);
+    const dir = this.homebridgeStoragePath ? findDataDir(this.homebridgeStoragePath) : undefined;
+    // A missing, half-written or damaged file shows as nothing counted yet.
+    const read = (file) => {
       try {
-        ledger = readJson(join(findDataDir(dir), 'energy.json')) ?? {};
+        return (dir && readJson(join(dir, file))) || {};
       } catch {
-        // A half-written or damaged file shows as nothing counted yet.
+        return {};
       }
-    }
-    return statistics(ledger, names, new Date());
+    };
+    const ledger = read('energy.json');
+    const records = read('devices.json');
+    // What each appliance counts follows the settings as they are being
+    // edited, which the page sends along.
+    const counts = devices.map((device) => {
+      const { key, label } = shownCount(usablePhases(device).phases);
+      const counted = records[device.name]?.counts?.[key];
+      return { label, count: counted?.count ?? 0, since: counted?.since ?? null };
+    });
+    return { ...statistics(ledger, names, new Date()), counts };
   }
 }
 

@@ -1,5 +1,6 @@
 import type { CycleState } from './cycle.ts';
 import { readJson, writeJson } from './json-file.ts';
+import type { Counted } from './counts.ts';
 import type { Learned } from './learn.ts';
 
 /** What is kept per appliance across restarts. */
@@ -13,6 +14,8 @@ export interface DeviceRecord {
   since?: number;
   /** Whether everything the plug offers has been logged, which is done once. */
   described?: boolean;
+  /** Finished cycles and ended phases, counted. See counts.ts. */
+  counts?: Record<string, Counted>;
 }
 
 /**
@@ -40,10 +43,18 @@ export class DeviceStore {
     writeJson(this.#path, this.#records);
   }
 
+  /** Counts one more of something, starting the count if it is the first. */
+  increment(name: string, key: string, at: number): void {
+    const counts = { ...this.get(name).counts };
+    const current = counts[key];
+    counts[key] = { count: (current?.count ?? 0) + 1, since: current?.since ?? at };
+    this.update(name, { counts });
+  }
+
   /** Forgets what was learned, so the next cycle is learned afresh. */
   forget(name: string): void {
-    const { state, since, described } = this.get(name);
-    this.#records[name] = { state, since, described };
+    const { state, since, described, counts } = this.get(name);
+    this.#records[name] = { state, since, described, counts };
     writeJson(this.#path, this.#records);
   }
 }

@@ -73,6 +73,10 @@
           <input class="form-check-input" type="checkbox" id="om-phase-sensor" checked>
           <label class="form-check-label" for="om-phase-sensor">Show in HomeKit</label>
         </div>
+        <div class="form-check mb-1">
+          <input class="form-check-input" type="checkbox" id="om-phase-count">
+          <label class="form-check-label" for="om-phase-count">Count in statistics</label>
+        </div>
       </div>
       <div class="mt-2 d-flex gap-2 align-items-center">
         <button type="button" class="btn btn-sm btn-primary" id="om-phase-add">Add phase</button>
@@ -84,14 +88,16 @@
 
 <div class="card mb-3 om-hidden" id="om-stats-card">
   <div class="card-body">
-    <h5 class="card-title">Energy used</h5>
+    <h5 class="card-title">Energy and counts</h5>
     <div id="om-stats"></div>
     <p class="om-hint mb-0" id="om-stats-note">
       Today so far, and the last complete week (Monday to Sunday), month and year; point at a
       heading for its dates. Today counts from a plug's first reading of the day. A week or a
       month is shown once a plug has been counted for all of it. A year is shown once it is over,
       even if the plug joined partway through. Counted from the plugs' power readings
-      while Homebridge is running, and saved every five minutes.
+      while Homebridge is running, and saved every five minutes. Count is how often an
+      appliance finished, or how often the phase ticked "Count in statistics" happened, since
+      counting began; point at it for the date.
     </p>
     <p class="om-hint mb-0 om-hidden" id="om-stats-none">No plugs configured yet.</p>
   </div>
@@ -119,19 +125,19 @@
     async function showStats() {
       const box = document.getElementById('om-stats');
       const [config] = await homebridge.getPluginConfig();
-      const names = (config?.devices ?? [])
-        .map((device) => (typeof device?.name === 'string' ? device.name.trim() : ''))
-        .filter((name) => name);
-      document.getElementById('om-stats-none').classList.toggle('om-hidden', names.length > 0);
-      document.getElementById('om-stats-note').classList.toggle('om-hidden', names.length === 0);
+      const devices = (config?.devices ?? [])
+        .filter((device) => typeof device?.name === 'string' && device.name.trim())
+        .map((device) => ({ name: device.name.trim(), phases: device.phases ?? [] }));
+      document.getElementById('om-stats-none').classList.toggle('om-hidden', devices.length > 0);
+      document.getElementById('om-stats-note').classList.toggle('om-hidden', devices.length === 0);
       box.innerHTML = '';
-      if (names.length === 0) {
+      if (devices.length === 0) {
         return;
       }
 
       let table;
       try {
-        table = await homebridge.request('/statistics', { names });
+        table = await homebridge.request('/statistics', { devices });
       } catch (error) {
         box.textContent = `Could not read the statistics: ${error?.message ?? error}`;
         return;
@@ -145,11 +151,18 @@
         cell(head, label, 'th');
         head.lastElementChild.title = dates;
       }
+      cell(head, 'Count', 'th');
+      head.lastElementChild.title = 'Finished cycles, or the phase ticked "Count in statistics", since counting began';
       const body = element.createTBody();
-      for (const { name, values, partial } of table.rows) {
+      for (const [index, { name, values, partial }] of table.rows.entries()) {
         const row = body.insertRow();
         cell(row, name);
         values.forEach((value, column) => cell(row, `${kwh(value)}${partial[column] ? ' ¹' : ''}`));
+        const { label, count, since } = table.counts[index];
+        cell(row, `${count} × ${label}`);
+        row.lastElementChild.title = since
+          ? `Since ${new Date(since).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
+          : 'Nothing counted yet';
       }
       const { total } = table;
       const foot = element.createTFoot().insertRow();
@@ -158,6 +171,7 @@
         const marks = `${total.partial[column] ? ' ¹' : ''}${total.missing[column] ? ' *' : ''}`;
         cell(foot, value === null ? '' : `${kwh(value)}${marks}`);
       });
+      cell(foot, ''); // counts of different things do not add up
       box.append(element);
 
       const shown = (flags) => total.values.some((value, column) => value !== null && flags[column]);
@@ -350,6 +364,7 @@
       const minSeconds = Number(document.getElementById('om-phase-on').value);
       const holdSeconds = Number(document.getElementById('om-phase-off').value);
       const sensor = document.getElementById('om-phase-sensor').checked;
+      const count = document.getElementById('om-phase-count').checked;
       if (!name) {
         message.textContent = 'Give the phase a name.';
         return;
@@ -369,7 +384,7 @@
         message.textContent = `${current.name} already has a phase called "${name}".`;
         return;
       }
-      device.phases.push({ name, minWatts, ...(maxWatts === undefined ? {} : { maxWatts }), minSeconds, holdSeconds, sensor });
+      device.phases.push({ name, minWatts, ...(maxWatts === undefined ? {} : { maxWatts }), minSeconds, holdSeconds, sensor, count });
       await homebridge.updatePluginConfig(configs);
       message.textContent = 'Added. Save, and restart the child bridge, to use it.';
       document.getElementById('om-phase-name').value = '';

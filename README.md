@@ -130,6 +130,13 @@ through, marked ¹ as part of a year: a plug added in September 2026 shows its
 2026 from the 1st of January 2027. Where some plugs have a value and others do
 not yet, the total adds up those that have, and is marked with an asterisk.
 
+The **Count** column shows how often each appliance finished a cycle — or, if
+one of its phases is ticked **Count in statistics**, how often that phase
+happened: coffees drawn rather than mornings the machine was on. If several
+are ticked, the first counts. Every finished cycle and every phase is counted
+all along, so ticking another phase shows its count from when the phase was
+set up, not from when it was ticked.
+
 The energy is worked out from the power readings, per local calendar day,
 while Homebridge is running. Time it was not running is not counted.
 
@@ -242,7 +249,7 @@ appliance is on.
 | `devices[].thresholds.offWatts` | learned | Switched off at or below this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Curve tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep. |

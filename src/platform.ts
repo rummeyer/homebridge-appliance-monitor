@@ -22,6 +22,7 @@ import type { Learned } from './learn.ts';
 import { activePowerValues, describeNode, MatterController, readActivePower } from './matter.ts';
 import type { AttributeReport } from './matter.ts';
 import type { PairedNode } from '@project-chip/matter.js/device';
+import { FINISHED, phaseKey } from './counts.ts';
 import { takeDataDir } from './data-dir.ts';
 import { DeviceMonitor } from './monitor.ts';
 import { PhaseTracker } from './phases.ts';
@@ -409,6 +410,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     if (change.active) {
       this.log.info(`${device.name}: ${tracker.name}`);
     } else {
+      this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
       const lasted = change.since === undefined ? '' : ` after ${formatDuration((change.at - change.since) / 1000)}`;
       this.log.info(`${device.name}: ${tracker.name} ended${lasted}`);
     }
@@ -441,6 +443,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#store?.update(device.name, { state: transition.to, since: transition.at });
 
     const { cycle } = transition;
+    if (transition.to === 'finished') {
+      this.#store?.increment(device.name, FINISHED, transition.at);
+    }
     if (transition.to === 'finished' && cycle) {
       this.log.info(
         `${device.name}: Finished — ran ${formatDuration(cycle.seconds)}, ` +

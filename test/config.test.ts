@@ -139,3 +139,9 @@ test('asking for power needs a sensible interval, or none', () => {
   assert.match(validateDeviceConfig({ name: 'Coffee', pollSeconds: 1 }, 0)[0]!, /pollSeconds of 2 or more/);
   assert.match(validateDeviceConfig({ name: 'Coffee', pollSeconds: 'often' as unknown as number }, 0)[0]!, /pollSeconds/);
 });
+
+test('a phase marked to be counted keeps the mark; a mark that is not on or off is refused', () => {
+  const check = (phase: object) => usablePhases({ name: 'Coffee', phases: [phase as PhaseConfig] });
+  assert.equal(check({ name: 'Bezug', minWatts: 30, maxWatts: 100, count: true }).phases[0]!.count, true);
+  assert.match(check({ name: 'Bezug', minWatts: 30, maxWatts: 100, count: 'yes' }).problems[0]!, /count/);
+});
