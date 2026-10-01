@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-10-01
+
+### Changed
+
+- The accessory is called after the appliance followed by "Monitor" —
+  "Kaffeemaschine Monitor" — to tell it apart from the plug's own accessory.
+
 ## [0.10.0] — 2026-10-01
 
 ### Added
@@ -131,7 +138,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.7.0...v0.8.0

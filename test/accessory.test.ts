@@ -49,6 +49,7 @@ test('one accessory with a switch each for Running and every phase', () => {
     ['running', 'phase:Heating', 'phase:Brewing'],
   );
   assert.equal(name(accessory, 'running'), 'Coffee Running');
+  assert.equal(accessory.getService(Service.AccessoryInformation)!.getCharacteristic(Characteristic.Name).value, 'Coffee Monitor');
   assert.equal(name(accessory, 'phase:Brewing'), 'Coffee Brewing');
 });
 

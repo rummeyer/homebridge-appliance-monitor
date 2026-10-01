@@ -139,8 +139,9 @@ see the same draws.
 
 ## In the Home app
 
-Each appliance is one accessory with a switch for each thing it can tell, to
-hang automations on:
+Each appliance is one accessory, "Washing machine Monitor" say, to tell it
+apart from the plug's own accessory, with a switch for each thing it can
+tell, to hang automations on:
 
 - **Running**: on while the appliance runs, and off once it has finished,
   never before. An automation "when Washing machine Running turns off" runs

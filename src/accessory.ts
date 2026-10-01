@@ -12,6 +12,12 @@ export interface DeviceInfo {
   softwareVersionString?: string;
 }
 
+/**
+ * What the accessory is called: "Kaffeemaschine Monitor", so the plugin's
+ * accessory is told apart from the plug's own, which has the appliance's name.
+ */
+export const accessoryName = (device: DeviceConfig): string => `${device.name} Monitor`;
+
 /** How long a short phase's switch stays on: long enough for an automation to see it. */
 export const PULSE_MS = 2000;
 
@@ -53,6 +59,10 @@ export class ApplianceAccessory {
         accessory.removeService(service);
       }
     }
+
+    // Homebridge sets the name of a new accessory; one from before is brought
+    // up to date here. The Home app keeps a name given there.
+    accessory.getService(Service.AccessoryInformation)?.updateCharacteristic(api.hap.Characteristic.Name, accessoryName(device));
 
     this.#running = this.#switch('running', showsRunning(device), `${device.name} Running`);
     // Earlier versions had a Finished switch too, on for a moment when the

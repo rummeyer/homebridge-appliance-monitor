@@ -2,7 +2,7 @@ import { join } from 'node:path';
 
 import type { API, DynamicPlatformPlugin, Logging, PlatformAccessory } from 'homebridge';
 
-import { ApplianceAccessory } from './accessory.ts';
+import { accessoryName, ApplianceAccessory } from './accessory.ts';
 import {
   duplicateNames,
   isChildBridgeProcess,
@@ -337,9 +337,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       const uuid = this.#uuid(device.name);
       let accessory = this.#cached.get(uuid);
       if (accessory) {
-        accessory.displayName = device.name;
+        accessory.displayName = accessoryName(device);
       } else {
-        accessory = new this.api.platformAccessory(device.name, uuid);
+        accessory = new this.api.platformAccessory(accessoryName(device), uuid);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         this.#cached.set(uuid, accessory);
       }
