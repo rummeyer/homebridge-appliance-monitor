@@ -256,7 +256,7 @@
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
           el('div', { class: 'om-set-grid' },
-            field('Name', nameInput, 'Also the start of its switches\' names in HomeKit. Renaming it means pairing it again.', nameError(device.name ?? '')),
+            field('Name', nameInput, 'Also the name of its accessory in HomeKit, "… Monitor". Renaming it means pairing it again.', nameError(device.name ?? '')),
             field('Pairing code', codeInput,
               isPaired ? 'Paired; the code is no longer needed.' : 'In the Home app: the plug\'s settings → Turn On Pairing Mode. Valid for 15 minutes.',
               codeError(device.pairingCode ?? '')))),

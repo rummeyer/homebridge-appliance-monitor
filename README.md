@@ -155,9 +155,11 @@ app is put back to what the appliance is doing straight away, and an
 automation never sees a state that is not true.
 
 Running is on by default; it can be turned off in the settings, a phase's
-switch too. A new switch is named after the appliance, followed by "Running"
-or the phase's name. To call it something else,
-rename it in the Home app; the plugin never sets the name again.
+switch too. A new phase switch is named after the phase, "Bezug" say, since
+it sits inside the appliance's accessory; Running is named after the
+appliance, "Waschmaschine Running", because several switches called just
+"Running" could not be told apart. To call one something else, rename it in
+the Home app; the plugin never sets the name again.
 
 A plug with every switch turned off, a lamp say, does not appear in HomeKit at
 all, and is still counted in the statistics.

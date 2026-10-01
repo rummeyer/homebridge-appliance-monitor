@@ -92,7 +92,7 @@
                     "title": "Name",
                     "type": "string",
                     "placeholder": "Heating",
-                    "description": "Its switch is named after the plug, followed by this; rename it in the Home app."
+                    "description": "Also the name of its switch in HomeKit; rename it in the Home app."
                   },
                   "minWatts": {
                     "title": "From (W)",
@@ -129,7 +129,7 @@
                     "title": "Switch in HomeKit",
                     "type": "boolean",
                     "default": true,
-                    "description": "A switch that is on while the phase lasts. Named after the appliance, followed by the phase."
+                    "description": "A switch that is on while the phase lasts, named after the phase."
                   },
                   "count": {
                     "title": "Count in statistics",

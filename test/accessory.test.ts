@@ -50,7 +50,7 @@ test('one accessory with a switch each for Running and every phase', () => {
   );
   assert.equal(name(accessory, 'running'), 'Coffee Running');
   assert.equal(accessory.getService(Service.AccessoryInformation)!.getCharacteristic(Characteristic.Name).value, 'Coffee Monitor');
-  assert.equal(name(accessory, 'phase:Brewing'), 'Coffee Brewing');
+  assert.equal(name(accessory, 'phase:Brewing'), 'Brewing', 'inside "Coffee Monitor", the phase alone');
 });
 
 test('Running is on while the appliance runs', () => {
@@ -130,6 +130,20 @@ test('the setting from when these were sensors still counts', () => {
   const accessory = platformAccessory();
   new ApplianceAccessory(api, accessory, { name: 'Lamp', runningSensor: false }, 'off');
   assert.equal(switchOf(accessory, 'running'), undefined);
+});
+
+test('a phase switch still called by its former default name is shortened; one renamed is left alone', () => {
+  const accessory = platformAccessory();
+  const device: DeviceConfig = { name: 'Coffee', phases: [{ name: 'Bezug', minWatts: 30 }, { name: 'Spülen', minWatts: 30 }] };
+  const bezug = accessory.addService(Service.Switch, 'Coffee Bezug', 'phase:Bezug');
+  bezug.addOptionalCharacteristic(Characteristic.ConfiguredName);
+  bezug.setCharacteristic(Characteristic.ConfiguredName, 'Coffee Bezug');
+  const spuelen = accessory.addService(Service.Switch, 'Coffee Spülen', 'phase:Spülen');
+  spuelen.addOptionalCharacteristic(Characteristic.ConfiguredName);
+  spuelen.setCharacteristic(Characteristic.ConfiguredName, 'Rinse');
+  new ApplianceAccessory(api, accessory, device, 'off');
+  assert.equal(name(accessory, 'phase:Bezug'), 'Bezug');
+  assert.equal(name(accessory, 'phase:Spülen'), 'Rinse');
 });
 
 test('a rename in the Home app survives a restart', () => {

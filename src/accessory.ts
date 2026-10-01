@@ -74,7 +74,10 @@ export class ApplianceAccessory {
       const name = phase.name.trim();
       const subtype = `phase:${name}`;
       wanted.add(subtype);
-      const service = this.#switch(subtype, phase.sensor !== false, `${device.name} ${name}`);
+      // Inside "Kaffeemaschine Monitor", "Bezug" says enough. Running keeps
+      // the appliance's name: five switches called "Running" could not be
+      // told apart as tiles or in automations.
+      const service = this.#switch(subtype, phase.sensor !== false, name, `${device.name} ${name}`);
       if (service) {
         this.#phases.set(name, service);
       }
@@ -143,7 +146,8 @@ export class ApplianceAccessory {
     this.#service(subtype)?.updateCharacteristic(this.#api.hap.Characteristic.On, on);
   }
 
-  #switch(subtype: string, wanted: boolean, name: string): Service | undefined {
+  /** `formerName` is what earlier versions called a new switch, to be brought up to date if still so called. */
+  #switch(subtype: string, wanted: boolean, name: string, formerName?: string): Service | undefined {
     const { Characteristic, Service } = this.#api.hap;
     const existing = this.#accessory.getServiceById(Service.Switch, subtype);
     if (!wanted) {
@@ -161,6 +165,9 @@ export class ApplianceAccessory {
         service.addOptionalCharacteristic(Characteristic.ConfiguredName);
       }
       service.setCharacteristic(Characteristic.ConfiguredName, name);
+    } else if (formerName !== undefined && service.getCharacteristic(Characteristic.ConfiguredName).value === formerName) {
+      service.setCharacteristic(Characteristic.ConfiguredName, name);
+      service.setCharacteristic(Characteristic.Name, name);
     }
     // Restored services come back without handlers, so this is set every time.
     service.getCharacteristic(Characteristic.On).onSet((value: CharacteristicValue) => {
