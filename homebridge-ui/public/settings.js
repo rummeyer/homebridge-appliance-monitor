@@ -393,11 +393,15 @@
         render();
       },
       select(name) {
-        const found = config.devices.findIndex((d) => d.name === name);
-        if (found >= 0) {
+        const found = config.devices.findIndex((d) => String(d.name ?? '').trim() === name);
+        if (found >= 0 && found !== selected) {
           selected = found;
           render();
         }
+      },
+      /** The appliance shown, for the Power tab to open on the same one. */
+      selectedName() {
+        return config.devices[selected]?.name;
       },
     };
   }

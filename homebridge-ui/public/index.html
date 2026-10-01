@@ -216,9 +216,10 @@
       return (config?.devices ?? []).filter((device) => typeof device?.name === 'string' && device.name.trim());
     }
 
+    /** Fills the Power tab's list, on the appliance Settings shows, so both tabs stay on the same one. */
     async function fillPlugs() {
       const select = document.getElementById('om-curve-plug');
-      const chosen = select.value;
+      const chosen = settings.selectedName()?.trim() || select.value;
       select.innerHTML = '';
       const names = (await configuredPlugs())
         .map((device) => device.name.trim())
@@ -402,7 +403,10 @@
       void showCurve();
     });
 
-    document.getElementById('om-curve-plug').addEventListener('change', () => void showCurve());
+    document.getElementById('om-curve-plug').addEventListener('change', (event) => {
+      settings.select(event.target.value);
+      void showCurve();
+    });
     document.getElementById('om-curve-hours').addEventListener('change', () => void showCurve());
     document.getElementById('om-curve-reload').addEventListener('click', () => void showCurve());
 

@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.3] — 2026-10-01
+
+### Changed
+
+- Settings and Power stay on the same appliance: switching tabs opens the
+  other on the one just picked.
+
 ## [0.11.2] — 2026-10-01
 
 ### Fixed
@@ -186,7 +193,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.3...HEAD
+[0.11.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.3...v0.11.0
