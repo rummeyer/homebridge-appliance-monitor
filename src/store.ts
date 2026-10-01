@@ -12,6 +12,9 @@ export interface DeviceRecord {
   /** Where it was, so that "finished" survives Homebridge restarting. */
   state?: CycleState;
   since?: number;
+  /** While running: what the cycle has used so far, so that a restart does not lose it. */
+  cycleWattHours?: number;
+  cyclePeakWatts?: number;
   /** Whether everything the plug offers has been logged, which is done once. */
   described?: boolean;
   /** Standby found before anything was learned. See DeviceMonitor. */

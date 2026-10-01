@@ -349,7 +349,14 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const store = this.#store!;
     const record = store.get(device.name);
     const initial =
-      record.state !== undefined && record.since !== undefined ? { state: cycleState(record.state), since: record.since } : undefined;
+      record.state !== undefined && record.since !== undefined
+        ? {
+            state: cycleState(record.state),
+            since: record.since,
+            wattHours: record.cycleWattHours,
+            peakWatts: record.cyclePeakWatts,
+          }
+        : undefined;
 
     let handle: ApplianceAccessory | undefined;
     if (showsInHomeKit(device)) {
@@ -470,10 +477,17 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return;
     }
     const now = Date.now();
-    for (const { device, energy } of this.#appliances.values()) {
+    for (const { device, energy, monitor } of this.#appliances.values()) {
       energy.tick(now);
       energy.prune(now);
       this.#ledger[device.name] = energy.record;
+      // And what a running cycle has used so far, for its line in the log
+      // when it finishes after a restart.
+      const progress = monitor.progress(now);
+      if (progress) {
+        this.#safely(device.name, () =>
+          this.#store?.update(device.name, { cycleWattHours: progress.wattHours, cyclePeakWatts: progress.peakWatts }));
+      }
     }
     try {
       writeJson(this.#energyPath, this.#ledger);
@@ -502,7 +516,12 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   #onTransition(device: DeviceConfig, accessory: ApplianceAccessory | undefined, transition: Transition): void {
     accessory?.update(transition.to);
-    this.#store?.update(device.name, { state: transition.to, since: transition.at });
+    this.#store?.update(device.name, {
+      state: transition.to,
+      since: transition.at,
+      cycleWattHours: undefined,
+      cyclePeakWatts: undefined,
+    });
 
     const { cycle } = transition;
     if (cycle) {

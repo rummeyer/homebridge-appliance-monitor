@@ -347,3 +347,21 @@ test('a running level from the config is not second-guessed by standby', () => {
   assert.equal(monitor.params.runWatts, 30);
   assert.equal(plain.params.runWatts, 20.6);
 });
+
+test('a cycle running across a restart keeps what it had used, and goes on adding to it', () => {
+  const before = new CycleMachine(LEARNING_DEFAULTS);
+  before.reading(0, 2000);
+  before.tick(2 * MIN);
+  before.reading(30 * MIN, 50);
+  const saved = { state: before.state, since: before.since, ...before.progress(60 * MIN)! };
+  assert.equal(saved.state, 'running');
+  assert.equal(Math.round(saved.wattHours), 1025, 'half an hour at 2000 W, half an hour at 50 W');
+  assert.equal(saved.peakWatts, 2000);
+
+  const after = new CycleMachine(LEARNING_DEFAULTS, saved);
+  after.reading(70 * MIN, 50);
+  const [finished] = after.switchedOff(130 * MIN);
+  assert.equal(Math.round(finished!.cycle!.wattHours), 1075, 'and the hour after the restart, from its first reading');
+  assert.equal(finished!.cycle!.peakWatts, 2000, 'the peak from before the restart');
+  assert.equal(after.progress(131 * MIN), undefined, 'nothing running, nothing to save');
+});

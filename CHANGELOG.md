@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.1] — 2026-10-01
+
+### Fixed
+
+- A cycle running across a restart of Homebridge kept its start, but its
+  energy and peak began again from nothing, so the "Finished" line in the log
+  showed only what it used after the restart. Both are now saved with the
+  state, every five minutes and on shutdown.
+
 ## [0.14.0] — 2026-10-01
 
 ### Added
@@ -258,7 +267,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.0...v0.12.1

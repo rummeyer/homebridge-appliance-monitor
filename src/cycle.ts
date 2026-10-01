@@ -40,6 +40,20 @@ export interface CycleParams {
   finishSeconds: number;
 }
 
+/** Where a machine was, as saved: its state, and for a running one what the cycle has used so far. */
+export interface SavedState {
+  state: CycleState;
+  since: number;
+  wattHours?: number;
+  peakWatts?: number;
+}
+
+/** What a running cycle has used so far, to be saved with its state. */
+export interface CycleProgress {
+  wattHours: number;
+  peakWatts: number;
+}
+
 export interface Transition {
   from: CycleState;
   to: CycleState;
@@ -76,10 +90,15 @@ export class CycleMachine {
   #wattHours = 0;
   #peak = 0;
 
-  constructor(params: CycleParams, initial?: { state: CycleState; since: number }) {
+  constructor(params: CycleParams, initial?: SavedState) {
     this.#params = params;
     this.#state = initial?.state ?? 'idle';
     this.#since = initial?.since ?? 0;
+    // A cycle running across a restart goes on adding to what it had used.
+    if (this.#state === 'running') {
+      this.#wattHours = initial?.wattHours ?? 0;
+      this.#peak = initial?.peakWatts ?? 0;
+    }
     this.#cycleStart = this.#since;
   }
 
@@ -94,6 +113,15 @@ export class CycleMachine {
 
   get params(): CycleParams {
     return this.#params;
+  }
+
+  /** What the running cycle has used up to now, or undefined when nothing runs. */
+  progress(at: number): CycleProgress | undefined {
+    if (this.#state !== 'running') {
+      return undefined;
+    }
+    this.#accumulate(at);
+    return { wattHours: this.#wattHours, peakWatts: this.#peak };
   }
 
   /**

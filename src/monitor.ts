@@ -10,7 +10,7 @@
  * timers of its own.
  */
 import { CycleMachine } from './cycle.ts';
-import type { CycleParams, CycleState, Transition } from './cycle.ts';
+import type { CycleParams, CycleProgress, CycleState, SavedState, Transition } from './cycle.ts';
 import { learnFromCycle, merge, NOTHING_WATTS, runLevelAbove } from './learn.ts';
 import type { Learned, Sample } from './learn.ts';
 
@@ -40,7 +40,7 @@ export interface MonitorOptions {
   overrides?: Partial<CycleParams>;
   learned?: Learned;
   cycles?: number;
-  initial?: { state: CycleState; since: number };
+  initial?: SavedState;
   /** The standby found before, which a restart would otherwise have to find again. */
   standbyWatts?: number;
 }
@@ -106,6 +106,11 @@ export class DeviceMonitor {
   /** Whether the params come from a learned cycle (or the config) rather than the defaults. */
   get isLearned(): boolean {
     return this.#learned !== undefined;
+  }
+
+  /** What the running cycle has used up to now; see CycleMachine.progress. */
+  progress(at: number): CycleProgress | undefined {
+    return this.#machine.progress(at);
   }
 
   /** The standby found before anything was learned, if any. */
