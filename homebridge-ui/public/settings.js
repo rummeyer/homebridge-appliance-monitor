@@ -263,10 +263,18 @@
 
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'In HomeKit'),
-          el('div', {},
-            check('om-set-running', 'Running switch — on while it runs', showing(device, 'running'), (on) => { setSwitch(device, 'running', on); changed(); }),
-            el('div', { class: 'om-set-help' },
-              'One accessory per appliance, with a switch for Running and one for every phase, to hang automations on. "When Running turns off" is when the appliance is done. Without any switch, the plug is only counted in the statistics.'))),
+          el('div', { class: 'om-set-grid' },
+            field('Running',
+              choice(!showing(device, 'running') ? 'none' : device.runningAs === 'occupancy' ? 'occupancy' : 'switch',
+                [['switch', 'Switch — on while it runs'], ['occupancy', 'Occupancy sensor — taken while it draws'], ['none', 'Not shown']],
+                (value) => {
+                  setSwitch(device, 'running', value !== 'none');
+                  setOrDrop(device, 'runningAs', value === 'occupancy' ? 'occupancy' : undefined);
+                  changed();
+                }),
+              'A switch for an appliance that runs and is done: "when it turns off" is when it is done. An occupancy sensor for a desk, taken or free. Changing it replaces it in HomeKit, with any automation on it.')),
+          el('div', { class: 'om-set-help' },
+            'One accessory per appliance, with Running and a switch for every phase, to hang automations on. With nothing shown, the plug is only counted in the statistics.')),
 
         phasesSection(device),
 

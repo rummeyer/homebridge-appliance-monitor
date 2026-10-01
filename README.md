@@ -146,8 +146,9 @@ tell, to hang automations on:
 - **Running**: on while the appliance runs, and off once it has finished,
   never before. An automation "when Washing machine Running turns off" runs
   once per cycle, when it is done: a notification, a light, an announcement
-  on the HomePod.
-- **One switch per phase**: on while the phase lasts, "Coffee machine Bezug"
+  on the HomePod. For a desk, Running can be an **occupancy sensor**
+  instead: taken while it draws power, free when not.
+- **One switch per phase**: on while the phase lasts, "Bezug"
   say, or for a moment once it is over, for a phase with "shorter than".
 
 The plugin only measures, so the switches only report: one tapped in the Home
@@ -299,7 +300,8 @@ appliance is on.
 | --- | --- | --- |
 | `devices[].name` | — | Name of the accessory, and of its switches, log lines and recording. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
-| `devices[].runningSwitch` | `true` | The Running switch, on while the appliance runs. |
+| `devices[].runningSwitch` | `true` | Running in HomeKit, on while the appliance runs. |
+| `devices[].runningAs` | `switch` | `switch`, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.offWatts` | learned | Switched off at or below this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |

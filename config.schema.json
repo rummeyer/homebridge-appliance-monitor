@@ -41,6 +41,16 @@
               "default": true,
               "description": "A switch that is on while the appliance runs, to hang automations on: when it turns off, the appliance is done. Named after the appliance, followed by Running; rename it in the Home app."
             },
+            "runningAs": {
+              "title": "Show Running as",
+              "type": "string",
+              "default": "switch",
+              "oneOf": [
+                { "title": "Switch", "enum": ["switch"] },
+                { "title": "Occupancy sensor", "enum": ["occupancy"] }
+              ],
+              "description": "An occupancy sensor reads better for a desk: taken while it draws power, free when not. Changing it replaces it in HomeKit, with any automation on it."
+            },
             "pollSeconds": {
               "title": "Ask for power every (seconds)",
               "type": "integer",

@@ -132,6 +132,30 @@ test('the setting from when these were sensors still counts', () => {
   assert.equal(switchOf(accessory, 'running'), undefined);
 });
 
+test('Running can be an occupancy sensor, taken while it runs; changing it replaces the switch', () => {
+  const accessory = platformAccessory();
+  const desk: DeviceConfig = { name: 'Desk' };
+  new ApplianceAccessory(api, accessory, desk, 'off');
+  assert.ok(switchOf(accessory, 'running'));
+
+  const handle = new ApplianceAccessory(api, accessory, { ...desk, runningAs: 'occupancy' }, 'running');
+  assert.equal(switchOf(accessory, 'running'), undefined, 'the switch is gone');
+  const sensor = accessory.getServiceById(Service.OccupancySensor, 'running')!;
+  const detected = () => sensor.getCharacteristic(Characteristic.OccupancyDetected).value;
+  assert.equal(sensor.getCharacteristic(Characteristic.ConfiguredName).value, 'Desk Occupancy');
+  assert.equal(detected(), Characteristic.OccupancyDetected.OCCUPANCY_DETECTED);
+  handle.update('finished');
+  assert.equal(detected(), Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
+
+  new ApplianceAccessory(api, accessory, desk, 'off');
+  assert.equal(accessory.getServiceById(Service.OccupancySensor, 'running'), undefined, 'and back');
+  assert.ok(switchOf(accessory, 'running'));
+
+  new ApplianceAccessory(api, accessory, { ...desk, runningAs: 'occupancy', runningSwitch: false }, 'off');
+  assert.equal(accessory.getServiceById(Service.OccupancySensor, 'running'), undefined, 'not shown at all');
+  assert.equal(switchOf(accessory, 'running'), undefined);
+});
+
 test('a phase switch still called by its former default name is shortened; one renamed is left alone', () => {
   const accessory = platformAccessory();
   const device: DeviceConfig = { name: 'Coffee', phases: [{ name: 'Bezug', minWatts: 30 }, { name: 'Spülen', minWatts: 30 }] };

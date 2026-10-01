@@ -1,4 +1,4 @@
-import type { API, CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
+import type { API, CharacteristicValue, PlatformAccessory, Service, WithUUID } from 'homebridge';
 
 import { showsRunning } from './config.ts';
 import type { DeviceConfig } from './config.ts';
@@ -53,9 +53,11 @@ export class ApplianceAccessory {
     const { Service } = api.hap;
 
     // Earlier versions showed sensors; Homebridge brings a cached accessory
-    // back with every service it had, so they are removed here.
+    // back with every service it had, so they are removed here. Running may
+    // be an occupancy sensor again, and is left to #service() below.
     for (const service of [...accessory.services]) {
-      if (service.UUID === Service.OccupancySensor.UUID || service.UUID === Service.ContactSensor.UUID) {
+      const sensor = service.UUID === Service.OccupancySensor.UUID || service.UUID === Service.ContactSensor.UUID;
+      if (sensor && !(service.UUID === Service.OccupancySensor.UUID && service.subtype === 'running')) {
         accessory.removeService(service);
       }
     }
@@ -64,10 +66,17 @@ export class ApplianceAccessory {
     // up to date here. The Home app keeps a name given there.
     accessory.getService(Service.AccessoryInformation)?.updateCharacteristic(api.hap.Characteristic.Name, accessoryName(device));
 
-    this.#running = this.#switch('running', showsRunning(device), `${device.name} Running`);
+    // Running as a switch, or as an occupancy sensor — a desk is taken or
+    // free. Whichever it is not is removed, so changing it replaces it.
+    const occupancy = device.runningAs === 'occupancy';
+    this.#running = this.#service(Service.Switch, 'running', showsRunning(device) && !occupancy, `${device.name} Running`)
+      ?? this.#service(Service.OccupancySensor, 'running', showsRunning(device) && occupancy, `${device.name} Occupancy`);
+    if (!occupancy) {
+      this.#service(Service.OccupancySensor, 'running', false, '');
+    }
     // Earlier versions had a Finished switch too, on for a moment when the
     // appliance finished: the moment Running goes off, so it told nothing more.
-    this.#switch('finished', false, '');
+    this.#service(Service.Switch, 'finished', false, '');
 
     const wanted = new Set<string>();
     for (const phase of device.phases ?? []) {
@@ -77,7 +86,7 @@ export class ApplianceAccessory {
       // Inside "Kaffeemaschine Monitor", "Bezug" says enough. Running keeps
       // the appliance's name: five switches called "Running" could not be
       // told apart as tiles or in automations.
-      const service = this.#switch(subtype, phase.sensor !== false, name, `${device.name} ${name}`);
+      const service = this.#service(Service.Switch, subtype, phase.sensor !== false, name, `${device.name} ${name}`);
       if (service) {
         this.#phases.set(name, service);
       }
@@ -134,7 +143,7 @@ export class ApplianceAccessory {
     set(Characteristic.FirmwareRevision, firmware(info.softwareVersionString));
   }
 
-  #service(subtype: string): Service | undefined {
+  #shown(subtype: string): Service | undefined {
     if (subtype === 'running') {
       return this.#running;
     }
@@ -143,13 +152,26 @@ export class ApplianceAccessory {
 
   #show(subtype: string, on: boolean): void {
     this.#truth.set(subtype, on);
-    this.#service(subtype)?.updateCharacteristic(this.#api.hap.Characteristic.On, on);
+    const service = this.#shown(subtype);
+    const { Characteristic, Service } = this.#api.hap;
+    if (service?.UUID === Service.OccupancySensor.UUID) {
+      service.updateCharacteristic(
+        Characteristic.OccupancyDetected,
+        on ? Characteristic.OccupancyDetected.OCCUPANCY_DETECTED : Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED,
+      );
+    } else {
+      service?.updateCharacteristic(Characteristic.On, on);
+    }
   }
 
-  /** `formerName` is what earlier versions called a new switch, to be brought up to date if still so called. */
-  #switch(subtype: string, wanted: boolean, name: string, formerName?: string): Service | undefined {
+  /**
+   * A switch or sensor, added or brought back, or removed when not wanted.
+   * `formerName` is what earlier versions called a new one, to be brought up
+   * to date if it is still so called.
+   */
+  #service(type: WithUUID<typeof Service>, subtype: string, wanted: boolean, name: string, formerName?: string): Service | undefined {
     const { Characteristic, Service } = this.#api.hap;
-    const existing = this.#accessory.getServiceById(Service.Switch, subtype);
+    const existing = this.#accessory.getServiceById(type, subtype);
     if (!wanted) {
       if (existing) {
         this.#accessory.removeService(existing);
@@ -160,7 +182,7 @@ export class ApplianceAccessory {
     if (!service) {
       // Named once, when it is new. Renaming is done in the Home app, and a
       // name set on every start would undo it.
-      service = this.#accessory.addService(Service.Switch, name, subtype);
+      service = this.#accessory.addService(type, name, subtype);
       if (!service.testCharacteristic(Characteristic.ConfiguredName)) {
         service.addOptionalCharacteristic(Characteristic.ConfiguredName);
       }
@@ -168,6 +190,9 @@ export class ApplianceAccessory {
     } else if (formerName !== undefined && service.getCharacteristic(Characteristic.ConfiguredName).value === formerName) {
       service.setCharacteristic(Characteristic.ConfiguredName, name);
       service.setCharacteristic(Characteristic.Name, name);
+    }
+    if (type.UUID !== Service.Switch.UUID) {
+      return service;
     }
     // Restored services come back without handlers, so this is set every time.
     service.getCharacteristic(Characteristic.On).onSet((value: CharacteristicValue) => {

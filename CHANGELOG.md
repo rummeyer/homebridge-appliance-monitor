@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-10-01
+
+### Added
+
+- Running can be shown as an **occupancy sensor** instead of a switch, per
+  appliance (`runningAs: "occupancy"`): a desk is taken while it draws power,
+  free when not. Changing it replaces the switch or sensor in HomeKit.
+
 ## [0.10.3] — 2026-10-01
 
 ### Changed
@@ -155,7 +163,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.0...v0.10.1

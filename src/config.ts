@@ -25,6 +25,11 @@ export interface DeviceConfig {
   pairingCode?: string;
   /** A Running switch in HomeKit, on while the appliance runs. On by default. */
   runningSwitch?: boolean;
+  /**
+   * How Running is shown: a switch (the default), or an occupancy sensor,
+   * which reads better for a desk — taken while it draws power, free when not.
+   */
+  runningAs?: RunningAs;
   /** What runningSwitch was called while it was a sensor. */
   runningSensor?: boolean;
   /**
@@ -57,6 +62,9 @@ export interface DeviceConfig {
 }
 
 export const MIN_POLL_SECONDS = 2;
+
+export type RunningAs = 'switch' | 'occupancy';
+export const RUNNING_AS: readonly RunningAs[] = ['switch', 'occupancy'];
 
 /** Whether the appliance has a Running switch; the earlier sensor setting counts too. */
 export const showsRunning = (device: DeviceConfig): boolean => (device.runningSwitch ?? device.runningSensor) !== false;
@@ -141,7 +149,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds, pollSeconds } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds, pollSeconds, runningAs } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -152,6 +160,9 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
     if (typeof pairingCode !== 'string' || parsePairingCode(pairingCode) === undefined) {
       problems.push(`${label} has a pairing code that is not a valid Matter setup code`);
     }
+  }
+  if (runningAs !== undefined && runningAs !== null && !RUNNING_AS.includes(runningAs)) {
+    problems.push(`${label} has an unknown runningAs "${String(runningAs)}"`);
   }
   if (finishedReset !== undefined && !RESET_MODES.includes(finishedReset)) {
     problems.push(`${label} has an unknown finishedReset "${String(finishedReset)}"`);

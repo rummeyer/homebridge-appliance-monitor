@@ -153,6 +153,11 @@ test('a phase may be only the short draws, if it can still come on before its li
   assert.match(check({ name: 'Spülen', minWatts: 30, maxSeconds: 5 }).problems[0]!, /shorter than/);
 });
 
+test('Running is a switch or an occupancy sensor, nothing else', () => {
+  assert.deepEqual(validateDeviceConfig({ name: 'Desk', runningAs: 'occupancy' }, 0), []);
+  assert.match(validateDeviceConfig({ name: 'Desk', runningAs: 'contact' }, 0)[0]!, /runningAs/);
+});
+
 test('the switches read the setting from when they were sensors, the new one winning', () => {
   assert.equal(showsInHomeKit({ name: 'Lamp', runningSwitch: false }), false);
   assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false, runningSwitch: true }), true);
