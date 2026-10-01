@@ -52,12 +52,14 @@ split one cycle into two. The first Finished therefore comes late.
 
 Ten minutes after that first cycle, the plugin works out from its curve:
 
-- the **level the machine rests at** when it is on but not working, and from it
-  the **running level**, clearly above;
+- the **level the machine rests at** when it is on but not working (the middle
+  of the ten minutes after the end), and from it the **running level**,
+  clearly above;
 - the **longest pause** inside the programme, a soak or a cool-down, and from
   it how long a quiet spell has to last before it is the end (the pause and
   half again, at least two minutes);
-- the **off level**, halfway between resting and switched off.
+- the **off level**: half the lowest the machine drew while it was on,
+  pauses included, so that keeping warm is never taken for switched off.
 
 From then on Finished comes minutes after the end. Every further cycle
 refines this, and a longer pause only ever lengthens the wait. If a cycle

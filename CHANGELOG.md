@@ -12,6 +12,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   report too seldom to see something short, such as the Eve Energy's once a
   minute against a coffee's half a minute.
 
+### Fixed
+
+- Learning took where an appliance rests from a single reading a minute
+  after the end. On a coffee machine that was its fan running on after
+  frothing milk, so keeping warm at 1.9 W was later taken for switched off.
+  It now takes the middle of the ten minutes after the end, and sets "off"
+  below the lowest the machine drew while on.
+- A coffee machine's cycle was not learned from at all: the check that a
+  cycle had real work in it looked at the median, and a coffee machine
+  spends most of a cycle keeping warm. It now looks at the peak.
+
 ## [0.4.1] — 2026-09-30
 
 The first published version.

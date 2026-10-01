@@ -250,3 +250,30 @@ function learnedFrom({ curve, endsAt }: ReturnType<typeof wash>): Learned {
   play(monitor, curve, 0, (endsAt + 60 * 60) * S);
   return lessons[0]!;
 }
+
+/**
+ * The owner's coffee machine on the morning of 1 October 2026, as an Eve
+ * Energy reported it: one reading a minute. Switched on and heated, kept
+ * warm with one short reheat, a coffee, then milk frothed — full heat, and a
+ * fan running on at 4.9 W — and switched off a few minutes later.
+ */
+const COFFEE_MORNING: Curve = [
+  [0, 1199.6], [60, 1200.9], [120, 1194.1], [180, 1195], [240, 1192.7], [306, 1191.8], [366, 1191.4],
+  [426, 1186.5], [486, 1197.9], [546, 2.8], [606, 1.9], [666, 1.8], [726, 1.9], [906, 2], [966, 1.8],
+  [1026, 1.9], [1086, 882.6], [1146, 1.9], [1464, 1.8], [1524, 2], [1584, 1.9], [1890, 188.8],
+  [1950, 2], [2022, 2.1], [2082, 1654.9], [2142, 1189.2], [2202, 4.9], [2262, 2.8], [2322, 2.9],
+  [2382, 2.8], [2442, 0],
+];
+
+test("the owner's coffee machine: keeping warm is on, not off", () => {
+  const { monitor, transitions, lessons, path } = recording();
+  play(monitor, COFFEE_MORNING, 0, 2442 * S + 60 * MIN);
+
+  assert.deepEqual(path(), ['off→running', 'running→finished']);
+  assert.equal(transitions[1]!.cycle!.seconds, 2202, 'from switching on to the end of the frothing');
+  const [learned] = lessons;
+  assert.equal(learned!.restWatts, 2.8, 'keeping warm, not the fan running on');
+  assert.equal(learned!.params.offWatts, 0.9, 'below the 1.8 W it dips to while keeping warm');
+  assert.equal(learned!.params.runWatts, 5.6);
+  assert.equal(learned!.longestPauseSeconds, 744, 'from the reheat to the coffee');
+});

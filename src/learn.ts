@@ -41,8 +41,8 @@ export interface Learned {
 
 /** Below this, a draw is "nothing": plugs read a few tenths of a watt with no load. */
 const NOTHING_WATTS = 0.5;
-/** How long after the final drop the resting level is read, to let it settle. */
-const SETTLE_MS = 60_000;
+/** The stretch after the final drop that shows where the machine rests. */
+const REST_WINDOW_MS = 10 * 60_000;
 
 const MIN_FINISH_SECONDS = 120;
 const MAX_FINISH_SECONDS = 3600;
@@ -55,19 +55,24 @@ export function learnFromCycle(samples: Sample[], cycle: CycleWindow, current: C
     return undefined;
   }
 
-  const restWatts = valueAt(sorted, cycle.endedAt + SETTLE_MS) ?? 0;
+  // Where it rests: the middle of what it drew after the end, not a single
+  // reading — the first minute may still be a fan running on, and the user
+  // may switch it off a few minutes later. Readings of nothing are left out;
+  // if there are only those, it drops to nothing by itself.
+  const after = sorted.filter(({ at }) => at >= cycle.endedAt && at < cycle.endedAt + REST_WINDOW_MS);
+  const restingReadings = after.map(({ watts }) => watts).filter((watts) => watts >= NOTHING_WATTS);
+  const restWatts =
+    after.length === 0 ? (valueAt(sorted, cycle.endedAt) ?? 0) : restingReadings.length > 0 ? round1(median(restingReadings)) : 0;
   const levelBefore = before.length > 0 ? before[before.length - 1]!.watts : undefined;
-  const lowest = Math.min(restWatts, ...sorted.filter(({ at }) => at < cycle.startedAt || at >= cycle.endedAt).map(({ watts }) => watts));
 
   // Where running starts: clearly above anything the machine rests at.
   const resting = Math.max(restWatts, levelBefore ?? 0);
   const runWatts = round1(Math.max(resting * 2, resting + 2));
 
-  // If that is not below most of what the machine drew while working, this
-  // was not a cycle worth learning from — a blip, or a machine that rests
-  // close to its working level.
-  const working = median(during.map(({ watts }) => watts));
-  if (working <= runWatts) {
+  // A cycle worth learning from went well above that at some point. Not the
+  // median: a coffee machine spends most of a cycle keeping warm.
+  const peak = Math.max(...during.map(({ watts }) => watts));
+  if (peak < runWatts * 2) {
     return undefined;
   }
 
@@ -78,12 +83,16 @@ export function learnFromCycle(samples: Sample[], cycle: CycleWindow, current: C
     MAX_FINISH_SECONDS,
   );
 
-  // Off: halfway between the resting level and the lowest seen, or — when
-  // it has not been switched off yet — halfway to nothing.
+  // Off: below the lowest the machine ever drew while it was on — in the
+  // pauses of the cycle as well as after it, since keeping warm can dip
+  // under where it settles. Half of that, so the dips stay on.
   const hasStandby = restWatts >= NOTHING_WATTS;
-  const offWatts = hasStandby
-    ? round1(restWatts - lowest >= 0.3 ? (restWatts + lowest) / 2 : restWatts / 2)
-    : current.offWatts;
+  const onReadings = sorted
+    .filter(({ at }) => at >= cycle.startedAt && at < cycle.endedAt + REST_WINDOW_MS)
+    .map(({ watts }) => watts)
+    .filter((watts) => watts >= NOTHING_WATTS);
+  const lowestOn = Math.min(restWatts, ...onReadings);
+  const offWatts = hasStandby ? Math.max(0.2, round1(lowestOn / 2)) : current.offWatts;
 
   return {
     params: { runWatts, offWatts, startSeconds: current.startSeconds, finishSeconds },
