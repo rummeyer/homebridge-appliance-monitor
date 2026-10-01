@@ -16,6 +16,7 @@
   .om-table  { width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums; }
   .om-table th, .om-table td { padding: .3rem .5rem .3rem 0; }
   .om-table th:not(:first-child), .om-table td:not(:first-child) { text-align: right; }
+  .om-table td.om-action { width: 1%; white-space: nowrap; padding-right: 0; }
   .om-table tfoot td { border-top: 1px solid rgba(128,128,128,.5); font-weight: 600; }
 
   .om-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
@@ -43,8 +44,8 @@
       <select class="form-select" id="om-curve-plug" aria-label="Appliance"></select>
       <select class="form-select" id="om-curve-hours" aria-label="Time">
         <option value="1">Last hour</option>
-        <option value="6" selected>Last 6 hours</option>
-        <option value="12">Last 12 hours</option>
+        <option value="6">Last 6 hours</option>
+        <option value="12" selected>Last 12 hours</option>
         <option value="24">Last 24 hours</option>
         <option value="72">Last 3 days</option>
         <option value="168">Last 7 days</option>
@@ -54,10 +55,7 @@
     </div>
     <div id="om-curve"></div>
     <p class="om-hint mb-3" id="om-curve-help">
-      The green markers on the right are the levels the plug dwells at; click one to make it a
-      phase. Or drag across the chart over something the appliance did — a coffee, a spin — to
-      take its range. Dashed bands are the phases already set up, and the bars below show when
-      each was on.
+      Click a green level marker, or drag across something the appliance did, to make it a phase.
     </p>
 
     <div class="om-hidden" id="om-phase-form">
@@ -100,13 +98,7 @@
     <h5 class="card-title">Energy and counts</h5>
     <div id="om-stats"></div>
     <p class="om-hint mb-0" id="om-stats-note">
-      Today so far, and the last complete week (Monday to Sunday), month and year; point at a
-      heading for its dates. Today counts from a plug's first reading of the day. A week or a
-      month is shown once a plug has been counted for all of it. A year is shown once it is over,
-      even if the plug joined partway through. Counted from the plugs' power readings
-      while Homebridge is running, and saved every five minutes. Count is how often an
-      appliance finished, or how often the phase ticked "Count in statistics" happened, since
-      counting began; point at it for the date.
+      Point at a heading for its dates, at a count for when counting began. Saved every five minutes.
     </p>
     <p class="om-hint mb-0 om-hidden" id="om-stats-none">No plugs configured yet.</p>
   </div>
@@ -166,7 +158,8 @@
         head.lastElementChild.title = dates;
       }
       cell(head, 'Count', 'th');
-      head.lastElementChild.title = 'Finished cycles, or the phase ticked "Count in statistics", since counting began';
+      head.lastElementChild.title = 'Finished cycles, or the phase ticked "Count"';
+      cell(head, '', 'th');
       const body = element.createTBody();
       for (const [index, { name, values, partial }] of table.rows.entries()) {
         const row = body.insertRow();
@@ -177,6 +170,9 @@
         row.lastElementChild.title = since
           ? `Since ${new Date(since).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
           : 'Nothing counted yet';
+        const action = row.insertCell();
+        action.className = 'om-action';
+        action.append(resetButton(name));
       }
       const { total } = table;
       const foot = element.createTFoot().insertRow();
@@ -186,12 +182,13 @@
         cell(foot, value === null ? '' : `${kwh(value)}${marks}`);
       });
       cell(foot, ''); // counts of different things do not add up
+      cell(foot, '');
       box.append(element);
 
       const shown = (flags) => total.values.some((value, column) => value !== null && flags[column]);
       for (const [flags, text] of [
-        [total.partial, '¹ Part of the year: counted from the day the plug was added.'],
-        [total.missing, '* Without the plugs that have not been counted for the whole period.'],
+        [total.partial, '¹ Part of the year, from the day the plug was added.'],
+        [total.missing, '* Without plugs not counted for the whole period.'],
       ]) {
         if (shown(flags)) {
           const note = document.createElement('p');
@@ -200,6 +197,48 @@
           box.append(note);
         }
       }
+    }
+
+    /**
+     * Empties an appliance's energy and count. Asked twice on the button
+     * itself rather than with confirm(), which the host's iframe may not be
+     * allowed to show.
+     */
+    function resetButton(name) {
+      const label = 'Reset data';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-sm btn-outline-danger ms-2';
+      button.textContent = label;
+      button.title = `Reset the energy and count of ${name}`;
+      let armed = null;
+      button.addEventListener('click', async () => {
+        if (!armed) {
+          button.textContent = 'SURE?';
+          button.classList.replace('btn-outline-danger', 'btn-danger');
+          armed = setTimeout(() => {
+            armed = null;
+            button.textContent = label;
+            button.classList.replace('btn-danger', 'btn-outline-danger');
+          }, 5000);
+          return;
+        }
+        clearTimeout(armed);
+        armed = null;
+        button.disabled = true;
+        button.textContent = '…';
+        try {
+          await homebridge.request('/reset', { name });
+          homebridge.toast.success(`${name} counts again from now.`, 'Data reset');
+          await showStats();
+        } catch (error) {
+          homebridge.toast.error(error?.message ?? String(error), 'Reset failed');
+          button.disabled = false;
+          button.textContent = label;
+          button.classList.replace('btn-danger', 'btn-outline-danger');
+        }
+      });
+      return button;
     }
 
     // ---- Power ---------------------------------------------------------------
@@ -401,7 +440,7 @@
       }
       device.phases.push({ name, minWatts, ...(maxWatts === undefined ? {} : { maxWatts }), minSeconds, holdSeconds, sensor, count });
       await homebridge.updatePluginConfig(configs);
-      message.textContent = 'Added. Save, and restart the child bridge, to use it.';
+      message.textContent = 'Added. Save and restart the child bridge to use it.';
       document.getElementById('om-phase-name').value = '';
       void showCurve();
     });

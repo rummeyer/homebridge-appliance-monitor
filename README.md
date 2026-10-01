@@ -190,10 +190,17 @@ one of its phases is ticked **Count in statistics**, how often that phase
 happened: coffees drawn rather than mornings the machine was on. If several
 are ticked, the first counts. Every finished cycle and every phase is counted
 all along, so ticking another phase shows its count from when the phase was
-set up, not from when it was ticked.
+set up, not from when it was ticked. Point at a count for the day counting
+began.
+
+**Reset data** on an appliance's row empties its energy and its count, which
+start again from then; what it has learned is kept. Click it twice to confirm.
+The running plugin does it within a few seconds; if the child bridge is not
+running, the settings page does it on the files itself.
 
 The energy is worked out from the power readings, per local calendar day,
-while Homebridge is running. Time it was not running is not counted. The
+while Homebridge is running, and saved every five minutes. Time it was not
+running is not counted. The
 statistics keep only the total per plug and day, for a little over two years,
 so they do not depend on how many days of recordings are kept.
 
@@ -329,6 +336,8 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 - `energy.json`: watt-hours per plug and day, for the Statistics tab, kept for
   a little over two years. Written every five minutes. Plugs removed from the
   config keep their history here.
+- `resets.json`: statistics resets asked for on the settings page, there
+  only until the plugin has done them.
 - `power/`: one file per day, `time,device,endpoint,watts`, one line per
   reading. Older than `recordDays` is deleted.
 

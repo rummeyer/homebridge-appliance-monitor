@@ -6,6 +6,18 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-10-01
+
+### Added
+
+- **Reset data** on the Statistics tab, per appliance: empties its energy and
+  its count, which start again from then. Click twice to confirm.
+
+### Changed
+
+- Shorter help texts on the settings page; the details are in the README.
+- The Power tab opens on "Last 12 hours" instead of "Last 6 hours".
+
 ## [0.12.1] — 2026-10-01
 
 ### Added
@@ -214,7 +226,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.2...v0.11.3

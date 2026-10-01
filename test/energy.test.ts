@@ -135,3 +135,14 @@ test('old days are dropped, recent ones kept', () => {
   meter.prune(local('2026-10-01T00:00:00'));
   assert.deepEqual(meter.record.days, { '2026-01-01': 7 });
 });
+
+test('a reset empties the days, and counts on from then', () => {
+  const meter = new EnergyMeter();
+  meter.reading(local('2026-10-01T10:00:00'), 100);
+  meter.tick(local('2026-10-01T12:00:00'));
+  meter.reset(local('2026-10-01T12:00:00'));
+  assert.deepEqual(meter.record.days, {});
+  assert.equal(meter.record.since, local('2026-10-01T12:00:00'));
+  meter.tick(local('2026-10-01T13:00:00'));
+  assert.deepEqual(meter.record.days, { '2026-10-01': 100 });
+});

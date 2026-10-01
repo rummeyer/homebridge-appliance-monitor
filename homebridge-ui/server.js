@@ -10,7 +10,7 @@
  */
 import { join } from 'node:path';
 
-import { HomebridgePluginUiServer } from '@homebridge/plugin-ui-utils';
+import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils';
 
 import { bandFor, phaseSpans, thin } from '../dist/curve.js';
 import { usablePhases } from '../dist/config.js';
@@ -20,10 +20,13 @@ import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
 import { findLevels } from '../dist/phases.js';
 import { readSamples } from '../dist/recorder.js';
+import { applyResets, pendingResets, requestReset } from '../dist/resets.js';
 
 /** Points drawn across the chart: about two per pixel of a wide settings page. */
 const CHART_BUCKETS = 600;
 const MAX_HOURS = 24 * 14;
+/** How long to wait for the plugin to do a reset, which it looks for every five seconds. */
+const RESET_WAIT_MS = 8000;
 
 class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
   constructor() {
@@ -32,6 +35,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     this.onRequest('/curve', (request) => this.curve(request));
     this.onRequest('/band', (request) => this.band(request));
     this.onRequest('/paired', () => this.paired());
+    this.onRequest('/reset', (request) => this.reset(request));
     this.ready();
   }
 
@@ -79,6 +83,28 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
       return null;
     }
     return bandFor(readSamples(this.powerDir, name, from, to), from, to) ?? null;
+  }
+
+  /**
+   * Resets an appliance's energy and count. Asked of the plugin, which holds
+   * them in memory; done here on the files if it does not answer, because it
+   * is not running.
+   */
+  async reset(request) {
+    const name = String(request?.name ?? '').trim();
+    if (!name || !this.homebridgeStoragePath) {
+      throw new RequestError('No such appliance', { status: 400 });
+    }
+    const dir = findDataDir(this.homebridgeStoragePath);
+    requestReset(dir, name);
+    for (const until = Date.now() + RESET_WAIT_MS; Date.now() < until; ) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (pendingResets(dir).length === 0) {
+        return { ok: true };
+      }
+    }
+    applyResets(dir);
+    return { ok: true };
   }
 
   /** The table for the plugs named, in the order the page lists them, with what each has counted. */

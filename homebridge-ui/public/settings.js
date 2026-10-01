@@ -258,9 +258,9 @@
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
           el('div', { class: 'om-set-grid' },
-            field('Name', nameInput, 'Also the name of its accessory in HomeKit, "… Monitor". Renaming it means pairing it again.', nameError(device.name ?? '')),
+            field('Name', nameInput, 'Renaming means pairing again.', nameError(device.name ?? '')),
             field('Pairing code', codeInput,
-              isPaired ? 'Paired; the code is no longer needed.' : 'In the Home app: the plug\'s settings → Turn On Pairing Mode. Valid for 15 minutes.',
+              isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
               codeError(device.pairingCode ?? '')))),
 
         el('div', { class: 'om-set-section' },
@@ -274,9 +274,7 @@
                   setOrDrop(device, 'runningAs', value === 'occupancy' ? 'occupancy' : undefined);
                   changed();
                 }),
-              'A switch for an appliance that runs and is done: "when it turns off" is when it is done. An occupancy sensor for a desk, taken or free. Changing it replaces it in HomeKit, with any automation on it.')),
-          el('div', { class: 'om-set-help' },
-            'One accessory per appliance, with Running and a switch for every phase, to hang automations on. With nothing shown, the plug is only counted in the statistics.')),
+              'Changing it replaces it in HomeKit, with its automations.'))),
 
         phasesSection(device),
 
@@ -286,7 +284,7 @@
             field('Ask for power every (s)', number(device.pollSeconds, 'only listen', (value) => {
               setOrDrop(device, 'pollSeconds', numberOrUndefined(value));
               changed();
-            }, 2), 'For plugs that report seldom, like the Eve Energy (once a minute). Not needed for Shelly.'),
+            }, 2), 'For plugs that report seldom, like the Eve Energy.'),
             ...[
               ['runWatts', 'Running above (W)', 'learned'],
               ['offWatts', 'Off at or below (W)', 'learned'],
@@ -328,7 +326,8 @@
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
           labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
           check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
-          check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
+          labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
+            'Count on the Statistics tab instead of finished cycles'),
           el('button', {
             type: 'button', class: 'btn btn-sm btn-outline-danger', title: `Remove ${phase.name || 'this phase'}`,
             onclick: () => {
@@ -346,9 +345,9 @@
             el('div', { class: 'om-set-phase om-set-head' },
               el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'Below (W)'),
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
-              el('span', { title: 'Only draws shorter than this are the phase; it then goes on for a moment once the draw is over. A rinse beside a coffee in the same range.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {})),
+              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {})),
             rows)
-          : el('div', { class: 'om-set-help mb-2' }, 'None. A phase is a range of power the appliance works in — heating, spinning, a coffee. The Power tab finds them on the recorded curve.'),
+          : el('div', { class: 'om-set-help mb-2' }, 'None yet. The Power tab finds them.'),
         el('button', {
           type: 'button', class: 'btn btn-sm btn-outline-primary mt-2',
           onclick: () => {
@@ -357,8 +356,7 @@
             render();
             [...container.querySelectorAll('.om-set-phase')].at(-1)?.querySelector('input')?.focus();
           },
-        }, '+ Add phase'),
-        el('div', { class: 'om-set-help' }, '"Count" shows how often the phase happened on the Statistics tab, instead of the finished cycles.'));
+        }, '+ Add phase'));
     }
 
     function general() {
@@ -367,7 +365,7 @@
         el('div', { class: 'om-set-grid' },
           el('div', {},
             check('om-set-record', 'Record power readings', config.recordPower !== false, (on) => { setOrDrop(config, 'recordPower', on, true); changed(); }),
-            el('div', { class: 'om-set-help' }, 'One file per day; the Power tab needs it.')),
+            el('div', { class: 'om-set-help' }, 'Needed by the Power tab.')),
           field('Days of recordings to keep', number(config.recordDays, '14', (value) => {
             setOrDrop(config, 'recordDays', numberOrUndefined(value), 14);
             changed();

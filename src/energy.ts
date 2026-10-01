@@ -60,6 +60,15 @@ export class EnergyMeter {
     }
   }
 
+  /** Starts again from nothing; counting begins now if the plug's draw is known, else with its next reading. */
+  reset(at: number): void {
+    this.#record.days = {};
+    this.#record.since = this.#watts === undefined ? 0 : at;
+    if (this.#at !== undefined) {
+      this.#at = Math.max(this.#at, at);
+    }
+  }
+
   /** Drops days too old to be in any period shown. */
   prune(now: number): void {
     const oldest = dayKey(new Date(now - KEEP_DAYS * 86_400_000));

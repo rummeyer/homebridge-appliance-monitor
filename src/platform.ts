@@ -28,6 +28,7 @@ import { PhaseTracker } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower } from './power.ts';
 import { PowerRecorder } from './recorder.ts';
+import { clearResets, pendingResets } from './resets.ts';
 import { NodeRegistry } from './registry.ts';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.ts';
 import { DeviceStore } from './store.ts';
@@ -155,6 +156,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#ledger = ledger !== null && typeof ledger === 'object' ? (ledger as Record<string, DeviceEnergy>) : {};
     this.#ticker = setInterval(() => {
       const now = Date.now();
+      this.#safely('Resetting statistics', () => this.#reset(now));
       for (const appliance of this.#appliances.values()) {
         this.#safely(appliance.device.name, () => {
           appliance.monitor.tick(now);
@@ -446,8 +448,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   }
 
   /** Writes what each plug has used, for the Statistics tab of the settings page. */
-  #saveEnergy(): void {
-    if (this.#appliances.size === 0) {
+  #saveEnergy(always = false): void {
+    if (this.#appliances.size === 0 && !always) {
       return;
     }
     const now = Date.now();
@@ -461,6 +463,24 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     } catch (error) {
       this.log.warn(`Could not save the energy statistics: ${message(error)}`);
     }
+  }
+
+  /** Resets the statistics the settings page asked to; see resets.ts. */
+  #reset(now: number): void {
+    const names = pendingResets(this.#dataPath);
+    if (names.length === 0) {
+      return;
+    }
+    for (const name of names) {
+      this.#appliances.get(name)?.energy.reset(now);
+      delete this.#ledger[name];
+      if (this.#store?.get(name).counts) {
+        this.#store.update(name, { counts: undefined });
+      }
+      this.log.info(`${name}: statistics reset`);
+    }
+    this.#saveEnergy(true);
+    clearResets(this.#dataPath);
   }
 
   #onTransition(device: DeviceConfig, accessory: ApplianceAccessory | undefined, transition: Transition): void {
