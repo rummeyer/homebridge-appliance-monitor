@@ -12,7 +12,8 @@ import { join } from 'node:path';
 
 import { HomebridgePluginUiServer } from '@homebridge/plugin-ui-utils';
 
-import { bandFor, thin } from '../dist/curve.js';
+import { bandFor, phaseSpans, thin } from '../dist/curve.js';
+import { usablePhases } from '../dist/config.js';
 import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
 import { findLevels } from '../dist/phases.js';
@@ -35,14 +36,23 @@ class OutletMonitorUiServer extends HomebridgePluginUiServer {
     return this.homebridgeStoragePath ? join(this.homebridgeStoragePath, 'outlet-monitor', 'power') : undefined;
   }
 
-  /** A plug's last hours, thinned for drawing, and the levels found in them. */
+  /** A plug's last hours, thinned for drawing, the levels found in them, and when its phases were on. */
   async curve(request) {
     const name = String(request?.name ?? '');
     const hours = Math.min(Math.max(Number(request?.hours) || 24, 1), MAX_HOURS);
     const to = Date.now();
     const from = to - hours * 3_600_000;
     const samples = this.powerDir ? readSamples(this.powerDir, name, from, to) : [];
-    return { from, to, points: thin(samples, from, to, CHART_BUCKETS), levels: findLevels(samples, to) };
+    // The phases come from the page, which has the settings as they are being
+    // edited, unsaved ones included.
+    const { phases } = usablePhases({ name, phases: Array.isArray(request?.phases) ? request.phases : [] });
+    return {
+      from,
+      to,
+      points: thin(samples, from, to, CHART_BUCKETS),
+      levels: findLevels(samples, to),
+      spans: phaseSpans(samples, from, to, phases),
+    };
   }
 
   /** The power range for a stretch picked on the chart, or null if the plug drew nothing then. */

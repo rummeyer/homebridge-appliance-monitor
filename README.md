@@ -85,9 +85,11 @@ element switched by a thermostat goes on and off every few seconds.
 
 The easiest way to set one up is the **Curve** tab of the settings page. It
 shows a plug's recorded power, from the last hour to the last two weeks, with
-the levels the plug dwells at as green bands:
+the levels the plug dwells at as green markers on the right, the phases set up
+so far each in its colour, and a bar below for each phase showing when it was
+on. Pointing at the chart shows the time and the reading there.
 
-- click a band to make that level a phase, or
+- click a marker to make that level a phase, or
 - drag across the chart over something the appliance did (a coffee at
   7:02, a spin) to take the range it drew then.
 

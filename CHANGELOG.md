@@ -13,6 +13,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   minute against a coffee's half a minute. A plug that draws nothing is not
   asked; the plug reports being switched on by itself.
 
+### Changed
+
+- The Curve tab opens on the last hour, and its chart is easier to read: a
+  stronger line over a filled area, time and power marks with a grid, each
+  phase in a colour of its own with a bar below showing when it was on — by
+  the phase's own rules, so a heater's short pulses are not a phase — and the
+  levels found as markers to the right. Pointing at the chart shows the time
+  and the reading there.
+
 ### Fixed
 
 - Learning took where an appliance rests from a single reading a minute

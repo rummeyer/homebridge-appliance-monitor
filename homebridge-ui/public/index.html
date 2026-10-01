@@ -19,18 +19,9 @@
 
   .om-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
   .om-controls select { width: auto; }
-  .om-chart  { width: 100%; height: auto; touch-action: none; user-select: none; display: block; }
-  .om-chart text { fill: currentColor; font-size: 11px; }
-  .om-axis   { stroke: rgba(128,128,128,.35); stroke-width: 1; }
-  .om-line   { fill: none; stroke: #2f80ed; stroke-width: 1.5; }
-  .om-level  { fill: rgba(46,158,91,.14); cursor: pointer; }
-  .om-level:hover { fill: rgba(46,158,91,.28); }
-  .om-level-label { fill: #2e9e5b !important; font-weight: 600; pointer-events: none; }
-  .om-phase  { fill: none; stroke: #e67e22; stroke-dasharray: 5 4; stroke-width: 1.2; pointer-events: none; }
-  .om-phase-label { fill: #e67e22 !important; pointer-events: none; }
-  .om-pick   { fill: rgba(47,128,237,.18); stroke: rgba(47,128,237,.6); pointer-events: none; }
   .om-form   { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; align-items: end; }
 </style>
+<script src="chart.js"></script>
 
 <ul class="nav nav-tabs om-tabs" role="tablist">
   <li class="nav-item"><button type="button" class="nav-link active" id="om-tab-settings" role="tab">Settings</button></li>
@@ -43,9 +34,9 @@
     <div class="om-controls">
       <select class="form-select form-select-sm" id="om-curve-plug" aria-label="Plug"></select>
       <select class="form-select form-select-sm" id="om-curve-hours" aria-label="Time">
-        <option value="1">Last hour</option>
+        <option value="1" selected>Last hour</option>
         <option value="6">Last 6 hours</option>
-        <option value="24" selected>Last 24 hours</option>
+        <option value="24">Last 24 hours</option>
         <option value="72">Last 3 days</option>
         <option value="168">Last 7 days</option>
         <option value="336">Last 14 days</option>
@@ -54,9 +45,10 @@
     </div>
     <div id="om-curve"></div>
     <p class="om-hint mb-3" id="om-curve-help">
-      Green bands are the levels the plug dwells at; click one to make it a phase. Or drag across
-      the chart over something the appliance did — a coffee, a spin — to take its range. Dashed
-      bands are the phases already set up.
+      The green markers on the right are the levels the plug dwells at; click one to make it a
+      phase. Or drag across the chart over something the appliance did — a coffee, a spin — to
+      take its range. Dashed bands are the phases already set up, and the bars below show when
+      each was on.
     </p>
 
     <div class="om-hidden" id="om-phase-form">
@@ -184,25 +176,15 @@
 
     // ---- Curve ---------------------------------------------------------------
 
-    const W = 1000;
-    const H = 300;
-    const PAD = { left: 52, right: 10, top: 10, bottom: 26 };
-    const FLOOR = 0.5; // below this is off, drawn on the axis
-    const SVG = 'http://www.w3.org/2000/svg';
-    const svg = (tag, attributes = {}) => {
-      const element = document.createElementNS(SVG, tag);
-      for (const [key, value] of Object.entries(attributes)) {
-        element.setAttribute(key, String(value));
-      }
-      return element;
-    };
-    const watt = (value) => `${value < 10 ? Number(value.toFixed(1)) : Math.round(value)} W`;
+    const chartStyle = document.createElement('style');
+    chartStyle.textContent = window.OutletChart.css;
+    document.head.append(chartStyle);
     const clock = (ms, long) =>
       new Date(ms).toLocaleString([], long
         ? { weekday: 'short', hour: '2-digit', minute: '2-digit' }
-        : { hour: '2-digit', minute: '2-digit' });
+        : { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    let current = null; // { name, from, to, xOf, timeOf }
+    let current = null; // { name }
 
     async function configuredPlugs() {
       const [config] = await homebridge.getPluginConfig();
@@ -232,9 +214,11 @@
         box.textContent = 'No plugs configured yet.';
         return;
       }
+      const device = (await configuredPlugs()).find((d) => d.name.trim() === name);
+      const phases = device?.phases ?? [];
       let curve;
       try {
-        curve = await homebridge.request('/curve', { name, hours });
+        curve = await homebridge.request('/curve', { name, hours, phases });
       } catch (error) {
         box.textContent = `Could not read the recording: ${error?.message ?? error}`;
         return;
@@ -243,115 +227,99 @@
         box.textContent = 'Nothing recorded for this plug in that time. Is "Record power readings" on?';
         return;
       }
-      const device = (await configuredPlugs()).find((d) => d.name.trim() === name);
-      draw(box, name, curve, device?.phases ?? []);
+      draw(box, name, curve, phases);
     }
 
     function draw(box, name, curve, phases) {
-      const { from, to, points, levels } = curve;
-      const top = Math.max(10, ...points.map(([, w]) => w), ...phases.map((p) => Number(p.maxWatts) || 0)) * 1.3;
-      const logMin = Math.log10(FLOOR);
-      const logMax = Math.log10(top);
-      const plotW = W - PAD.left - PAD.right;
-      const plotH = H - PAD.top - PAD.bottom;
-      const xOf = (ms) => PAD.left + ((ms - from) / (to - from)) * plotW;
-      const yOf = (w) => PAD.top + plotH - ((Math.log10(Math.max(w, FLOOR)) - logMin) / (logMax - logMin)) * plotH;
-      const timeOf = (x) => from + ((Math.min(Math.max(x, PAD.left), W - PAD.right) - PAD.left) / plotW) * (to - from);
-      current = { name, from, to, xOf, timeOf };
+      const chart = window.OutletChart.render({ ...curve, phases });
+      current = { name };
+      box.innerHTML = chart.svg;
+      const element = box.querySelector('svg');
+      element.setAttribute('aria-label', `Power of ${name}`);
+      const long = curve.to - curve.from > 36 * 3_600_000;
 
-      const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'om-chart', role: 'img', 'aria-label': `Power of ${name}` });
-
-      // Power axis: 1, 10, 100, 1000 W …
-      for (let decade = 0; 10 ** decade <= top; decade++) {
-        const y = yOf(10 ** decade);
-        chart.append(svg('line', { x1: PAD.left, x2: W - PAD.right, y1: y, y2: y, class: 'om-axis' }));
-        const label = svg('text', { x: PAD.left - 6, y: y + 4, 'text-anchor': 'end' });
-        label.textContent = watt(10 ** decade);
-        chart.append(label);
-      }
-      // Time axis: six marks.
-      const long = to - from > 36 * 3_600_000;
-      for (let mark = 0; mark <= 5; mark++) {
-        const ms = from + ((to - from) * mark) / 5;
-        const label = svg('text', { x: xOf(ms), y: H - 8, 'text-anchor': mark === 0 ? 'start' : mark === 5 ? 'end' : 'middle' });
-        label.textContent = clock(ms, long);
-        chart.append(label);
+      // Levels: click to make one a phase.
+      for (const marker of element.querySelectorAll('[data-level]')) {
+        const level = curve.levels[Number(marker.dataset.level)];
+        marker.addEventListener('click', () =>
+          offerPhase(level.minWatts, level.maxWatts, `the ${chart.watts(level.watts)} level`));
       }
 
-      // Levels found in the curve, to pick from.
-      for (const level of levels) {
-        const band = svg('rect', {
-          x: PAD.left, width: plotW,
-          y: yOf(level.maxWatts), height: Math.max(2, yOf(level.minWatts) - yOf(level.maxWatts)),
-          class: 'om-level',
-        });
-        const tip = svg('title');
-        tip.textContent = `${watt(level.watts)} — ${watt(level.minWatts)} to ${watt(level.maxWatts)}, ${Math.round(level.seconds / 60)} min in all. Click to make it a phase.`;
-        band.append(tip);
-        band.addEventListener('click', () => offerPhase(level.minWatts, level.maxWatts, `the ${watt(level.watts)} level`));
-        chart.append(band);
-        const label = svg('text', { x: W - PAD.right - 4, y: yOf(level.watts) + 4, 'text-anchor': 'end', class: 'om-level-label' });
-        label.textContent = watt(level.watts);
-        chart.append(label);
-      }
+      const toChart = (event) => {
+        const box = element.getBoundingClientRect();
+        return {
+          x: ((event.clientX - box.left) / box.width) * chart.width,
+          y: ((event.clientY - box.top) / box.height) * chart.height,
+        };
+      };
+      const hoverLine = element.querySelector('#om-hover-line');
+      const tip = element.querySelector('#om-hover-tip');
+      const tipBox = tip.querySelector('rect');
+      const tipText = tip.querySelector('text');
+      const pick = element.querySelector('#om-pick');
+      const inPlot = ({ x, y }) =>
+        x >= chart.xOf(curve.from) && x <= chart.xOf(curve.to) && y >= chart.plotTop && y <= chart.plotBottom;
 
-      // Phases already set up.
-      for (const phase of phases) {
-        const min = Number(phase.minWatts);
-        const max = phase.maxWatts == null || phase.maxWatts === '' ? top : Number(phase.maxWatts);
-        if (!(min >= 0) || !(max > min)) {
-          continue;
+      // Pointing shows the time and the reading there.
+      const hover = (point) => {
+        if (!inPlot(point)) {
+          hoverLine.setAttribute('visibility', 'hidden');
+          tip.setAttribute('visibility', 'hidden');
+          return;
         }
-        chart.append(svg('rect', { x: PAD.left, width: plotW, y: yOf(max), height: Math.max(2, yOf(min) - yOf(max)), class: 'om-phase' }));
-        const label = svg('text', { x: PAD.left + 6, y: yOf(max) + 13, class: 'om-phase-label' });
-        label.textContent = phase.name;
-        chart.append(label);
-      }
-
-      // The curve, as steps: each reading holds until the next.
-      let path = '';
-      for (const [index, [at, w]] of points.entries()) {
-        path += index === 0 ? `M${xOf(at)},${yOf(w)}` : `H${xOf(at)}V${yOf(w)}`;
-      }
-      path += `H${xOf(to)}`;
-      chart.append(svg('path', { d: path, class: 'om-line' }));
+        const at = chart.timeOf(point.x);
+        const value = chart.valueAt(at);
+        hoverLine.setAttribute('x1', point.x);
+        hoverLine.setAttribute('x2', point.x);
+        hoverLine.setAttribute('visibility', 'visible');
+        tipText.textContent = `${clock(at, long)}  ${value === null ? '–' : chart.watts(value)}`;
+        const width = tipText.getComputedTextLength() + 16;
+        const left = point.x + width + 12 > chart.xOf(curve.to) ? point.x - width - 8 : point.x + 8;
+        tip.setAttribute('transform', `translate(${left},${chart.plotTop + 6})`);
+        tipBox.setAttribute('width', width);
+        tipText.setAttribute('x', 8);
+        tip.setAttribute('visibility', 'visible');
+      };
 
       // Dragging across the chart picks a stretch of time.
-      const pick = svg('rect', { y: PAD.top, height: plotH, width: 0, class: 'om-pick om-hidden' });
-      chart.append(pick);
-      const toChart = (event) => ((event.clientX - chart.getBoundingClientRect().left) / chart.getBoundingClientRect().width) * W;
       let start = null;
-      chart.addEventListener('pointerdown', (event) => {
-        if (event.target.classList?.contains('om-level')) {
+      element.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('[data-level]')) {
           return; // a click on a level, not a drag
         }
-        start = toChart(event);
-        chart.setPointerCapture(event.pointerId);
-        pick.classList.remove('om-hidden');
+        const point = toChart(event);
+        if (!inPlot(point)) {
+          return;
+        }
+        start = point.x;
+        element.setPointerCapture(event.pointerId);
         pick.setAttribute('x', start);
         pick.setAttribute('width', 0);
+        pick.setAttribute('visibility', 'visible');
       });
-      chart.addEventListener('pointermove', (event) => {
+      element.addEventListener('pointermove', (event) => {
+        const point = toChart(event);
+        hover(point);
         if (start === null) {
           return;
         }
-        const x = toChart(event);
-        pick.setAttribute('x', Math.min(start, x));
-        pick.setAttribute('width', Math.abs(x - start));
+        pick.setAttribute('x', Math.min(start, point.x));
+        pick.setAttribute('width', Math.abs(point.x - start));
       });
-      chart.addEventListener('pointerup', async (event) => {
+      element.addEventListener('pointerleave', () => hover({ x: -1, y: -1 }));
+      element.addEventListener('pointerup', async (event) => {
         if (start === null) {
           return;
         }
-        const end = toChart(event);
+        const end = toChart(event).x;
         const [a, b] = [start, end].sort((p, q) => p - q);
         start = null;
         if (b - a < 4) {
-          pick.classList.add('om-hidden');
+          pick.setAttribute('visibility', 'hidden');
           return;
         }
-        const pickedFrom = timeOf(a);
-        const pickedTo = timeOf(b);
+        const pickedFrom = chart.timeOf(a);
+        const pickedTo = chart.timeOf(b);
         const band = await homebridge.request('/band', { name, from: Math.round(pickedFrom), to: Math.round(pickedTo) });
         if (!band) {
           homebridge.toast.info('The plug drew next to nothing then.');
@@ -359,8 +327,6 @@
         }
         offerPhase(band.minWatts, band.maxWatts, `${clock(pickedFrom, long)} to ${clock(pickedTo, long)}`);
       });
-
-      box.append(chart);
     }
 
     function offerPhase(minWatts, maxWatts, source) {
