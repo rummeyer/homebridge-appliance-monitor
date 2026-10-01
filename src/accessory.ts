@@ -1,6 +1,6 @@
 import type { API, CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
-import { showsFinished, showsRunning } from './config.ts';
+import { showsRunning } from './config.ts';
 import type { DeviceConfig } from './config.ts';
 import type { CycleState } from './cycle.ts';
 
@@ -12,8 +12,8 @@ export interface DeviceInfo {
   softwareVersionString?: string;
 }
 
-/** How long the Finished switch stays on: long enough for an automation to see it. */
-export const FINISHED_PULSE_MS = 2000;
+/** How long a short phase's switch stays on: long enough for an automation to see it. */
+export const PULSE_MS = 2000;
 
 /** How soon a switch tapped in the Home app is put back to what the appliance is doing. */
 const PUT_BACK_MS = 300;
@@ -21,11 +21,10 @@ const PUT_BACK_MS = 300;
 /**
  * One appliance in HomeKit, as switches to hang automations on:
  *
- * - **Running**, on while the appliance runs;
- * - one switch per phase, on while the phase lasts;
- * - **Finished**, which goes on for a moment when the appliance finishes, and
- *   off again by itself — an event, as a switch, because "when it turns on"
- *   is what an automation can wait for.
+ * - **Running**, on while the appliance runs. It goes off only when the
+ *   appliance finishes, so "when it turns off" is "when it is done";
+ * - one switch per phase, on while the phase lasts, or for a moment once
+ *   it is over, for one that is told apart by being short.
  *
  * Switches rather than sensors, at the owner's choice: an occupancy sensor
  * "detecting" a coffee being drawn read oddly, and the Home app tucks
@@ -36,11 +35,11 @@ export class ApplianceAccessory {
   readonly #api: API;
   readonly #accessory: PlatformAccessory;
   readonly #running: Service | undefined;
-  readonly #finished: Service | undefined;
   readonly #phases = new Map<string, Service>();
   /** What each switch should show, by subtype, to put a tapped one back to. */
   readonly #truth = new Map<string, boolean>();
-  #pulse: NodeJS.Timeout | undefined;
+  /** Switches on for a moment, by subtype, until they go off again. */
+  readonly #pulses = new Map<string, NodeJS.Timeout>();
 
   constructor(api: API, accessory: PlatformAccessory, device: DeviceConfig, state: CycleState) {
     this.#api = api;
@@ -56,7 +55,9 @@ export class ApplianceAccessory {
     }
 
     this.#running = this.#switch('running', showsRunning(device), `${device.name} Running`);
-    this.#finished = this.#switch('finished', showsFinished(device), `${device.name} Finished`);
+    // Earlier versions had a Finished switch too, on for a moment when the
+    // appliance finished: the moment Running goes off, so it told nothing more.
+    this.#switch('finished', false, '');
 
     const wanted = new Set<string>();
     for (const phase of device.phases ?? []) {
@@ -75,30 +76,32 @@ export class ApplianceAccessory {
     }
 
     this.update(state);
-    this.#show('finished', false);
     for (const name of this.#phases.keys()) {
       this.setPhase(name, false);
     }
   }
 
-  /** Running follows the state; Finished is a pulse of its own (see finished()). */
+  /** Running follows the state. */
   update(state: CycleState): void {
     this.#show('running', state === 'running');
-  }
-
-  /** Turns Finished on for a moment. */
-  finished(): void {
-    if (!this.#finished) {
-      return;
-    }
-    clearTimeout(this.#pulse);
-    this.#show('finished', true);
-    this.#pulse = setTimeout(() => this.#show('finished', false), FINISHED_PULSE_MS);
   }
 
   /** A phase, on while it lasts. */
   setPhase(name: string, active: boolean): void {
     this.#show(`phase:${name}`, active);
+  }
+
+  /** A short phase, which is known only once it is over: on for a moment. */
+  phaseHappened(name: string): void {
+    if (this.#phases.has(name)) {
+      this.#pulse(`phase:${name}`);
+    }
+  }
+
+  #pulse(subtype: string): void {
+    clearTimeout(this.#pulses.get(subtype));
+    this.#show(subtype, true);
+    this.#pulses.set(subtype, setTimeout(() => this.#show(subtype, false), PULSE_MS));
   }
 
   setInfo(info: DeviceInfo): void {
@@ -121,9 +124,6 @@ export class ApplianceAccessory {
   #service(subtype: string): Service | undefined {
     if (subtype === 'running') {
       return this.#running;
-    }
-    if (subtype === 'finished') {
-      return this.#finished;
     }
     return this.#phases.get(subtype.slice('phase:'.length));
   }

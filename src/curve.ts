@@ -108,7 +108,10 @@ export function phaseSpans(
     const spans: [number, number][] = [];
     let on: number | undefined;
     const take = (change: PhaseChange | undefined) => {
-      if (change?.active) {
+      if (change?.short) {
+        // Drawn where the draw was, not where the switch went on for a moment.
+        spans.push([change.since!, change.until ?? change.at]);
+      } else if (change?.active) {
         on = change.at;
       } else if (change && on !== undefined) {
         spans.push([on, change.at]);

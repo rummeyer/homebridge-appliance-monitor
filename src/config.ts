@@ -2,6 +2,7 @@ import type { PlatformConfig } from 'homebridge';
 import { ManualPairingCodeCodec, QrPairingCodeCodec } from '@matter/main/types';
 
 import type { CycleParams, ResetMode, ResetOptions } from './cycle.ts';
+import { DEFAULT_MIN_SECONDS } from './phases.ts';
 import type { PhaseConfig } from './phases.ts';
 
 /** One plug, as configured in Homebridge's config.json. */
@@ -24,14 +25,17 @@ export interface DeviceConfig {
   pairingCode?: string;
   /** A Running switch in HomeKit, on while the appliance runs. On by default. */
   runningSwitch?: boolean;
-  /** A Finished switch in HomeKit, on for a moment when it finishes. On by default. */
-  finishedSwitch?: boolean;
-  /** What runningSwitch and finishedSwitch were called while they were sensors. */
+  /** What runningSwitch was called while it was a sensor. */
   runningSensor?: boolean;
+  /**
+   * The Finished switch of earlier versions, and the sensor before it. No
+   * longer used: Running going off is the appliance finishing.
+   */
+  finishedSwitch?: boolean;
   finishedSensor?: boolean;
   /**
    * When the state goes from finished back to off. See ResetMode. No longer
-   * offered in the settings, since Finished is a moment in HomeKit; it only
+   * offered in the settings, since HomeKit only shows Running; it only
    * decides when the log says Off.
    */
   finishedReset?: ResetMode;
@@ -57,14 +61,10 @@ export const MIN_POLL_SECONDS = 2;
 /** Whether the appliance has a Running switch; the earlier sensor setting counts too. */
 export const showsRunning = (device: DeviceConfig): boolean => (device.runningSwitch ?? device.runningSensor) !== false;
 
-/** Whether the appliance has a Finished switch. */
-export const showsFinished = (device: DeviceConfig): boolean => (device.finishedSwitch ?? device.finishedSensor) !== false;
-
 /** Whether a device shows anything in HomeKit; one with nothing is only counted. */
 export function showsInHomeKit(device: DeviceConfig): boolean {
   return (
     showsRunning(device) ||
-    showsFinished(device) ||
     usablePhases(device).phases.some((phase) => phase.sensor !== false)
   );
 }
@@ -229,6 +229,14 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
         wrong.push(`has a ${key} that is not a number of 0 or more`);
       }
     }
+    const { maxSeconds } = phase;
+    if (maxSeconds !== undefined && maxSeconds !== null) {
+      if (typeof maxSeconds !== 'number' || !(maxSeconds > 0)) {
+        wrong.push('has a maxSeconds that is not a number above 0');
+      } else if (maxSeconds <= (typeof phase.minSeconds === 'number' ? phase.minSeconds : DEFAULT_MIN_SECONDS)) {
+        wrong.push('needs its "shorter than" to be more than its "on after", or it never happens');
+      }
+    }
     if (phase.count !== undefined && phase.count !== null && typeof phase.count !== 'boolean') {
       wrong.push('has a count that is not on or off');
     }
@@ -245,6 +253,7 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
       // Empty number fields arrive as null; those mean the default.
       minSeconds: typeof phase.minSeconds === 'number' ? phase.minSeconds : undefined,
       holdSeconds: typeof phase.holdSeconds === 'number' ? phase.holdSeconds : undefined,
+      maxSeconds: typeof maxSeconds === 'number' ? maxSeconds : undefined,
     });
   }
   return { phases, problems };

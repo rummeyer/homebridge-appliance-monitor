@@ -32,7 +32,7 @@
   .om-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem 1rem; }
   .om-set-help { font-size: .78rem; opacity: .65; margin-top: .2rem; }
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
-  .om-set-phase { display: grid; grid-template-columns: 2fr repeat(4, 1fr) 5.5rem 4.5rem 2rem; gap: .5rem; align-items: center;
+  .om-set-phase { display: grid; grid-template-columns: 2fr repeat(5, 1fr) 5.5rem 4.5rem 2rem; gap: .5rem; align-items: center;
                   padding: .3rem 0; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; }
   .om-set-phase .form-check { margin: 0; white-space: nowrap; }
@@ -109,6 +109,11 @@
 
     /** Hands the config to Homebridge, a moment after the last change. */
     function changed() {
+      // Earlier versions had a Finished switch; Running going off says the same.
+      for (const device of config.devices) {
+        delete device.finishedSwitch;
+        delete device.finishedSensor;
+      }
       clearTimeout(pending);
       pending = setTimeout(() => void homebridge.updatePluginConfig(configs), 250);
     }
@@ -254,9 +259,8 @@
           el('h6', {}, 'In HomeKit'),
           el('div', {},
             check('om-set-running', 'Running switch — on while it runs', showing(device, 'running'), (on) => { setSwitch(device, 'running', on); changed(); }),
-            check('om-set-finished', 'Finished switch — on for a moment when it is done', showing(device, 'finished'), (on) => { setSwitch(device, 'finished', on); changed(); }),
             el('div', { class: 'om-set-help' },
-              'One accessory per appliance, with a switch each for Running, Finished and every phase, to hang automations on. Without any switch, the plug is only counted in the statistics.'))),
+              'One accessory per appliance, with a switch for Running and one for every phase, to hang automations on. "When Running turns off" is when the appliance is done. Without any switch, the plug is only counted in the statistics.'))),
 
         phasesSection(device),
 
@@ -306,6 +310,7 @@
           labelled(number(phase.maxWatts, 'no limit', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'Below (W)'),
           labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
+          labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
           check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
           check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
           el('button', {
@@ -324,7 +329,8 @@
           ? el('div', {},
             el('div', { class: 'om-set-phase om-set-head' },
               el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'Below (W)'),
-              el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'), el('span', {}), el('span', {}), el('span', {})),
+              el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
+              el('span', { title: 'Only draws shorter than this are the phase; it then goes on for a moment once the draw is over. A rinse beside a coffee in the same range.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {})),
             rows)
           : el('div', { class: 'om-set-help mb-2' }, 'None. A phase is a range of power the appliance works in — heating, spinning, a coffee. The Curve tab finds them on the recorded curve.'),
         el('button', {

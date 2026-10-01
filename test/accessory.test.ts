@@ -12,7 +12,7 @@ import { after, test } from 'node:test';
 import * as hap from '@homebridge/hap-nodejs';
 import type { API, PlatformAccessory } from 'homebridge';
 
-import { ApplianceAccessory, FINISHED_PULSE_MS, firmware } from '../src/accessory.ts';
+import { ApplianceAccessory, PULSE_MS, firmware } from '../src/accessory.ts';
 import type { DeviceConfig } from '../src/config.ts';
 
 const { Characteristic, Service } = hap;
@@ -36,7 +36,7 @@ const on = (accessory: PlatformAccessory, subtype: string) =>
 const name = (accessory: PlatformAccessory, subtype: string) =>
   switchOf(accessory, subtype)?.getCharacteristic(Characteristic.ConfiguredName).value;
 
-test('one accessory with a switch each for Running, Finished and every phase', () => {
+test('one accessory with a switch each for Running and every phase', () => {
   const accessory = platformAccessory();
   new ApplianceAccessory(
     api,
@@ -46,7 +46,7 @@ test('one accessory with a switch each for Running, Finished and every phase', (
   );
   assert.deepEqual(
     accessory.services.filter((s) => s.UUID === Service.Switch.UUID).map((s) => s.subtype),
-    ['running', 'finished', 'phase:Heating', 'phase:Brewing'],
+    ['running', 'phase:Heating', 'phase:Brewing'],
   );
   assert.equal(name(accessory, 'running'), 'Coffee Running');
   assert.equal(name(accessory, 'phase:Brewing'), 'Coffee Brewing');
@@ -62,16 +62,6 @@ test('Running is on while the appliance runs', () => {
   assert.equal(on(accessory, 'running'), false);
 });
 
-test('Finished goes on for a moment, then off by itself', async () => {
-  const accessory = platformAccessory();
-  const handle = new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'running');
-  assert.equal(on(accessory, 'finished'), false);
-  handle.finished();
-  assert.equal(on(accessory, 'finished'), true, 'on, for an automation "when it turns on"');
-  await wait(FINISHED_PULSE_MS + 100);
-  assert.equal(on(accessory, 'finished'), false);
-});
-
 test('a phase is on while it lasts', () => {
   const accessory = platformAccessory();
   const handle = new ApplianceAccessory(api, accessory, { name: 'Coffee', phases: [{ name: 'Brewing', minWatts: 30, maxWatts: 100 }] }, 'off');
@@ -79,6 +69,20 @@ test('a phase is on while it lasts', () => {
   assert.equal(on(accessory, 'phase:Brewing'), true);
   handle.setPhase('Brewing', false);
   assert.equal(on(accessory, 'phase:Brewing'), false);
+});
+
+test('a short phase goes on for a moment once it is known, then off by itself', async () => {
+  const accessory = platformAccessory();
+  const handle = new ApplianceAccessory(
+    api,
+    accessory,
+    { name: 'Coffee', phases: [{ name: 'Rinse', minWatts: 30, maxWatts: 100, maxSeconds: 10 }] },
+    'off',
+  );
+  handle.phaseHappened('Rinse');
+  assert.equal(on(accessory, 'phase:Rinse'), true);
+  await wait(PULSE_MS + 100);
+  assert.equal(on(accessory, 'phase:Rinse'), false);
 });
 
 test('a switch tapped in the Home app goes back to what the appliance is doing', async () => {
@@ -105,28 +109,35 @@ test('the sensors of earlier versions leave a restored accessory', () => {
 
 test('a switch turned off in the config, or a phase removed, leaves a restored accessory', () => {
   const accessory = platformAccessory();
-  const device: DeviceConfig = { name: 'Coffee', phases: [{ name: 'Heating', minWatts: 1000 }] };
+  const device: DeviceConfig = { name: 'Coffee', phases: [{ name: 'Heating', minWatts: 1000 }, { name: 'Bezug', minWatts: 30 }] };
   new ApplianceAccessory(api, accessory, device, 'off');
-  new ApplianceAccessory(api, accessory, { ...device, runningSwitch: false, phases: [] }, 'off');
+  new ApplianceAccessory(api, accessory, { ...device, runningSwitch: false, phases: [{ name: 'Bezug', minWatts: 30 }] }, 'off');
   assert.equal(switchOf(accessory, 'running'), undefined);
   assert.equal(switchOf(accessory, 'phase:Heating'), undefined);
-  assert.ok(switchOf(accessory, 'finished'));
+  assert.ok(switchOf(accessory, 'phase:Bezug'));
+});
+
+test('the Finished switch of earlier versions leaves a restored accessory', () => {
+  const accessory = platformAccessory();
+  accessory.addService(Service.Switch, 'Washer Finished', 'finished');
+  new ApplianceAccessory(api, accessory, { name: 'Washer', finishedSwitch: true }, 'off');
+  assert.equal(switchOf(accessory, 'finished'), undefined);
+  assert.ok(switchOf(accessory, 'running'));
 });
 
 test('the setting from when these were sensors still counts', () => {
   const accessory = platformAccessory();
-  new ApplianceAccessory(api, accessory, { name: 'Lamp', runningSensor: false, finishedSensor: false }, 'off');
+  new ApplianceAccessory(api, accessory, { name: 'Lamp', runningSensor: false }, 'off');
   assert.equal(switchOf(accessory, 'running'), undefined);
-  assert.equal(switchOf(accessory, 'finished'), undefined);
 });
 
 test('a rename in the Home app survives a restart', () => {
   const accessory = platformAccessory();
   const device: DeviceConfig = { name: 'Washer' };
   new ApplianceAccessory(api, accessory, device, 'off');
-  switchOf(accessory, 'finished')!.setCharacteristic(Characteristic.ConfiguredName, 'Waschmaschine fertig');
+  switchOf(accessory, 'running')!.setCharacteristic(Characteristic.ConfiguredName, 'Waschmaschine läuft');
   new ApplianceAccessory(api, accessory, device, 'off');
-  assert.equal(name(accessory, 'finished'), 'Waschmaschine fertig');
+  assert.equal(name(accessory, 'running'), 'Waschmaschine läuft');
 });
 
 test('the plug describes itself on the details page', () => {

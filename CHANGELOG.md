@@ -6,6 +6,29 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-01
+
+### Added
+
+- **Shorter than** per phase (`maxSeconds`): only draws shorter than this
+  are the phase, to tell apart what draws the same power for different
+  times — a coffee machine's rinse from a coffee. Such a phase goes on for a
+  moment once the draw is over, when its length is known. The
+  Curve tab shows it where the draw was.
+
+### Removed
+
+- The **Finished** switch. Running goes off only when the appliance finishes,
+  so "when Running turns off" says the same, without a second switch. The
+  Finished switch leaves the Home app on the first start of this version;
+  automations hung on it have to be set up again on "Running turns off".
+  Finished cycles are still counted on the Statistics tab.
+
+### Fixed
+
+- No more "could not ask for power" lines in the debug log when Homebridge
+  shuts down.
+
 ## [0.9.0] — 2026-10-01
 
 ### Changed
@@ -108,7 +131,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.1...v0.7.0

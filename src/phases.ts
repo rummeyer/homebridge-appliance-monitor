@@ -32,6 +32,16 @@ export interface PhaseConfig {
    * cycles: a coffee drawn rather than a morning's use of the machine.
    */
   count?: boolean;
+  /**
+   * Only draws shorter than this, added up in the band, are the phase. A rinse
+   * runs the same pump as a coffee, only for less time: a coffee on after ten
+   * seconds and a rinse shorter than ten, in the same band, are one or the
+   * other and never both.
+   *
+   * How long a draw was is only known once it is over, so such a phase is on
+   * for a moment then, not while it lasts.
+   */
+  maxSeconds?: number;
 }
 
 export const DEFAULT_MIN_SECONDS = 5;
@@ -42,6 +52,17 @@ export interface PhaseChange {
   at: number;
   /** When it went on, on the change that turns it off. */
   since?: number;
+  /**
+   * How long the draw was in the band, on the change that turns it off, or
+   * on a short one: the time it took to come on included, the hold not.
+   */
+  inBandMs?: number;
+  /**
+   * A phase with maxSeconds that has happened: on now, for a moment, though
+   * the draw was from `since` to `until`.
+   */
+  short?: boolean;
+  until?: number;
 }
 
 /** One phase, on or off. Time is passed in, as for the state machine. */
@@ -51,9 +72,11 @@ export class PhaseTracker {
   #since = 0;
   #watts: number | undefined;
   #accountedAt: number | undefined;
-  /** Time spent in the band since the draw first entered it. */
+  /** Time spent in the band since the draw first entered it, through to the phase's end. */
   #inMs = 0;
   #outSince: number | undefined;
+  /** When the draw first entered the band, for a phase on or in the making. */
+  #firstIn: number | undefined;
 
   constructor(phase: PhaseConfig) {
     this.#phase = phase;
@@ -67,6 +90,7 @@ export class PhaseTracker {
     return this.#active;
   }
 
+
   reading(at: number, watts: number | undefined): PhaseChange | undefined {
     this.#advance(at);
     if (watts === undefined) {
@@ -75,6 +99,7 @@ export class PhaseTracker {
     this.#watts = watts;
     if (this.#inBand(watts)) {
       this.#outSince = undefined;
+      this.#firstIn ??= at;
     } else {
       this.#outSince ??= at;
     }
@@ -104,22 +129,39 @@ export class PhaseTracker {
 
     if (!this.#active) {
       if (outLong) {
-        this.#inMs = 0; // too long away: a start in the making is forgotten
+        // The draw is over. For a short phase, that is when it is known;
+        // otherwise a start in the making is forgotten.
+        const short = this.#short(at, minMs);
+        this.#inMs = 0;
+        this.#firstIn = undefined;
+        return short;
       }
-      if (this.#inMs >= minMs) {
+      if (this.#phase.maxSeconds === undefined && this.#inMs >= minMs) {
         this.#active = true;
         this.#since = at;
-        this.#inMs = 0;
         return { active: true, at };
       }
       return undefined;
     }
     if (outLong) {
       this.#active = false;
+      const inBandMs = this.#inMs;
       this.#inMs = 0;
-      return { active: false, at, since: this.#since };
+      this.#firstIn = undefined;
+      return { active: false, at, since: this.#since, inBandMs };
     }
     return undefined;
+  }
+
+  #short(at: number, minMs: number): PhaseChange | undefined {
+    const { maxSeconds } = this.#phase;
+    if (maxSeconds === undefined || this.#firstIn === undefined) {
+      return undefined;
+    }
+    if (this.#inMs < minMs || this.#inMs >= maxSeconds * 1000) {
+      return undefined;
+    }
+    return { active: true, at, short: true, since: this.#firstIn, until: this.#outSince, inBandMs: this.#inMs };
   }
 }
 

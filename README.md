@@ -5,7 +5,7 @@
 <h1 align="center">homebridge-appliance-monitor</h1>
 
 <p align="center">
-  Your <b>washing machine, dryer and coffee machine</b> in the Apple Home app &mdash; <b>Running</b> and <b>Finished</b>, from their power draw through Matter smart plugs.
+  Your <b>washing machine, dryer and coffee machine</b> in the Apple Home app &mdash; <b>Running</b> or done, from their power draw through Matter smart plugs.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 ---
 
 Watches the power draw of **Matter smart plugs and power meters** and tells
-HomeKit when an appliance is **Running** and when it is **Finished**, and what
+HomeKit while an appliance is **Running** and when it is done, and what
 it is doing in between: heating, spinning, a coffee being drawn. Built for the
 **Eve Energy** and the **Shelly Plug PM Gen3** (a meter without a relay), and
 meant for any Matter device the Home app shows watts for.
@@ -59,10 +59,9 @@ Each appliance is in one of three states:
 - **Finished**: the draw has stayed below the running level for longer than
   the longest pause in the programme.
 
-In HomeKit, Running is a switch that is on while the appliance runs, and
-Finished is a moment: the Finished switch turns on when the appliance
-finishes, and off again by itself a couple of seconds later. See
-[In the Home app](#in-the-home-app).
+In HomeKit, Running is a switch that is on while the appliance runs. It
+goes off only when the appliance finishes, so "when Running turns off" is
+"when it is done". See [In the Home app](#in-the-home-app).
 
 ### Learning
 
@@ -122,25 +121,41 @@ Name the phase, adjust the range if you like, add it, and save. Each phase
 can have a switch in HomeKit, on while it lasts, and its start and end are
 logged.
 
+Some things differ not by power but by how long they last. Rinsing a coffee
+machine runs the same pump as a coffee, for a few seconds rather than twenty.
+Two phases in the same range tell them apart:
+
+| Phase | Range | On after | Shorter than |
+|---|---|---|---|
+| Bezug | 30–100 W | 10 s | |
+| Spülen | 30–100 W | 2 s | 10 s |
+
+A draw of ten seconds or more turns Bezug on; a shorter one is a rinse, and
+never turns Bezug on. How long a draw was is known only once it is over, so
+a phase with **Shorter than** goes on for a moment then,
+rather than while it lasts. Both times count the draw's time in the range,
+not how long a switch was on; give both phases the same "off after", so they
+see the same draws.
+
 ## In the Home app
 
 Each appliance is one accessory with a switch for each thing it can tell, to
 hang automations on:
 
-- **Running**: on while the appliance runs.
-- **Finished**: turns on for a moment when the appliance finishes, then off
-  again by itself. An automation "when Washing machine Finished turns on" runs
-  once per cycle: a notification, a light, an announcement on the HomePod.
+- **Running**: on while the appliance runs, and off once it has finished,
+  never before. An automation "when Washing machine Running turns off" runs
+  once per cycle, when it is done: a notification, a light, an announcement
+  on the HomePod.
 - **One switch per phase**: on while the phase lasts, "Coffee machine Bezug"
-  say.
+  say, or for a moment once it is over, for a phase with "shorter than".
 
 The plugin only measures, so the switches only report: one tapped in the Home
 app is put back to what the appliance is doing straight away, and an
 automation never sees a state that is not true.
 
-Running and Finished are on by default; each switch can be turned off in the
-settings, a phase's too. A new switch is named after the appliance, followed
-by "Running", "Finished" or the phase's name. To call it something else,
+Running is on by default; it can be turned off in the settings, a phase's
+switch too. A new switch is named after the appliance, followed by "Running"
+or the phase's name. To call it something else,
 rename it in the Home app; the plugin never sets the name again.
 
 A plug with every switch turned off, a lamp say, does not appear in HomeKit at
@@ -282,12 +297,11 @@ appliance is on.
 | `devices[].name` | — | Name of the accessory, and of its switches, log lines and recording. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
 | `devices[].runningSwitch` | `true` | The Running switch, on while the appliance runs. |
-| `devices[].finishedSwitch` | `true` | The Finished switch, on for a moment when it finishes. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.offWatts` | learned | Switched off at or below this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see above) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Curve tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep. |
@@ -301,7 +315,7 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
   the plugs. Deleting it unpairs everything, as far as the plugin is concerned.
 - `nodes.json`: which configured name is which Matter node.
 - `devices.json`: what each appliance has learned, and the state it is in, so
-  that Finished survives a restart. Remove an appliance's `learned` entry
+  that a running appliance is still running after a restart. Remove an appliance's `learned` entry
   (with the child bridge stopped) to have it learn afresh.
 - `energy.json`: watt-hours per plug and day, for the Statistics tab. Written
   every five minutes. Plugs removed from the config keep their history here.

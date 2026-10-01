@@ -93,6 +93,41 @@ test('each coffee is a phase of its own', () => {
   );
 });
 
+test('an ended phase tells how long the draw was in the band, without the hold after it', () => {
+  const coffee = new PhaseTracker({ name: 'Coffee', minWatts: 150, maxWatts: 700, holdSeconds: 10 });
+  const ends = track(coffee, coffeeMorning(), 3700).filter(({ active }) => !active);
+  assert.deepEqual(
+    ends.map(({ inBandMs }) => inBandMs! / S),
+    [30, 28],
+  );
+});
+
+/** A rinse of 6 s, an espresso of 20 s, and another rinse, as the pump draws them. */
+const rinseAndEspresso: [number, number][] = [[0, 3], [100, 48], [106, 3], [300, 50], [320, 3], [500, 47], [505, 3]];
+
+test('a coffee and a rinse in the same band: the long draw is one, the short ones the other, never both', () => {
+  const bezug = new PhaseTracker({ name: 'Bezug', minWatts: 30, maxWatts: 100, minSeconds: 10, holdSeconds: 15 });
+  const spuelen = new PhaseTracker({ name: 'Spülen', minWatts: 30, maxWatts: 100, minSeconds: 2, holdSeconds: 15, maxSeconds: 10 });
+  assert.deepEqual(
+    track(bezug, rinseAndEspresso, 600).map(({ active, at }) => [active, at / S]),
+    [[true, 310], [false, 335]],
+  );
+  assert.deepEqual(
+    track(spuelen, rinseAndEspresso, 600).map(({ active, short, at, since, until, inBandMs }) =>
+      [active, short, at / S, since! / S, until! / S, inBandMs! / S]),
+    [
+      // Known once it has been out of the band for the hold: then on, for a moment.
+      [true, true, 121, 100, 106, 6],
+      [true, true, 520, 500, 505, 5],
+    ],
+  );
+});
+
+test('a draw too short even for the short phase is neither', () => {
+  const spuelen = new PhaseTracker({ name: 'Spülen', minWatts: 30, maxWatts: 100, minSeconds: 2, holdSeconds: 15, maxSeconds: 10 });
+  assert.deepEqual(track(spuelen, [[0, 3], [100, 48], [101, 3]], 200), []);
+});
+
 test('a moment in the band is not the phase', () => {
   const coffee = new PhaseTracker({ name: 'Coffee', minWatts: 150, maxWatts: 700, minSeconds: 5 });
   const changes = track(coffee, [[0, 2.5], [10, 300], [13, 2.5], [100, 300], [102, 2.5]], 200);

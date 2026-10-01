@@ -45,10 +45,9 @@ test('the package is a Homebridge platform plugin', () => {
   assert.equal(pkg.name, 'homebridge-appliance-monitor');
 });
 
-test('the switches are offered under their own names, and Finished is not reset by hand', () => {
+test('Running is offered as a switch, and nothing about Finished is', () => {
   assert.equal(device.runningSwitch.default, true);
-  assert.equal(device.finishedSwitch.default, true);
-  for (const gone of ['runningSensor', 'finishedSensor', 'finishedReset', 'finishedResetMinutes']) {
+  for (const gone of ['runningSensor', 'finishedSwitch', 'finishedSensor', 'finishedReset', 'finishedResetMinutes']) {
     assert.equal(device[gone], undefined, gone);
   }
 });

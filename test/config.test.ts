@@ -64,11 +64,11 @@ test('phases need a name, once each, and a range that goes up; a wrong one costs
   const heating = { name: 'Heating', minWatts: 700, maxWatts: 1400 };
 
   assert.deepEqual(check([heating]), {
-    phases: [{ ...heating, minSeconds: undefined, holdSeconds: undefined }],
+    phases: [{ ...heating, minSeconds: undefined, holdSeconds: undefined, maxSeconds: undefined }],
     problems: [],
   });
   assert.deepEqual(check([{ ...heating, name: ' Heating ', minSeconds: 3, holdSeconds: null }]).phases, [
-    { ...heating, minSeconds: 3, holdSeconds: undefined },
+    { ...heating, minSeconds: 3, holdSeconds: undefined, maxSeconds: undefined },
   ]);
 
   const mixed = check([
@@ -99,12 +99,12 @@ const check0 = (phases: unknown) => usablePhases({ name: 'Coffee', phases: phase
 
 test('a plug shows something in HomeKit unless every switch is off', () => {
   assert.equal(showsInHomeKit({ name: 'Lamp' }), true);
-  assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false, finishedSensor: false }), false);
+  assert.equal(showsInHomeKit({ name: 'Lamp', runningSwitch: false, finishedSwitch: true }), false, 'Finished is gone');
+  assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false }), false);
   assert.equal(
     showsInHomeKit({
       name: 'Coffee',
       runningSensor: false,
-      finishedSensor: false,
       phases: [{ name: 'Brewing', minWatts: 150, maxWatts: 700 }],
     }),
     true,
@@ -113,13 +113,12 @@ test('a plug shows something in HomeKit unless every switch is off', () => {
     showsInHomeKit({
       name: 'Coffee',
       runningSensor: false,
-      finishedSensor: false,
       phases: [{ name: 'Brewing', minWatts: 150, maxWatts: 700, sensor: false }],
     }),
     false,
   );
   assert.equal(
-    showsInHomeKit({ name: 'Lamp', runningSensor: false, finishedSensor: false, phases: [{ sensor: true } as PhaseConfig] }),
+    showsInHomeKit({ name: 'Lamp', runningSensor: false, phases: [{ sensor: true } as PhaseConfig] }),
     false,
     'an empty phase is no sensor',
   );
@@ -128,7 +127,7 @@ test('a plug shows something in HomeKit unless every switch is off', () => {
 test('a phase may leave out its upper end, not its lower one', () => {
   const check = (phase: object) => usablePhases({ name: 'Coffee', phases: [phase as PhaseConfig] });
   assert.deepEqual(check({ name: 'Heating', minWatts: 1000, minSeconds: 5, holdSeconds: 30, sensor: true }).phases, [
-    { name: 'Heating', minWatts: 1000, maxWatts: undefined, minSeconds: 5, holdSeconds: 30, sensor: true },
+    { name: 'Heating', minWatts: 1000, maxWatts: undefined, minSeconds: 5, holdSeconds: 30, maxSeconds: undefined, sensor: true },
   ]);
   assert.match(check({ name: 'Heating', maxWatts: 1400 }).problems[0]!, /needs a "from"/);
 });
@@ -146,7 +145,15 @@ test('a phase marked to be counted keeps the mark; a mark that is not on or off 
   assert.match(check({ name: 'Bezug', minWatts: 30, maxWatts: 100, count: 'yes' }).problems[0]!, /count/);
 });
 
+test('a phase may be only the short draws, if it can still come on before its limit', () => {
+  const check = (phase: object) => usablePhases({ name: 'Coffee', phases: [phase as PhaseConfig] });
+  assert.equal(check({ name: 'Spülen', minWatts: 30, minSeconds: 2, maxSeconds: 10 }).phases[0]!.maxSeconds, 10);
+  assert.equal(check({ name: 'Spülen', minWatts: 30, maxSeconds: null }).phases[0]!.maxSeconds, undefined);
+  assert.match(check({ name: 'Spülen', minWatts: 30, maxSeconds: 0 }).problems[0]!, /maxSeconds/);
+  assert.match(check({ name: 'Spülen', minWatts: 30, maxSeconds: 5 }).problems[0]!, /shorter than/);
+});
+
 test('the switches read the setting from when they were sensors, the new one winning', () => {
-  assert.equal(showsInHomeKit({ name: 'Lamp', runningSwitch: false, finishedSwitch: false }), false);
-  assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false, finishedSensor: false, runningSwitch: true }), true);
+  assert.equal(showsInHomeKit({ name: 'Lamp', runningSwitch: false }), false);
+  assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false, runningSwitch: true }), true);
 });

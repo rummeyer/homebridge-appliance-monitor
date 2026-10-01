@@ -2,7 +2,7 @@
   "pluginAlias": "ApplianceMonitor",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, such as the Eve Energy or the Shelly Plug PM Gen3, and shows each appliance in HomeKit as Running or Finished. It learns each appliance's thresholds from its first cycle. Run it as a child bridge.",
+  "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, such as the Eve Energy or the Shelly Plug PM Gen3, and shows each appliance in HomeKit with a Running switch that turns off when it is done. It learns each appliance's thresholds from its first cycle. Run it as a child bridge.",
   "footerDisplay": "The plugs stay in Apple Home: this plugin joins them as a second controller (Matter multi-admin). For devices on Thread, the Raspberry Pi needs a route to the Thread network — on Raspberry Pi OS Bookworm it has one already; the README says how to check.",
   "schema": {
     "type": "object",
@@ -39,13 +39,7 @@
               "title": "Running switch",
               "type": "boolean",
               "default": true,
-              "description": "A switch that is on while the appliance runs, to hang automations on. Named after the appliance, followed by Running; rename it in the Home app."
-            },
-            "finishedSwitch": {
-              "title": "Finished switch",
-              "type": "boolean",
-              "default": true,
-              "description": "A switch that turns on for a moment when the appliance finishes, and off again by itself: an automation \"when it turns on\" runs then. Named after the appliance, followed by Finished."
+              "description": "A switch that is on while the appliance runs, to hang automations on: when it turns off, the appliance is done. Named after the appliance, followed by Running; rename it in the Home app."
             },
             "pollSeconds": {
               "title": "Ask for power every (seconds)",
@@ -123,6 +117,13 @@
                     "type": "integer",
                     "minimum": 0,
                     "placeholder": "30"
+                  },
+                  "maxSeconds": {
+                    "title": "Only if shorter than (seconds in the range)",
+                    "type": "integer",
+                    "minimum": 1,
+                    "placeholder": "any",
+                    "description": "Only draws shorter than this are the phase. Since that is known only once the draw is over, the switch then goes on for a moment, like Finished. A rinse beside a coffee: the same range, the coffee on after 10 s, the rinse shorter than 10 s."
                   },
                   "sensor": {
                     "title": "Switch in HomeKit",

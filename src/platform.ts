@@ -302,7 +302,12 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
             this.#onAttribute(appliance, report);
           }
         })
-        .catch((error: unknown) => this.log.debug(`${appliance.device.name}: could not ask for power: ${message(error)}`))
+        .catch((error: unknown) => {
+          // Shutting down fails the ask in flight; that is no news.
+          if (!this.#stopping) {
+            this.log.debug(`${appliance.device.name}: could not ask for power: ${message(error)}`);
+          }
+        })
         .finally(() => {
           busy = false;
         });
@@ -404,8 +409,14 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     if (!change) {
       return;
     }
-    appliance.accessory?.setPhase(tracker.name, change.active);
     const { device } = appliance;
+    if (change.short) {
+      appliance.accessory?.phaseHappened(tracker.name);
+      this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
+      this.log.info(`${device.name}: ${tracker.name}, ${formatDuration((change.inBandMs ?? 0) / 1000)} in range`);
+      return;
+    }
+    appliance.accessory?.setPhase(tracker.name, change.active);
     if (change.active) {
       this.log.info(`${device.name}: ${tracker.name}`);
     } else {
@@ -439,9 +450,6 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   #onTransition(device: DeviceConfig, accessory: ApplianceAccessory | undefined, transition: Transition): void {
     accessory?.update(transition.to);
-    if (transition.to === 'finished') {
-      accessory?.finished();
-    }
     this.#store?.update(device.name, { state: transition.to, since: transition.at });
 
     const { cycle } = transition;
