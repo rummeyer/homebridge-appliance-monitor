@@ -6,6 +6,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-10-01
+
+### Changed
+
+- The Curve tab lists the plugs in alphabetical order.
+
 ## [0.6.0] — 2026-10-01
 
 The first published version.
@@ -67,5 +73,6 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/rummeyer/homebridge-appliance-monitor/releases/tag/v0.6.0

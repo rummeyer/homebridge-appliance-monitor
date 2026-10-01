@@ -195,9 +195,12 @@
       const select = document.getElementById('om-curve-plug');
       const chosen = select.value;
       select.innerHTML = '';
-      for (const device of await configuredPlugs()) {
+      const names = (await configuredPlugs())
+        .map((device) => device.name.trim())
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }));
+      for (const name of names) {
         const option = document.createElement('option');
-        option.value = option.textContent = device.name.trim();
+        option.value = option.textContent = name;
         select.append(option);
       }
       if ([...select.options].some((option) => option.value === chosen)) {
