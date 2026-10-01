@@ -1,13 +1,10 @@
 /**
  * The state of one appliance, worked out from its power draw alone.
  *
- *   off ──(above runWatts for startSeconds in all)──▶ running
- *   running ──(below runWatts for finishSeconds)──▶ finished
- *   finished ──(down to offWatts, see below)──▶ off
- *   finished ──(above runWatts for startSeconds in all)──▶ running
+ *   idle ──(above runWatts for startSeconds in all)──▶ running
+ *   running ──(below runWatts for finishSeconds: finished)──▶ idle
  *
- * The two durations are the hysteresis in time, the gap between offWatts and
- * runWatts the hysteresis in power. finishSeconds has to outlast the longest
+ * The two durations are the hysteresis. finishSeconds has to outlast the longest
  * pause inside a programme — a washing machine soaking, a dryer cooling down —
  * or one cycle is reported as two.
  *
@@ -17,16 +14,19 @@
  * the quiet has lasted long enough.
  */
 
-export type CycleState = 'off' | 'running' | 'finished';
+export type CycleState = 'idle' | 'running';
+
+/**
+ * A state as saved by any version. Earlier ones told a finished appliance
+ * from one switched off; nothing in HomeKit did, and both are idle now.
+ */
+export function cycleState(saved: unknown): CycleState {
+  return saved === 'running' ? 'running' : 'idle';
+}
 
 export interface CycleParams {
   /** At or above this, the appliance is working. */
   runWatts: number;
-  /**
-   * At or below this, the appliance is switched off rather than finished and
-   * waiting: when a finished appliance goes back to off.
-   */
-  offWatts: number;
   /**
    * How long the draw has to be at or above runWatts, added up, to count as
    * a start — with no quiet stretch longer than this in between.
@@ -40,25 +40,22 @@ export interface CycleParams {
   finishSeconds: number;
 }
 
-/**
- * `finished` goes back to `off` when the draw falls to offWatts — the machine
- * is switched off, or its door opened and its display went dark. Only once it
- * has been seen above offWatts while finished: a machine that drops to nothing
- * by itself at the end has no level to fall from, and stays finished until it
- * is started again. Nothing in HomeKit tells the two apart; the log does.
- */
 export interface Transition {
   from: CycleState;
   to: CycleState;
   at: number;
   /** On `→ running`: when the draw first rose, which is some time before `at`. */
   startedAt?: number;
-  /** On `running → finished`: when the cycle started, and what it used. */
-  cycle?: { startedAt: number; seconds: number; wattHours: number; peakWatts: number };
+  /** On `running → idle`, the appliance having finished: when the cycle started, and what it used. */
+  cycle?: {
+    startedAt: number;
+    seconds: number;
+    wattHours: number;
+    peakWatts: number;
+    /** Ended by the plug being switched off, rather than by going quiet. */
+    switchedOff?: boolean;
+  };
 }
-
-/** A switched-off machine flickers between levels for a moment; wait this long. */
-const OFF_SETTLE_MS = 30_000;
 
 export class CycleMachine {
   #params: CycleParams;
@@ -74,9 +71,6 @@ export class CycleMachine {
   #candidateSince: number | undefined;
   #upMs = 0;
   #accountedAt: number | undefined;
-  #offSince: number | undefined;
-  /** Whether the machine has been seen above offWatts since it finished. */
-  #standbySeen = false;
 
   #cycleStart = 0;
   #wattHours = 0;
@@ -84,11 +78,8 @@ export class CycleMachine {
 
   constructor(params: CycleParams, initial?: { state: CycleState; since: number }) {
     this.#params = params;
-    this.#state = initial?.state ?? 'off';
+    this.#state = initial?.state ?? 'idle';
     this.#since = initial?.since ?? 0;
-    // After a restart the machine may be anywhere; a finished one is assumed
-    // to be waiting, so that switching it off still resets it.
-    this.#standbySeen = this.#state === 'finished';
     this.#cycleStart = this.#since;
   }
 
@@ -105,8 +96,21 @@ export class CycleMachine {
     return this.#params;
   }
 
-  set params(params: CycleParams) {
+  /**
+   * New thresholds, from now on. The draw in effect is looked at again: a
+   * plug that reports only changes would otherwise leave a machine now below
+   * a raised running level running until its draw next changed.
+   */
+  retune(params: CycleParams, at: number): void {
     this.#params = params;
+    if (this.#watts === undefined) {
+      return;
+    }
+    if (this.#watts >= params.runWatts) {
+      this.#belowSince = undefined;
+    } else {
+      this.#belowSince ??= at;
+    }
   }
 
   /** A new reading. Undefined — "no measurement right now" — is ignored. */
@@ -117,26 +121,38 @@ export class CycleMachine {
     this.#accumulate(at);
     this.#advance(at);
 
-    const { runWatts, offWatts } = this.#params;
-    if (watts >= runWatts) {
+    if (watts >= this.#params.runWatts) {
       this.#candidateSince ??= at;
       this.#belowSince = undefined;
     } else {
       this.#belowSince ??= at;
-    }
-    if (watts <= offWatts) {
-      this.#offSince ??= at;
-    } else {
-      this.#offSince = undefined;
-      if (this.#state === 'finished') {
-        this.#standbySeen = true;
-      }
     }
 
     this.#watts = watts;
     this.#readingAt = at;
     this.#peak = Math.max(this.#peak, watts);
     return this.tick(at);
+  }
+
+  /**
+   * The plug was switched off: a running appliance has finished, now, with
+   * no quiet spell to wait out — no pause in a programme switches the plug.
+   */
+  switchedOff(at: number): Transition[] {
+    if (this.#state !== 'running') {
+      return [];
+    }
+    this.#accumulate(at);
+    const endedAt = this.#belowSince ?? at;
+    const cycle = {
+      startedAt: this.#cycleStart,
+      seconds: Math.round((endedAt - this.#cycleStart) / 1000),
+      wattHours: this.#wattHours,
+      peakWatts: this.#peak,
+      switchedOff: true,
+    };
+    this.#forgetCandidate();
+    return [{ ...this.#go('idle', at), cycle }];
   }
 
   /** Lets time pass without a reading. */
@@ -178,19 +194,7 @@ export class CycleMachine {
           wattHours: this.#wattHours,
           peakWatts: this.#peak,
         };
-        this.#standbySeen = (this.#watts ?? 0) > this.#params.offWatts;
-        return { ...this.#go('finished', at), cycle };
-      }
-      return undefined;
-    }
-
-    if (this.#state === 'finished') {
-      if (
-        this.#standbySeen &&
-        this.#offSince !== undefined &&
-        at - this.#offSince >= OFF_SETTLE_MS
-      ) {
-        return this.#go('off', at);
+        return { ...this.#go('idle', at), cycle };
       }
     }
     return undefined;

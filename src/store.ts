@@ -14,6 +14,8 @@ export interface DeviceRecord {
   since?: number;
   /** Whether everything the plug offers has been logged, which is done once. */
   described?: boolean;
+  /** Standby found before anything was learned. See DeviceMonitor. */
+  standbyWatts?: number;
   /** Finished cycles and ended phases, counted. See counts.ts. */
   counts?: Record<string, Counted>;
 }

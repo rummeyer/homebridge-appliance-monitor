@@ -47,17 +47,25 @@ It reads one thing: **ActivePower** (in milliwatts) from the standard
 reads its watts from, so a device that shows watts in the Home app without
 Homebridge has it. There is nothing vendor-specific.
 
-## Off, Running, Finished
+## Running and finished
 
-Each appliance is in one of three states:
+An appliance is running or it is not:
 
-- **Off**: resting, or switched off.
 - **Running**: working. It counts as a start once the draw has been above the
   running level for a minute in all. Added up, because a wash without heating
   is a drum turning in bursts of half a minute; a door lock or a pump running
   for a few seconds does not add up to a start.
-- **Finished**: the draw has stayed below the running level for longer than
-  the longest pause in the programme.
+- **Finished**, and so no longer running: the draw has stayed below the
+  running level for longer than the longest pause in the programme. Or, on
+  a plug with a relay such as the Eve Energy, the plug was switched off: that
+  is the end straight away, since no pause in a programme switches the plug.
+  A meter without a relay, such as the Shelly Plug PM Gen3, has no such
+  state, and finishes by the quiet alone.
+
+Whether it then sits on standby or is switched off at the plug makes no
+difference. To tell something apart that the machine does after it has
+finished, a display staying on or a door opened, set up a
+[phase](#phases) for its power range.
 
 In HomeKit, Running is a switch that is on while the appliance runs, or an
 occupancy sensor for a desk. It goes off only when the appliance finishes, so
@@ -77,9 +85,7 @@ Ten minutes after that first cycle, the plugin works out from its curve:
   clearly above;
 - the **longest pause** inside the programme, a soak or a cool-down, and from
   it how long a quiet spell has to last before it is the end (the pause and
-  half again, at least two minutes);
-- the **off level**: half the lowest the machine drew while it was on,
-  pauses included, so that keeping warm is never taken for switched off.
+  half again, at least two minutes).
 
 From then on Finished comes minutes after the end. Every further cycle
 refines this, and a longer pause only ever lengthens the wait. If a cycle
@@ -89,6 +95,16 @@ minutes), the plugin logs it, treats it as one cycle and learns the pause.
 What was learned is logged and kept in `appliance-monitor/devices.json`. Any
 threshold can be fixed in the settings instead, each on its own; the rest are
 still learned.
+
+An appliance whose standby is above 5 W, a computer at 9 W say, would never
+drop below the default running level, and so never finish and never learn.
+So, until a cycle has been learned, the plugin also looks for **standby**: the
+lowest level held steady for ten minutes, at most 25 W, once the appliance has
+been seen drawing at least three times that. Running then starts at twice
+standby, and the log says so (`standby at 9.40 W — running above 18.8 W`).
+To set it yourself instead, put the **Running** power under **More** in the
+settings between standby and what it draws in use, and the **Finished** time
+to how long it should wait before it counts as done.
 
 ## Phases
 
@@ -165,6 +181,37 @@ the Home app; the plugin never sets the name again.
 
 A plug with every switch turned off, a lamp say, does not appear in HomeKit at
 all, and is still counted in the statistics.
+
+### Getting notified
+
+The Home app sends notifications for sensors, not for switches:
+
+- **Occupancy sensor**: in the sensor's settings in the Home app, turn on
+  **Notifications**.
+- **Running switch**: an automation "when … Running turns off" that turns on
+  something that notifies, or plays an announcement on a HomePod. Or show
+  Running as an occupancy sensor instead, and use its notifications.
+
+For a message on your phone, the
+[homebridge-pushover-notification](https://www.npmjs.com/package/homebridge-pushover-notification)
+plugin offers a switch per message that sends it through
+[Pushover](https://pushover.net) when turned on, and turns itself off again:
+
+```json
+{
+  "platform": "PushoverNotification",
+  "user": "<your Pushover user key>",
+  "token": "<your application token>",
+  "messages": [
+    { "name": "Dryer finished", "title": "Dryer", "message": "Dryer is finished" }
+  ]
+}
+```
+
+Then in the Home app add an automation: **When "Dryer Running" turns off**,
+turn on "Dryer finished". Running goes off only once the dryer has finished,
+so this sends one message per cycle. Phases work the same way: "when Bezug
+turns off" for a coffee drawn.
 
 ## Statistics
 
@@ -279,7 +326,7 @@ reports when the draw changes; the Eve Energy about once a minute. A minute
 is fine for a wash cycle or for heating, but a coffee runs through in half a
 minute and may fall between two reports, or show as a single one.
 
-For such a plug, set **Ask for power every (seconds)**, and the plugin asks it
+For such a plug, set **Polling interval** (under **More**), and the plugin asks it
 on top of listening. The Eve Energy measures far more often than it reports,
 so asking every 5 seconds gives a fresh reading every 5 seconds. Each ask is a
 message over Thread or Wi-Fi, so keep it to the plugs that need it.
@@ -313,7 +360,6 @@ appliance is on.
 | `devices[].runningSwitch` | `true` | Running in HomeKit, on while the appliance runs. |
 | `devices[].runningAs` | `switch` | `switch`, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
-| `devices[].thresholds.offWatts` | learned | Switched off at or below this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see above) and `sensor` (its switch in HomeKit; `true`). |
@@ -345,7 +391,7 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 
 On each start, one line per plug: what it is, what it draws, its state, and
 whether it has learned yet. Everything a plug offers is listed once, when it
-is paired. After that the log has the changes: Running, Finished, Off, each
+is paired. After that the log has the changes: Running, Finished, each
 phase starting and ending (or, for a phase with "shorter than", having happened), what was learned, and a plug that became
 unreachable or came back. The single readings are in the recordings, not in
 the log.

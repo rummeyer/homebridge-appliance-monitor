@@ -165,10 +165,6 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
         problems.push(`${label} has a threshold ${key} that is not a number of 0 or more`);
       }
     }
-    const { runWatts, offWatts } = thresholds;
-    if (typeof runWatts === 'number' && typeof offWatts === 'number' && offWatts >= runWatts) {
-      problems.push(`${label} has an off level (${offWatts} W) that is not below the running level (${runWatts} W)`);
-    }
   }
   return problems;
 }

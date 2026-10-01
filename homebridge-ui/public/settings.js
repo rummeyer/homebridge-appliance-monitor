@@ -40,6 +40,11 @@
     .om-set-phase { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
     .om-set-phase.om-set-head { display: none; }
   }
+  .om-set-poll { max-width: 22rem; margin-bottom: 1rem; }
+  .om-set-states { display: grid; grid-template-columns: 5.5rem minmax(0, 13rem) minmax(0, 13rem); gap: .4rem 1rem; align-items: start; }
+  .om-set-state { font-weight: 600; font-size: .9rem; padding-top: .3rem; }
+  .om-set-col { font-size: .78rem; opacity: .7; }
+  .om-set-same { font-size: .85rem; opacity: .65; padding-top: .3rem; }
   details.om-set-more > summary { cursor: pointer; font-size: .85rem; opacity: .8; margin-bottom: .75rem; }
   .om-set-badge { font-size: .75rem; padding: .1rem .45rem; border-radius: .25rem; background: rgba(46,158,91,.18); color: #2e9e5b; }
   `;
@@ -108,10 +113,17 @@
     /** Hands the config to Homebridge, a moment after the last change. */
     function changed() {
       // Settings of earlier versions that are no longer used: the Finished
-      // switch (Running going off says the same) and when Finished ended.
+      // switch (Running going off says the same), when Finished ended, and
+      // the off level.
       for (const device of config.devices) {
         for (const key of ['finishedSwitch', 'finishedSensor', 'finishedReset', 'finishedResetMinutes']) {
           delete device[key];
+        }
+        if (device.thresholds) {
+          delete device.thresholds.offWatts;
+          if (!Object.keys(device.thresholds).length) {
+            delete device.thresholds;
+          }
         }
       }
       clearTimeout(pending);
@@ -279,23 +291,38 @@
         phasesSection(device),
 
         el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
-          el('summary', {}, 'More: asking for power, fixed thresholds'),
-          el('div', { class: 'om-set-grid' },
-            field('Ask for power every (s)', number(device.pollSeconds, 'only listen', (value) => {
+          el('summary', {}, 'More: polling, thresholds'),
+          el('div', { class: 'om-set-poll' },
+            field('Polling interval (s)', number(device.pollSeconds, 'off, only listen', (value) => {
               setOrDrop(device, 'pollSeconds', numberOrUndefined(value));
               changed();
-            }, 2), 'For plugs that report seldom, like the Eve Energy.'),
-            ...[
-              ['runWatts', 'Running above (W)', 'learned'],
-              ['offWatts', 'Off at or below (W)', 'learned'],
-              ['startSeconds', 'Running after (s above)', '60'],
-              ['finishSeconds', 'Finished after (s quiet)', 'learned'],
-            ].map(([key, label, placeholder]) => field(label, number(device.thresholds?.[key], placeholder, (value) => {
-              const thresholds = { ...device.thresholds };
-              setOrDrop(thresholds, key, numberOrUndefined(value));
-              setOrDrop(device, 'thresholds', Object.keys(thresholds).length ? thresholds : undefined);
-              changed();
-            }))))));
+            }, 2), 'For plugs that report seldom, like the Eve Energy.')),
+          thresholdsTable(device)));
+    }
+
+    /** One row per state, its power in one column and its time in the other. Empty ones are learned. */
+    function thresholdsTable(device) {
+      const input = (key, placeholder, label) => {
+        const element = number(device.thresholds?.[key], placeholder, (value) => {
+          const thresholds = { ...device.thresholds };
+          setOrDrop(thresholds, key, numberOrUndefined(value));
+          setOrDrop(device, 'thresholds', Object.keys(thresholds).length ? thresholds : undefined);
+          changed();
+        });
+        element.setAttribute('aria-label', label);
+        return element;
+      };
+      const help = (text) => el('div', { class: 'om-set-help' }, text);
+      const row = (state, watts, time) => [el('div', { class: 'om-set-state' }, state), el('div', {}, watts), el('div', {}, time)];
+      return el('div', { class: 'om-set-states' },
+        el('span', {}), el('span', { class: 'om-set-col' }, 'Power (W)'), el('span', { class: 'om-set-col' }, 'Time (s)'),
+        row('Running',
+          [input('runWatts', 'learned', 'Running: power above (W)'), help('Above this. Keep standby below it.')],
+          [input('startSeconds', '60', 'Running: for at least (s)'), help('For at least this long, added up.')]),
+        row('Finished',
+          el('div', { class: 'om-set-same' }, 'below the running power'),
+          [input('finishSeconds', 'learned', 'Finished: quiet for (s)'), help('For this long. Longer than any pause.')]),
+        el('div', { class: 'om-set-help', style: 'grid-column: 1 / -1' }, 'Empty fields are learned from the appliance\'s cycles.'));
     }
 
     /** Whether a switch is shown, reading the earlier sensor setting too. */

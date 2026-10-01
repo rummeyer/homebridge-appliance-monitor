@@ -42,7 +42,7 @@ test('one accessory with a switch each for Running and every phase', () => {
     api,
     accessory,
     { name: 'Coffee', phases: [{ name: 'Heating', minWatts: 1000 }, { name: 'Brewing', minWatts: 30, maxWatts: 100 }] },
-    'off',
+    'idle',
   );
   assert.deepEqual(
     accessory.services.filter((s) => s.UUID === Service.Switch.UUID).map((s) => s.subtype),
@@ -55,17 +55,17 @@ test('one accessory with a switch each for Running and every phase', () => {
 
 test('Running is on while the appliance runs', () => {
   const accessory = platformAccessory();
-  const handle = new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'off');
+  const handle = new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'idle');
   assert.equal(on(accessory, 'running'), false);
   handle.update('running');
   assert.equal(on(accessory, 'running'), true);
-  handle.update('finished');
+  handle.update('idle');
   assert.equal(on(accessory, 'running'), false);
 });
 
 test('a phase is on while it lasts', () => {
   const accessory = platformAccessory();
-  const handle = new ApplianceAccessory(api, accessory, { name: 'Coffee', phases: [{ name: 'Brewing', minWatts: 30, maxWatts: 100 }] }, 'off');
+  const handle = new ApplianceAccessory(api, accessory, { name: 'Coffee', phases: [{ name: 'Brewing', minWatts: 30, maxWatts: 100 }] }, 'idle');
   handle.setPhase('Brewing', true);
   assert.equal(on(accessory, 'phase:Brewing'), true);
   handle.setPhase('Brewing', false);
@@ -78,7 +78,7 @@ test('a short phase goes on for a moment once it is known, then off by itself', 
     api,
     accessory,
     { name: 'Coffee', phases: [{ name: 'Rinse', minWatts: 30, maxWatts: 100, maxSeconds: 10 }] },
-    'off',
+    'idle',
   );
   handle.phaseHappened('Rinse');
   assert.equal(on(accessory, 'phase:Rinse'), true);
@@ -88,7 +88,7 @@ test('a short phase goes on for a moment once it is known, then off by itself', 
 
 test('a switch tapped in the Home app goes back to what the appliance is doing', async () => {
   const accessory = platformAccessory();
-  const handle = new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'off');
+  const handle = new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'idle');
   handle.update('running');
   const running = switchOf(accessory, 'running')!.getCharacteristic(Characteristic.On);
   await running.handleSetRequest(false);
@@ -102,7 +102,7 @@ test('the sensors of earlier versions leave a restored accessory', () => {
   accessory.addService(Service.ContactSensor, 'Washer Finished', 'finished');
   accessory.addService(Service.OccupancySensor, 'Coffee Heating', 'phase:Heating');
 
-  new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'off');
+  new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'idle');
   assert.equal(accessory.getService(Service.OccupancySensor), undefined);
   assert.equal(accessory.getService(Service.ContactSensor), undefined);
   assert.ok(switchOf(accessory, 'running'));
@@ -111,8 +111,8 @@ test('the sensors of earlier versions leave a restored accessory', () => {
 test('a switch turned off in the config, or a phase removed, leaves a restored accessory', () => {
   const accessory = platformAccessory();
   const device: DeviceConfig = { name: 'Coffee', phases: [{ name: 'Heating', minWatts: 1000 }, { name: 'Bezug', minWatts: 30 }] };
-  new ApplianceAccessory(api, accessory, device, 'off');
-  new ApplianceAccessory(api, accessory, { ...device, runningSwitch: false, phases: [{ name: 'Bezug', minWatts: 30 }] }, 'off');
+  new ApplianceAccessory(api, accessory, device, 'idle');
+  new ApplianceAccessory(api, accessory, { ...device, runningSwitch: false, phases: [{ name: 'Bezug', minWatts: 30 }] }, 'idle');
   assert.equal(switchOf(accessory, 'running'), undefined);
   assert.equal(switchOf(accessory, 'phase:Heating'), undefined);
   assert.ok(switchOf(accessory, 'phase:Bezug'));
@@ -121,21 +121,21 @@ test('a switch turned off in the config, or a phase removed, leaves a restored a
 test('the Finished switch of earlier versions leaves a restored accessory', () => {
   const accessory = platformAccessory();
   accessory.addService(Service.Switch, 'Washer Finished', 'finished');
-  new ApplianceAccessory(api, accessory, { name: 'Washer', finishedSwitch: true }, 'off');
+  new ApplianceAccessory(api, accessory, { name: 'Washer', finishedSwitch: true }, 'idle');
   assert.equal(switchOf(accessory, 'finished'), undefined);
   assert.ok(switchOf(accessory, 'running'));
 });
 
 test('the setting from when these were sensors still counts', () => {
   const accessory = platformAccessory();
-  new ApplianceAccessory(api, accessory, { name: 'Lamp', runningSensor: false }, 'off');
+  new ApplianceAccessory(api, accessory, { name: 'Lamp', runningSensor: false }, 'idle');
   assert.equal(switchOf(accessory, 'running'), undefined);
 });
 
 test('Running can be an occupancy sensor, taken while it runs; changing it replaces the switch', () => {
   const accessory = platformAccessory();
   const desk: DeviceConfig = { name: 'Desk' };
-  new ApplianceAccessory(api, accessory, desk, 'off');
+  new ApplianceAccessory(api, accessory, desk, 'idle');
   assert.ok(switchOf(accessory, 'running'));
 
   const handle = new ApplianceAccessory(api, accessory, { ...desk, runningAs: 'occupancy' }, 'running');
@@ -144,14 +144,14 @@ test('Running can be an occupancy sensor, taken while it runs; changing it repla
   const detected = () => sensor.getCharacteristic(Characteristic.OccupancyDetected).value;
   assert.equal(sensor.getCharacteristic(Characteristic.ConfiguredName).value, 'Desk Occupancy');
   assert.equal(detected(), Characteristic.OccupancyDetected.OCCUPANCY_DETECTED);
-  handle.update('finished');
+  handle.update('idle');
   assert.equal(detected(), Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
 
-  new ApplianceAccessory(api, accessory, desk, 'off');
+  new ApplianceAccessory(api, accessory, desk, 'idle');
   assert.equal(accessory.getServiceById(Service.OccupancySensor, 'running'), undefined, 'and back');
   assert.ok(switchOf(accessory, 'running'));
 
-  new ApplianceAccessory(api, accessory, { ...desk, runningAs: 'occupancy', runningSwitch: false }, 'off');
+  new ApplianceAccessory(api, accessory, { ...desk, runningAs: 'occupancy', runningSwitch: false }, 'idle');
   assert.equal(accessory.getServiceById(Service.OccupancySensor, 'running'), undefined, 'not shown at all');
   assert.equal(switchOf(accessory, 'running'), undefined);
 });
@@ -165,7 +165,7 @@ test('a phase switch still called by its former default name is shortened; one r
   const spuelen = accessory.addService(Service.Switch, 'Coffee Spülen', 'phase:Spülen');
   spuelen.addOptionalCharacteristic(Characteristic.ConfiguredName);
   spuelen.setCharacteristic(Characteristic.ConfiguredName, 'Rinse');
-  new ApplianceAccessory(api, accessory, device, 'off');
+  new ApplianceAccessory(api, accessory, device, 'idle');
   assert.equal(name(accessory, 'phase:Bezug'), 'Bezug');
   assert.equal(name(accessory, 'phase:Spülen'), 'Rinse');
 });
@@ -173,15 +173,15 @@ test('a phase switch still called by its former default name is shortened; one r
 test('a rename in the Home app survives a restart', () => {
   const accessory = platformAccessory();
   const device: DeviceConfig = { name: 'Washer' };
-  new ApplianceAccessory(api, accessory, device, 'off');
+  new ApplianceAccessory(api, accessory, device, 'idle');
   switchOf(accessory, 'running')!.setCharacteristic(Characteristic.ConfiguredName, 'Waschmaschine läuft');
-  new ApplianceAccessory(api, accessory, device, 'off');
+  new ApplianceAccessory(api, accessory, device, 'idle');
   assert.equal(name(accessory, 'running'), 'Waschmaschine läuft');
 });
 
 test('the plug describes itself on the details page', () => {
   const accessory = platformAccessory();
-  const handle = new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'off');
+  const handle = new ApplianceAccessory(api, accessory, { name: 'Washer' }, 'idle');
   handle.setInfo({ vendorName: 'Shelly', productName: 'Shelly Plug PM', serialNumber: 'ABC', softwareVersionString: '1.3.0-s1' });
   const info = accessory.getService(Service.AccessoryInformation)!;
   assert.equal(info.getCharacteristic(Characteristic.Manufacturer).value, 'Shelly');

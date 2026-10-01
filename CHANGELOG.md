@@ -6,6 +6,38 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-10-01
+
+### Added
+
+- **Standby is found before anything is learned.** An appliance resting
+  above the 5 W default running level, a computer at 9 W say, never finished
+  and so never learned. Now the lowest level held steady for ten minutes (up
+  to 25 W, and only once the appliance has drawn three times that) is taken
+  as standby, and running starts at twice that until a cycle is learned.
+- **A plug switched off ends the cycle at once**, on plugs with a relay such
+  as the Eve Energy, without waiting out the quiet. Meters without a relay
+  (Shelly Plug PM Gen3) finish by the quiet as before.
+
+### Removed
+
+- The **Off** state and its off level (`thresholds.offWatts`). It told an
+  appliance switched off from one finished and on standby, which nothing in
+  HomeKit showed; Running off was the same for both. An appliance is now
+  running or not: when it finishes it is idle until it starts again. A phase
+  tells apart what a machine does after it has finished, such as a display
+  staying on. An `offWatts` in the config is ignored, and dropped when the
+  settings page saves.
+
+### Changed
+
+- "Getting notified" in the README: notifications for an occupancy sensor,
+  and an automation for a Running switch, such as a "Dryer is finished"
+  message through homebridge-pushover-notification.
+- Under More, "Ask for power every" is now **Polling interval**, on a line
+  of its own, and the thresholds are a small table: **Running** (power above,
+  for at least) and **Finished** (quiet for), each with a short hint.
+
 ## [0.13.0] — 2026-10-01
 
 ### Added
@@ -226,7 +258,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.3...v0.12.0

@@ -13,6 +13,7 @@ import {
   validateDeviceConfig,
 } from './config.ts';
 import type { DeviceConfig, MatterLogLevel, ApplianceMonitorPlatformConfig } from './config.ts';
+import { cycleState } from './cycle.ts';
 import type { CycleState, Transition } from './cycle.ts';
 import { EnergyMeter } from './energy.ts';
 import type { DeviceEnergy } from './energy.ts';
@@ -26,7 +27,7 @@ import { takeDataDir } from './data-dir.ts';
 import { DeviceMonitor } from './monitor.ts';
 import { PhaseTracker } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
-import { activePowerWatts, formatDuration, formatWatts, isActivePower } from './power.ts';
+import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff } from './power.ts';
 import { PowerRecorder } from './recorder.ts';
 import { clearResets, pendingResets } from './resets.ts';
 import { NodeRegistry } from './registry.ts';
@@ -34,7 +35,7 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings.ts';
 import { DeviceStore } from './store.ts';
 
 /** How the states are called in the log, matching the sensors' default names. */
-const STATE_NAMES: Record<CycleState, string> = { off: 'Off', running: 'Running', finished: 'Finished' };
+const STATE_NAMES: Record<CycleState, string> = { idle: 'Idle', running: 'Running' };
 
 /** How often time is let pass for the monitors, which see no readings while a machine is quiet. */
 const TICK_MS = 5000;
@@ -348,7 +349,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const store = this.#store!;
     const record = store.get(device.name);
     const initial =
-      record.state !== undefined && record.since !== undefined ? { state: record.state, since: record.since } : undefined;
+      record.state !== undefined && record.since !== undefined ? { state: cycleState(record.state), since: record.since } : undefined;
 
     let handle: ApplianceAccessory | undefined;
     if (showsInHomeKit(device)) {
@@ -361,7 +362,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         this.#cached.set(uuid, accessory);
       }
-      handle = new ApplianceAccessory(this.api, accessory, device, initial?.state ?? 'off');
+      handle = new ApplianceAccessory(this.api, accessory, device, initial?.state ?? 'idle');
       this.api.updatePlatformAccessories([accessory]);
     }
 
@@ -371,12 +372,20 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         learned: record.learned,
         cycles: record.cycles,
         initial,
+        standbyWatts: record.standbyWatts,
       },
       {
         transition: (transition) => this.#onTransition(device, handle, transition),
         learned: (learned, cycles) => {
           store.update(device.name, { learned, cycles });
           this.#logLearned(device, learned, cycles);
+        },
+        standby: (standbyWatts, runWatts) => {
+          store.update(device.name, { standbyWatts });
+          this.log.info(
+            `${device.name}: standby at ${formatWatts(standbyWatts)} — running above ${formatWatts(runWatts)} ` +
+              'until a cycle has been learned',
+          );
         },
         resumed: (pauseSeconds) =>
           this.log.warn(
@@ -398,6 +407,14 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   }
 
   #onAttribute(appliance: Appliance, report: AttributeReport): void {
+    if (isOnOff(report.clusterId, report.attributeId)) {
+      // A plug with a relay switched off: whatever ran there has finished.
+      if (report.value === false && appliance.monitor.state === 'running') {
+        this.log.debug(`${appliance.device.name}: plug switched off`);
+        appliance.monitor.switchedOff(Date.now());
+      }
+      return;
+    }
     if (!isActivePower(report.clusterId, report.attributeId)) {
       return;
     }
@@ -488,12 +505,10 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#store?.update(device.name, { state: transition.to, since: transition.at });
 
     const { cycle } = transition;
-    if (transition.to === 'finished') {
+    if (cycle) {
       this.#store?.increment(device.name, FINISHED, transition.at);
-    }
-    if (transition.to === 'finished' && cycle) {
       this.log.info(
-        `${device.name}: Finished — ran ${formatDuration(cycle.seconds)}, ` +
+        `${device.name}: Finished${cycle.switchedOff ? ' (switched off)' : ''} — ran ${formatDuration(cycle.seconds)}, ` +
           `${(cycle.wattHours / 1000).toFixed(2)} kWh, peak ${formatWatts(cycle.peakWatts)}`,
       );
     } else {
@@ -502,14 +517,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   }
 
   #logLearned(device: DeviceConfig, learned: Learned, cycles: number): void {
-    const { runWatts, offWatts, finishSeconds } = learned.params;
-    const rest = learned.hasStandby
-      ? `back to off below ${formatWatts(offWatts)} (it rests at ${formatWatts(learned.restWatts)})`
-      : 'it drops to nothing by itself when done, so Finished stays until the next start';
+    const { runWatts, finishSeconds } = learned.params;
     this.log.info(
-      `${device.name}: learned from ${cycles} cycle${cycles === 1 ? '' : 's'} — running above ${formatWatts(runWatts)}, ` +
-        `finished after ${formatDuration(finishSeconds)} of quiet (longest pause ` +
-        `${formatDuration(learned.longestPauseSeconds)}), ${rest}.`,
+      `${device.name}: learned from ${cycles} cycle${cycles === 1 ? '' : 's'} — running above ${formatWatts(runWatts)} ` +
+        `(it rests at ${formatWatts(learned.restWatts)}), finished after ${formatDuration(finishSeconds)} of quiet ` +
+        `(longest pause ${formatDuration(learned.longestPauseSeconds)}).`,
     );
   }
 

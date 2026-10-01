@@ -52,7 +52,7 @@
               "description": "An occupancy sensor reads better for a desk: taken while it draws power, free when not. Changing it replaces it in HomeKit, with any automation on it."
             },
             "pollSeconds": {
-              "title": "Ask for power every (seconds)",
+              "title": "Polling interval (seconds)",
               "type": "integer",
               "minimum": 2,
               "placeholder": "only listen",
@@ -64,23 +64,18 @@
               "description": "Optional. Leave a field empty to have it learned from the appliance's cycles; fill it in to use your value instead.",
               "properties": {
                 "runWatts": {
-                  "title": "Running above (W)",
-                  "type": "number",
-                  "minimum": 0
-                },
-                "offWatts": {
-                  "title": "Switched off at or below (W)",
+                  "title": "Running: power above (W)",
                   "type": "number",
                   "minimum": 0
                 },
                 "startSeconds": {
-                  "title": "Running after (seconds above, added up)",
+                  "title": "Running: for at least (seconds above, added up)",
                   "type": "integer",
                   "minimum": 0,
                   "placeholder": "60"
                 },
                 "finishSeconds": {
-                  "title": "Finished after (seconds of quiet)",
+                  "title": "Finished: quiet for (seconds below the running power)",
                   "type": "integer",
                   "minimum": 0
                 }

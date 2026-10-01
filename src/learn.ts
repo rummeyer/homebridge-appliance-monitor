@@ -8,9 +8,7 @@
  * - the level the machine rests at when it is on but not working, and so
  *   where "running" starts (runWatts);
  * - the longest pause inside the programme, and so how long a quiet spell
- *   has to last before it is the end (finishSeconds);
- * - whether the machine rests at a level it can fall from when it is switched
- *   off, and where (offWatts).
+ *   has to last before it is the end (finishSeconds).
  *
  * Readings are a step function: a device reports when its draw changes, so
  * each reading holds until the next.
@@ -33,21 +31,32 @@ export interface Learned {
   params: CycleParams;
   /** The level the machine rests at when finished, in W. */
   restWatts: number;
-  /** Whether that level is distinct from being switched off. */
-  hasStandby: boolean;
   /** The longest pause inside the cycle, in seconds. */
   longestPauseSeconds: number;
 }
 
 /** Below this, a draw is "nothing": plugs read a few tenths of a watt with no load. */
-const NOTHING_WATTS = 0.5;
+export const NOTHING_WATTS = 0.5;
+
+/** Where running starts for a machine resting at this level: clearly above it. */
+export const runLevelAbove = (restingWatts: number): number => round1(Math.max(restingWatts * 2, restingWatts + 2));
 /** The stretch after the final drop that shows where the machine rests. */
 const REST_WINDOW_MS = 10 * 60_000;
 
 const MIN_FINISH_SECONDS = 120;
 const MAX_FINISH_SECONDS = 3600;
 
-export function learnFromCycle(samples: Sample[], cycle: CycleWindow, current: CycleParams): Learned | undefined {
+/**
+ * `switchedOff`: the cycle ended with the plug being switched off, so what
+ * came after shows nothing about where the machine rests, and the running
+ * level stays as it is. The pause is learned all the same.
+ */
+export function learnFromCycle(
+  samples: Sample[],
+  cycle: CycleWindow,
+  current: CycleParams,
+  switchedOff = false,
+): Learned | undefined {
   const sorted = [...samples].sort((a, b) => a.at - b.at);
   const before = sorted.filter(({ at }) => at < cycle.startedAt);
   const during = sorted.filter(({ at }) => at >= cycle.startedAt && at < cycle.endedAt);
@@ -67,7 +76,7 @@ export function learnFromCycle(samples: Sample[], cycle: CycleWindow, current: C
 
   // Where running starts: clearly above anything the machine rests at.
   const resting = Math.max(restWatts, levelBefore ?? 0);
-  const runWatts = round1(Math.max(resting * 2, resting + 2));
+  const runWatts = switchedOff ? current.runWatts : runLevelAbove(resting);
 
   // A cycle worth learning from went well above that at some point. Not the
   // median: a coffee machine spends most of a cycle keeping warm.
@@ -83,21 +92,9 @@ export function learnFromCycle(samples: Sample[], cycle: CycleWindow, current: C
     MAX_FINISH_SECONDS,
   );
 
-  // Off: below the lowest the machine ever drew while it was on — in the
-  // pauses of the cycle as well as after it, since keeping warm can dip
-  // under where it settles. Half of that, so the dips stay on.
-  const hasStandby = restWatts >= NOTHING_WATTS;
-  const onReadings = sorted
-    .filter(({ at }) => at >= cycle.startedAt && at < cycle.endedAt + REST_WINDOW_MS)
-    .map(({ watts }) => watts)
-    .filter((watts) => watts >= NOTHING_WATTS);
-  const lowestOn = Math.min(restWatts, ...onReadings);
-  const offWatts = hasStandby ? Math.max(0.2, round1(lowestOn / 2)) : current.offWatts;
-
   return {
-    params: { runWatts, offWatts, startSeconds: current.startSeconds, finishSeconds },
+    params: { runWatts, startSeconds: current.startSeconds, finishSeconds },
     restWatts,
-    hasStandby,
     longestPauseSeconds,
   };
 }
@@ -120,7 +117,6 @@ export function merge(previous: Learned | undefined, next: Learned): Learned {
     params: {
       ...next.params,
       finishSeconds: Math.max(previous.params.finishSeconds, next.params.finishSeconds),
-      offWatts: next.hasStandby ? next.params.offWatts : previous.params.offWatts,
     },
   };
 }

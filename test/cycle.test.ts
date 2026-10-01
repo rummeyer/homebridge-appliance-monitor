@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CycleMachine } from '../src/cycle.ts';
+import { CycleMachine, cycleState } from '../src/cycle.ts';
 import type { Transition } from '../src/cycle.ts';
 import { learnFromCycle } from '../src/learn.ts';
 import type { Learned } from '../src/learn.ts';
@@ -92,16 +92,15 @@ test('an unlearned monitor sees one whole cycle, however long the pauses in it',
   const { monitor, transitions, path } = recording();
   play(monitor, curve, 0, (endsAt + 60 * 60) * S);
 
-  assert.deepEqual(path(), ['off→running', 'running→finished', 'finished→off']);
-  const [started, finished, off] = transitions;
+  assert.deepEqual(path(), ['idle→running', 'running→idle']);
+  const [started, finished] = transitions;
   assert.equal(started!.startedAt, startsAt * S);
   assert.equal(finished!.at, endsAt * S + LEARNING_DEFAULTS.finishSeconds * S, 'half an hour after the end');
   assert.equal(finished!.cycle!.seconds, endsAt - startsAt);
   assert.ok(finished!.cycle!.wattHours > 500, `a heated wash uses real energy: ${finished!.cycle!.wattHours}`);
-  assert.equal(off!.at, (endsAt + 45 * 60) * S + 30 * S, 'off half a minute after being switched off');
 });
 
-test('one cycle teaches the resting level, the longest pause and the off level', () => {
+test('one cycle teaches the resting level and the longest pause', () => {
   const { curve, endsAt } = wash(45 * 60);
   const { monitor, lessons } = recording();
   play(monitor, curve, 0, (endsAt + 60 * 60) * S);
@@ -109,11 +108,9 @@ test('one cycle teaches the resting level, the longest pause and the off level',
   assert.equal(lessons.length, 1);
   const [learned] = lessons;
   assert.equal(learned!.restWatts, 1.2);
-  assert.equal(learned!.hasStandby, true);
   assert.equal(learned!.params.runWatts, 3.2, 'above resting, above the 3 W between bursts is fine either way');
   assert.equal(learned!.longestPauseSeconds, 390, 'the soak, and the stop before it');
   assert.equal(learned!.params.finishSeconds, 590, 'the soak and half again');
-  assert.equal(learned!.params.offWatts, 0.6, 'halfway between resting and switched off');
   assert.equal(monitor.params.finishSeconds, 590, 'and the monitor uses it from now on');
 });
 
@@ -127,22 +124,21 @@ test('once learned, "finished" comes minutes after the end, not half an hour', (
   const t0 = (first.endsAt + 60 * 60) * S;
   play(monitor, second.curve, t0, t0 + (second.endsAt + 30 * 60) * S);
 
-  assert.deepEqual(path(), ['off→running', 'running→finished', 'finished→off']);
+  assert.deepEqual(path(), ['idle→running', 'running→idle']);
   assert.equal(transitions[1]!.at, t0 + (second.endsAt + 590) * S);
-  assert.equal(transitions[2]!.at, t0 + (second.endsAt + 20 * 60 + 30) * S, 'off when switched off');
 });
 
-test('a machine that drops to nothing by itself stays finished until the next start', () => {
+test('a machine that drops to nothing by itself finishes, and starts again', () => {
   const { curve, endsAt } = wash(0, 0);
   const learned = learnedFrom(wash(45 * 60));
   const { monitor, path } = recording(learned);
   play(monitor, curve, 0, (endsAt + 3 * 60 * 60) * S);
-  assert.deepEqual(path(), ['off→running', 'running→finished']);
+  assert.deepEqual(path(), ['idle→running', 'running→idle']);
 
   const again = wash(0, 0);
   const t0 = (endsAt + 3 * 60 * 60) * S;
   play(monitor, again.curve, t0, t0 + (again.endsAt + 20 * 60) * S);
-  assert.deepEqual(path(), ['off→running', 'running→finished', 'finished→running', 'running→finished']);
+  assert.deepEqual(path(), ['idle→running', 'running→idle', 'idle→running', 'running→idle']);
 });
 
 test('a cold wash — bursts of half a minute, no heating — still starts', () => {
@@ -152,7 +148,7 @@ test('a cold wash — bursts of half a minute, no heating — still starts', () 
   }
   const { monitor, transitions, path } = recording();
   play(monitor, curve, 0, 40 * MIN);
-  assert.deepEqual(path(), ['off→running']);
+  assert.deepEqual(path(), ['idle→running']);
   assert.equal(transitions[0]!.startedAt, 60 * S, 'from the first burst');
   assert.equal(transitions[0]!.at, (60 + 2 * 50 + 10) * S, 'once three bursts add up to a minute');
 });
@@ -166,7 +162,7 @@ test('a short spike is not a start', () => {
     ...machine.tick(5 * MIN),
   ];
   assert.deepEqual(seen, []);
-  assert.equal(machine.state, 'off');
+  assert.equal(machine.state, 'idle');
 });
 
 test('a pause longer than learned is taken back when the machine resumes, and learned', () => {
@@ -196,26 +192,44 @@ test('settings from the config win over learned values, and empty ones do not co
   const monitor = new DeviceMonitor(
     {
       learned: learnedFrom(wash(45 * 60)),
-      overrides: { runWatts: 12, finishSeconds: undefined, offWatts: null as unknown as number },
+      overrides: { runWatts: 12, finishSeconds: undefined, startSeconds: null as unknown as number },
     },
     { transition: () => {}, learned: () => {}, resumed: () => {} },
   );
-  assert.deepEqual(monitor.params, { runWatts: 12, offWatts: 0.6, startSeconds: 60, finishSeconds: 590 });
+  assert.deepEqual(monitor.params, { runWatts: 12, startSeconds: 60, finishSeconds: 590 });
 });
 
-test('after a restart, a finished machine can still be switched off', () => {
+test('the off level of earlier versions is ignored, in the config and in what was learned', () => {
+  const learned = learnedFrom(wash(45 * 60));
+  const monitor = new DeviceMonitor(
+    {
+      learned: { ...learned, params: { ...learned.params, offWatts: 0.6 } as Learned['params'] },
+      overrides: { offWatts: 3 } as Partial<Learned['params']>,
+    },
+    { transition: () => {}, learned: () => {}, resumed: () => {} },
+  );
+  assert.deepEqual(monitor.params, { runWatts: 3.2, startSeconds: 60, finishSeconds: 590 });
+});
+
+test('states saved by earlier versions: finished and off are both idle', () => {
+  assert.equal(cycleState('finished'), 'idle');
+  assert.equal(cycleState('off'), 'idle');
+  assert.equal(cycleState('running'), 'running');
+  assert.equal(cycleState(undefined), 'idle');
+});
+
+test('after a restart, a running machine finishes', () => {
   const seen: string[] = [];
   const monitor = new DeviceMonitor(
     {
       learned: learnedFrom(wash(45 * 60)),
-      initial: { state: 'finished', since: 0 },
+      initial: { state: 'running', since: 0 },
     },
     { transition: ({ from, to }) => seen.push(`${from}→${to}`), learned: () => {}, resumed: () => {} },
   );
-  assert.equal(monitor.state, 'finished');
   monitor.reading(1 * MIN, 0);
-  monitor.tick(2 * MIN);
-  assert.deepEqual(seen, ['finished→off']);
+  monitor.tick(1 * MIN + 590 * S);
+  assert.deepEqual(seen, ['running→idle']);
 });
 
 test('nothing is learned from a blip that never really worked', () => {
@@ -248,15 +262,88 @@ const COFFEE_MORNING: Curve = [
   [2382, 2.8], [2442, 0],
 ];
 
-test("the owner's coffee machine: keeping warm is on, not off", () => {
+test("the owner's coffee machine: one cycle from switching on to the end of the frothing", () => {
   const { monitor, transitions, lessons, path } = recording();
   play(monitor, COFFEE_MORNING, 0, 2442 * S + 60 * MIN);
 
-  assert.deepEqual(path(), ['off→running', 'running→finished']);
+  assert.deepEqual(path(), ['idle→running', 'running→idle']);
   assert.equal(transitions[1]!.cycle!.seconds, 2202, 'from switching on to the end of the frothing');
   const [learned] = lessons;
   assert.equal(learned!.restWatts, 2.8, 'keeping warm, not the fan running on');
-  assert.equal(learned!.params.offWatts, 0.9, 'below the 1.8 W it dips to while keeping warm');
   assert.equal(learned!.params.runWatts, 5.6);
   assert.equal(learned!.longestPauseSeconds, 744, 'from the reheat to the coffee');
+});
+
+test('a plug switched off ends a running cycle at once, with no quiet to wait out', () => {
+  const { monitor, transitions, path } = recording(learnedFrom(wash(45 * 60)));
+  play(monitor, [[0, 0], [60, 2100]], 0, 10 * MIN);
+  monitor.switchedOff(10 * MIN);
+  assert.deepEqual(path(), ['idle→running', 'running→idle']);
+  assert.equal(transitions[1]!.at, 10 * MIN);
+  assert.equal(transitions[1]!.cycle!.switchedOff, true);
+  monitor.switchedOff(11 * MIN);
+  assert.equal(transitions.length, 2, 'switching off an idle plug changes nothing');
+});
+
+test('what follows a switch-off says nothing about standby, so the running level is kept', () => {
+  const samples = [
+    { at: 0, watts: 0 },
+    { at: 1 * MIN, watts: 2000 },
+    { at: 20 * MIN, watts: 0 },
+  ];
+  const learned = learnFromCycle(samples, { startedAt: 1 * MIN, endedAt: 20 * MIN }, LEARNING_DEFAULTS, true);
+  assert.equal(learned!.params.runWatts, LEARNING_DEFAULTS.runWatts);
+});
+
+/** A computer: at work for an hour, then on standby at around 9.5 W. */
+const DESK: Curve = [[0, 92], [20 * 60, 88.3], [40 * 60, 95], [60 * 60, 8.8], [61 * 60, 10.3], [62 * 60, 9.4]];
+
+test('before learning, standby above 5 W is found, and the machine finishes on it', () => {
+  const standby: [number, number][] = [];
+  const transitions: Transition[] = [];
+  const monitor = new DeviceMonitor(
+    {},
+    {
+      transition: (transition) => transitions.push(transition),
+      learned: () => {},
+      resumed: () => {},
+      standby: (watts, runWatts) => standby.push([watts, runWatts]),
+    },
+  );
+  play(monitor, DESK, 0, (62 * 60) * S + 60 * MIN);
+  assert.deepEqual(standby, [[10.3, 20.6]], 'the highest reading of the ten minutes it was held');
+  assert.equal(monitor.standbyWatts, 10.3);
+  assert.deepEqual(transitions.map(({ from, to }) => `${from}→${to}`), ['idle→running', 'running→idle']);
+  // Found once it has been held for ten minutes; half an hour from then.
+  assert.equal(transitions[1]!.at, 70 * MIN + LEARNING_DEFAULTS.finishSeconds * S);
+});
+
+test('one level alone is not standby: it may as well be the machine at work', () => {
+  const { monitor } = recording();
+  play(monitor, [[0, 92], [30 * 60, 95]], 0, 2 * 60 * MIN);
+  assert.equal(monitor.standbyWatts, undefined);
+  assert.equal(monitor.state, 'running');
+});
+
+test('drawing nothing is switched off, not standby', () => {
+  const { monitor } = recording();
+  play(monitor, [[0, 92], [20 * 60, 0]], 0, 2 * 60 * MIN);
+  assert.equal(monitor.standbyWatts, undefined);
+});
+
+test('standby found before is used again after a restart', () => {
+  const monitor = new DeviceMonitor({ standbyWatts: 10.3 }, { transition: () => {}, learned: () => {}, resumed: () => {} });
+  assert.equal(monitor.params.runWatts, 20.6);
+});
+
+test('a running level from the config is not second-guessed by standby', () => {
+  const { monitor: plain } = recording();
+  const monitor = new DeviceMonitor(
+    { overrides: { runWatts: 30 } },
+    { transition: () => {}, learned: () => {}, resumed: () => {}, standby: () => assert.fail('no standby') },
+  );
+  play(monitor, DESK, 0, (62 * 60) * S + 20 * MIN);
+  play(plain, DESK, 0, (62 * 60) * S + 20 * MIN);
+  assert.equal(monitor.params.runWatts, 30);
+  assert.equal(plain.params.runWatts, 20.6);
 });

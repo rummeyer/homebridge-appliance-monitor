@@ -16,6 +16,17 @@ export const isActivePower = (clusterId: number, attributeId: number): boolean =
   clusterId === ELECTRICAL_POWER_MEASUREMENT && attributeId === ACTIVE_POWER;
 
 /**
+ * On/Off, and its OnOff attribute: whether a plug with a relay has it
+ * switched on. A meter without one, like the Shelly Plug PM Gen3, has no
+ * such cluster.
+ */
+export const ON_OFF = 0x0006;
+export const ON_OFF_STATE = 0x0000;
+
+export const isOnOff = (clusterId: number, attributeId: number): boolean =>
+  clusterId === ON_OFF && attributeId === ON_OFF_STATE;
+
+/**
  * ActivePower in watts. The attribute is int64, so it arrives as a number or
  * a bigint; undefined when the device reports that it has no reading.
  */
