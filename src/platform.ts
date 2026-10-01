@@ -19,8 +19,9 @@ import { EnergyMeter } from './energy.ts';
 import type { DeviceEnergy } from './energy.ts';
 import { readJson, writeJson } from './json-file.ts';
 import type { Learned } from './learn.ts';
-import { activePowerValues, describeNode, MatterController } from './matter.ts';
+import { activePowerValues, describeNode, MatterController, readActivePower } from './matter.ts';
 import type { AttributeReport } from './matter.ts';
+import type { PairedNode } from '@project-chip/matter.js/device';
 import { DeviceMonitor } from './monitor.ts';
 import { PhaseTracker } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
@@ -45,6 +46,8 @@ interface Appliance {
   accessory: ApplianceAccessory | undefined;
   energy: EnergyMeter;
   phases: PhaseTracker[];
+  /** The last reading taken in, to drop the same one arriving twice. */
+  last?: { endpointId: number; value: unknown; at: number };
 }
 
 /**
@@ -66,6 +69,7 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
   #energySaver: NodeJS.Timeout | undefined;
   /** Set on shutdown, when every plug disconnecting is expected and not worth a line. */
   #stopping = false;
+  readonly #pollers: NodeJS.Timeout[] = [];
   /** Energy per plug as last saved, including plugs no longer configured, whose history is kept. */
   #ledger: Record<string, DeviceEnergy> = {};
 
@@ -84,6 +88,9 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     this.api.on('shutdown', () => {
       this.#stopping = true;
       clearInterval(this.#ticker);
+      for (const poller of this.#pollers) {
+        clearInterval(poller);
+      }
       clearInterval(this.#energySaver);
       this.#saveEnergy();
       void this.#controller?.stop();
@@ -251,11 +258,42 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
             formatWatts(watts),
             STATE_NAMES[appliance.monitor.state],
             this.#learnedSummary(appliance),
+            ...(device.pollSeconds ? [`asked every ${device.pollSeconds} s`] : []),
           ].join(', '),
         );
+        if (device.pollSeconds) {
+          this.#poll(appliance, node, device.pollSeconds);
+        }
       },
       onAttribute: (report) => this.#onAttribute(appliance, report),
     });
+  }
+
+  /**
+   * Asks the plug for its power every few seconds. One ask at a time: on a
+   * slow Thread hop a read can take longer than the interval, and asks would
+   * pile up. Failures are expected while the plug is unreachable and only go
+   * to the debug log.
+   */
+  #poll(appliance: Appliance, node: PairedNode, seconds: number): void {
+    let busy = false;
+    const timer = setInterval(() => {
+      if (busy || this.#stopping || !node.isConnected) {
+        return;
+      }
+      busy = true;
+      readActivePower(node)
+        .then((reports) => {
+          for (const report of reports) {
+            this.#onAttribute(appliance, report);
+          }
+        })
+        .catch((error: unknown) => this.log.debug(`${appliance.device.name}: could not ask for power: ${message(error)}`))
+        .finally(() => {
+          busy = false;
+        });
+    }, seconds * 1000);
+    this.#pollers.push(timer);
   }
 
   /** "learning", or "learned from 3 cycles". */
@@ -328,9 +366,16 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
       return;
     }
     const { device, monitor } = appliance;
+    const now = Date.now();
+    // A value read on purpose can also come back as a reported change; the
+    // second one is not a new reading.
+    const { last } = appliance;
+    if (last && last.endpointId === report.endpointId && last.value === report.value && now - last.at < 1500) {
+      return;
+    }
+    appliance.last = { endpointId: report.endpointId, value: report.value, at: now };
     const watts = activePowerWatts(report.value);
     this.#recorder?.record(device.name, report.endpointId, watts);
-    const now = Date.now();
     monitor.reading(now, watts);
     appliance.energy.reading(now, watts);
     for (const tracker of appliance.phases) {

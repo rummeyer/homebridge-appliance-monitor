@@ -37,7 +37,15 @@ export interface DeviceConfig {
   thresholds?: Partial<CycleParams>;
   /** What the appliance is doing inside a cycle, by power band. See phases.ts. */
   phases?: PhaseConfig[];
+  /**
+   * Ask the plug for its power this often, in seconds, as well as listening
+   * for what it reports. For plugs that report too seldom to see something
+   * short; each ask is a message over the network, so only where needed.
+   */
+  pollSeconds?: number;
 }
+
+export const MIN_POLL_SECONDS = 2;
 
 /** Whether a device shows anything in HomeKit; one with nothing is only counted. */
 export function hasSensors(device: DeviceConfig): boolean {
@@ -120,7 +128,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds, pollSeconds } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -140,6 +148,13 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
     (typeof finishedResetMinutes !== 'number' || !(finishedResetMinutes > 0))
   ) {
     problems.push(`${label} needs finishedResetMinutes above 0`);
+  }
+  if (
+    pollSeconds !== undefined &&
+    pollSeconds !== null &&
+    (typeof pollSeconds !== 'number' || !(pollSeconds >= MIN_POLL_SECONDS))
+  ) {
+    problems.push(`${label} needs pollSeconds of ${MIN_POLL_SECONDS} or more, or none`);
   }
   if (thresholds !== undefined && thresholds !== null) {
     for (const [key, value] of Object.entries(thresholds)) {

@@ -190,6 +190,18 @@ Alliance, and using another vendor's ID would pass the plugin off as someone
 else's product. So the name stays. It changes nothing about how the plugin
 works.
 
+## Plugs that report seldom
+
+A plug decides itself how often it reports its power. The Shelly Plug PM
+reports when the draw changes; the Eve Energy about once a minute. A minute
+is fine for a wash cycle or for heating, but a coffee runs through in half a
+minute and may fall between two reports, or show as a single one.
+
+For such a plug, set **Ask for power every (seconds)**, and the plugin asks it
+on top of listening. Whether that gives finer readings depends on whether the
+plug measures more often than it reports; the Curve tab shows it. Each ask is
+a message over Thread or Wi-Fi, so keep it to the plugs that need it.
+
 ## Configuration
 
 ```json
@@ -223,6 +235,7 @@ works.
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
+| `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
 | `recordPower` | `true` | Write each reading to a file per day under `outlet-monitor/power/`. The Curve tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |

@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { DEFAULT_RESET_MINUTES, MATTER_LOG_LEVELS, parsePairingCode, RESET_MODES } from '../src/config.ts';
+import { DEFAULT_RESET_MINUTES, MATTER_LOG_LEVELS, MIN_POLL_SECONDS, parsePairingCode, RESET_MODES } from '../src/config.ts';
 import { LEARNING_DEFAULTS } from '../src/monitor.ts';
 import { DEFAULT_HOLD_SECONDS, DEFAULT_MIN_SECONDS } from '../src/phases.ts';
 import { DEFAULT_RECORD_DAYS } from '../src/recorder.ts';
@@ -82,4 +82,9 @@ test('a plug starts with no phases on the settings page, only the button to add 
   // The Homebridge UI's form offers one empty entry in every list unless told
   // otherwise, and it would show under every plug.
   assert.equal(device.phases.listItems, 0);
+});
+
+test('the shortest poll the settings page allows is the one the plugin accepts', () => {
+  assert.equal(device.pollSeconds.minimum, MIN_POLL_SECONDS);
+  assert.equal(device.pollSeconds.default, undefined, 'off unless asked for');
 });

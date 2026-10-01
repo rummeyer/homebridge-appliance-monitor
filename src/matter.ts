@@ -186,6 +186,35 @@ export function activePowerValues(node: PairedNode): AttributeReport[] {
   return reports;
 }
 
+/**
+ * ActivePower read from the device now, rather than what it last reported.
+ *
+ * Some plugs report on their own schedule — the Eve Energy about once a
+ * minute — which is too coarse to see a coffee run through. Asking can be
+ * fresher, if the plug measures more often than it reports.
+ */
+export async function readActivePower(node: PairedNode): Promise<AttributeReport[]> {
+  const reports: AttributeReport[] = [];
+  for (const endpoint of allEndpoints(node)) {
+    for (const cluster of endpoint.getAllClusterClients()) {
+      if (Number(cluster.id) !== ELECTRICAL_POWER_MEASUREMENT) {
+        continue;
+      }
+      const attribute = Object.values(cluster.attributes).find(({ id }) => Number(id) === ACTIVE_POWER);
+      if (attribute) {
+        reports.push({
+          endpointId: Number(endpoint.number),
+          clusterId: ELECTRICAL_POWER_MEASUREMENT,
+          attributeId: ACTIVE_POWER,
+          attributeName: attribute.name,
+          value: await attribute.get(true),
+        });
+      }
+    }
+  }
+  return reports;
+}
+
 /** The root endpoint and everything under it, each once, in number order. */
 function allEndpoints(node: PairedNode): Endpoint[] {
   const found = new Map<number, Endpoint>();

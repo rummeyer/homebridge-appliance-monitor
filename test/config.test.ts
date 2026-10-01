@@ -132,3 +132,10 @@ test('a phase may leave out its upper end, not its lower one', () => {
   ]);
   assert.match(check({ name: 'Heating', maxWatts: 1400 }).problems[0]!, /needs a "from"/);
 });
+
+test('asking for power needs a sensible interval, or none', () => {
+  assert.deepEqual(validateDeviceConfig({ name: 'Coffee', pollSeconds: 5 }, 0), []);
+  assert.deepEqual(validateDeviceConfig({ name: 'Coffee', pollSeconds: null as unknown as number }, 0), []);
+  assert.match(validateDeviceConfig({ name: 'Coffee', pollSeconds: 1 }, 0)[0]!, /pollSeconds of 2 or more/);
+  assert.match(validateDeviceConfig({ name: 'Coffee', pollSeconds: 'often' as unknown as number }, 0)[0]!, /pollSeconds/);
+});

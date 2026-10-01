@@ -6,6 +6,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Ask a plug for its power every few seconds (`pollSeconds`), for plugs that
+  report too seldom to see something short, such as the Eve Energy's once a
+  minute against a coffee's half a minute.
+
 ## [0.4.1] — 2026-09-30
 
 The first published version.

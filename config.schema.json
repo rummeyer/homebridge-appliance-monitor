@@ -82,6 +82,13 @@
                 "functionBody": "return model.devices[arrayIndices].finishedReset === 'timeout';"
               }
             },
+            "pollSeconds": {
+              "title": "Ask for power every (seconds)",
+              "type": "integer",
+              "minimum": 2,
+              "placeholder": "only listen",
+              "description": "Some plugs report their power only about once a minute (the Eve Energy does), which can miss something short like a coffee. Set this to ask them more often. Each ask is a message over the network, so keep it to the plugs that need it."
+            },
             "thresholds": {
               "title": "Fixed thresholds",
               "type": "object",
