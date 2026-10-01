@@ -505,8 +505,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     for (const name of names) {
       this.#appliances.get(name)?.energy.reset(now);
       delete this.#ledger[name];
-      if (this.#store?.get(name).counts) {
-        this.#store.update(name, { counts: undefined });
+      const record = this.#store?.get(name);
+      if (record?.counts || record?.lastCycle) {
+        this.#store!.update(name, { counts: undefined, lastCycle: undefined });
       }
       this.log.info(`${name}: statistics reset`);
     }
@@ -526,6 +527,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const { cycle } = transition;
     if (cycle) {
       this.#store?.increment(device.name, FINISHED, transition.at);
+      this.#store?.update(device.name, {
+        lastCycle: { startedAt: cycle.startedAt, endedAt: transition.at, seconds: cycle.seconds, wattHours: cycle.wattHours },
+      });
       this.log.info(
         `${device.name}: Finished${cycle.switchedOff ? ' (switched off)' : ''} — ran ${formatDuration(cycle.seconds)}, ` +
           `${(cycle.wattHours / 1000).toFixed(2)} kWh, peak ${formatWatts(cycle.peakWatts)}`,

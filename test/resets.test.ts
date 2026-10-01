@@ -26,7 +26,7 @@ test('applied on the files, a reset drops energy and counts and keeps what was l
   const dir = mkdtempSync(join(tmpdir(), 'resets-'));
   writeJson(join(dir, 'energy.json'), { Coffee: { since: 1, days: { '2026-10-01': 5 } }, Dryer: { since: 1, days: {} } });
   writeJson(join(dir, 'devices.json'), {
-    Coffee: { cycles: 3, counts: { finished: { count: 2, since: 1 } } },
+    Coffee: { cycles: 3, counts: { finished: { count: 2, since: 1 } }, lastCycle: { startedAt: 1, endedAt: 2, seconds: 1, wattHours: 5 } },
     Dryer: { counts: { finished: { count: 1, since: 1 } } },
   });
   requestReset(dir, 'Coffee');

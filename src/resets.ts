@@ -58,6 +58,7 @@ export function applyResets(dir: string): void {
   edit('devices.json', (records) => {
     for (const name of names) {
       delete records[name]?.counts;
+      delete records[name]?.lastCycle;
     }
   });
   clearResets(dir);

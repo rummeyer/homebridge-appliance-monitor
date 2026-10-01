@@ -131,7 +131,8 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
       const counted = records[device.name]?.counts?.[key];
       return { label, count: counted?.count ?? 0, since: counted?.since ?? null };
     });
-    return { ...statistics(ledger, names, new Date()), counts };
+    const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
+    return { ...statistics(ledger, names, new Date()), counts, lastCycles };
   }
 }
 

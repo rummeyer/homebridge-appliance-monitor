@@ -232,6 +232,10 @@ over even if the plug joined partway through, marked ¹ as part of a year: a plu
 2026 from the 1st of January 2027. Where some plugs have a value and others do
 not yet, the total adds up those that have, and is marked with an asterisk.
 
+The **Last Cycle** column shows what each appliance used in its last
+cycle, from the moment it counted as running to the moment it finished.
+Point at it for when that was and how long it ran.
+
 The **Count** column shows how often each appliance finished a cycle — or, if
 one of its phases is ticked **Count in statistics**, how often that phase
 happened: coffees drawn rather than mornings the machine was on. If several
@@ -240,7 +244,7 @@ all along, so ticking another phase shows its count from when the phase was
 set up, not from when it was ticked. Point at a count for the day counting
 began.
 
-**Reset data** on an appliance's row empties its energy and its count, which
+**Reset data** on an appliance's row empties its energy, last cycle and count, which
 start again from then; what it has learned is kept. Click it twice to confirm.
 The running plugin does it within a few seconds; if the child bridge is not
 running, the settings page does it on the files itself.

@@ -3,6 +3,15 @@ import { readJson, writeJson } from './json-file.ts';
 import type { Counted } from './counts.ts';
 import type { Learned } from './learn.ts';
 
+/** A finished cycle: when it ran, for how long, and what it used. */
+export interface LastCycle {
+  startedAt: number;
+  /** When it finished, in ms. */
+  endedAt: number;
+  seconds: number;
+  wattHours: number;
+}
+
 /** What is kept per appliance across restarts. */
 export interface DeviceRecord {
   /** What its cycles have taught, if any have been seen. */
@@ -19,6 +28,8 @@ export interface DeviceRecord {
   described?: boolean;
   /** Standby found before anything was learned. See DeviceMonitor. */
   standbyWatts?: number;
+  /** The last finished cycle, for the Statistics tab. */
+  lastCycle?: LastCycle;
   /** Finished cycles and ended phases, counted. See counts.ts. */
   counts?: Record<string, Counted>;
 }

@@ -98,7 +98,8 @@
     <h5 class="card-title">Energy and counts</h5>
     <div id="om-stats"></div>
     <p class="om-hint mb-0" id="om-stats-note">
-      Point at a heading for its dates, at a count for when counting began. Saved every five minutes.
+      Point at a heading for its dates, at a last cycle for when it ran, at a count for when counting began.
+      Saved every five minutes.
     </p>
     <p class="om-hint mb-0 om-hidden" id="om-stats-none">No plugs configured yet.</p>
   </div>
@@ -120,6 +121,12 @@
       }
       const value = wattHours / 1000;
       return `${value.toFixed(value < 10 ? 2 : 1)} kWh`;
+    };
+
+    /** "45 min", "2 h 5 min". */
+    const duration = (seconds) => {
+      const minutes = Math.round(seconds / 60);
+      return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ''}`;
     };
 
     function cell(row, text, tag = 'td') {
@@ -157,6 +164,8 @@
         cell(head, label, 'th');
         head.lastElementChild.title = dates;
       }
+      cell(head, 'Last Cycle', 'th');
+      head.lastElementChild.title = 'What the last cycle used, from running to finished';
       cell(head, 'Count', 'th');
       head.lastElementChild.title = 'Finished cycles, or the phase ticked "Count"';
       cell(head, '', 'th');
@@ -165,6 +174,12 @@
         const row = body.insertRow();
         cell(row, name);
         values.forEach((value, column) => cell(row, `${kwh(value)}${partial[column] ? ' ¹' : ''}`));
+        const last = table.lastCycles?.[index];
+        cell(row, last ? kwh(last.wattHours) : '');
+        if (last) {
+          const ended = new Date(last.endedAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+          row.lastElementChild.title = `Finished ${ended}, ran ${duration(last.seconds)}`;
+        }
         const { label, count, since } = table.counts[index];
         cell(row, `${count} × ${label}`);
         row.lastElementChild.title = since
@@ -181,6 +196,7 @@
         const marks = `${total.partial[column] ? ' ¹' : ''}${total.missing[column] ? ' *' : ''}`;
         cell(foot, value === null ? '' : `${kwh(value)}${marks}`);
       });
+      cell(foot, ''); // last cycles of different appliances are no total
       cell(foot, ''); // counts of different things do not add up
       cell(foot, '');
       box.append(element);
