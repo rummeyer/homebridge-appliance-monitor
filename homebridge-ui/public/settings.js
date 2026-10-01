@@ -40,11 +40,13 @@
     .om-set-phase { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
     .om-set-phase.om-set-head { display: none; }
   }
-  .om-set-poll { max-width: 22rem; margin-bottom: 1rem; }
-  .om-set-states { display: grid; grid-template-columns: 5.5rem minmax(0, 13rem) minmax(0, 13rem); gap: .4rem 1rem; align-items: start; }
-  .om-set-state { font-weight: 600; font-size: .9rem; padding-top: .3rem; }
-  .om-set-col { font-size: .78rem; opacity: .7; }
-  .om-set-same { font-size: .85rem; opacity: .65; padding-top: .3rem; }
+  .om-set-poll { margin-bottom: 1rem; }
+  .om-set-poll input { max-width: 13rem; }
+  .om-set-rule { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; margin-bottom: .5rem; font-size: .9rem; }
+  .om-set-rule strong { min-width: 4.5rem; }
+  .om-set-rule .input-group { width: 7.5rem; }
+  /* An empty field shows what applies instead, and must not pass for a value. */
+  .om-set-more input::placeholder { font-style: italic; opacity: .45; }
   details.om-set-more > summary { cursor: pointer; font-size: .85rem; opacity: .8; margin-bottom: .75rem; }
   .om-set-badge { font-size: .75rem; padding: .1rem .45rem; border-radius: .25rem; background: rgba(46,158,91,.18); color: #2e9e5b; }
   `;
@@ -300,9 +302,12 @@
           thresholdsTable(device)));
     }
 
-    /** One row per state, its power in one column and its time in the other. Empty ones are learned. */
+    /**
+     * The thresholds as two sentences to fill in: "Running when above … W for
+     * at least … s", "Finished when below that for … s". Empty ones are learned.
+     */
     function thresholdsTable(device) {
-      const input = (key, placeholder, label) => {
+      const input = (key, placeholder, unit, label) => {
         const element = number(device.thresholds?.[key], placeholder, (value) => {
           const thresholds = { ...device.thresholds };
           setOrDrop(thresholds, key, numberOrUndefined(value));
@@ -310,19 +315,21 @@
           changed();
         });
         element.setAttribute('aria-label', label);
-        return element;
+        return el('div', { class: 'input-group input-group-sm' }, element, el('span', { class: 'input-group-text' }, unit));
       };
-      const help = (text) => el('div', { class: 'om-set-help' }, text);
-      const row = (state, watts, time) => [el('div', { class: 'om-set-state' }, state), el('div', {}, watts), el('div', {}, time)];
-      return el('div', { class: 'om-set-states' },
-        el('span', {}), el('span', { class: 'om-set-col' }, 'Power (W)'), el('span', { class: 'om-set-col' }, 'Time (s)'),
-        row('Running',
-          [input('runWatts', 'learned', 'Running: power above (W)'), help('Above this. Keep standby below it.')],
-          [input('startSeconds', '60', 'Running: for at least (s)'), help('For at least this long, added up.')]),
-        row('Finished',
-          el('div', { class: 'om-set-same' }, 'below the running power'),
-          [input('finishSeconds', 'learned', 'Finished: quiet for (s)'), help('For this long. Longer than any pause.')]),
-        el('div', { class: 'om-set-help', style: 'grid-column: 1 / -1' }, 'Empty fields are learned from the appliance\'s cycles.'));
+      const words = (text) => el('span', {}, text);
+      return el('div', {},
+        el('div', { class: 'om-set-rule' },
+          el('strong', {}, 'Running'), words('when above'),
+          input('runWatts', 'learned', 'W', 'Running when above (W)'),
+          words('for at least'),
+          input('startSeconds', '60', 's', 'Running for at least (s)')),
+        el('div', { class: 'om-set-rule' },
+          el('strong', {}, 'Finished'), words('when below that for'),
+          input('finishSeconds', 'learned', 's', 'Finished when below that for (s)')),
+        el('div', { class: 'om-set-help' },
+          'Empty fields are learned from the appliance\'s cycles. Keep standby below the running power, '
+          + 'and the finished time longer than any pause.'));
     }
 
     /** Whether a switch is shown, reading the earlier sensor setting too. */

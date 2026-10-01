@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.2] — 2026-10-01
+
+### Changed
+
+- The thresholds under More read as two sentences to fill in: **Running**
+  when above … W for at least … s, **Finished** when below that for … s.
+  Empty fields show what applies instead in faint italics, so they are not
+  taken for values.
+
 ## [0.14.1] — 2026-10-01
 
 ### Fixed
@@ -267,7 +276,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.2...HEAD
+[0.14.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.1...v0.13.0
