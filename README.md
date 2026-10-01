@@ -199,7 +199,9 @@ while Homebridge is running. Time it was not running is not counted.
 1. In the Home app, open the plug's settings and choose **Turn On Pairing
    Mode**. Copy the eleven-digit code. This works the same for every
    device.
-2. In the plugin settings, add a plug with a name and that code, and save.
+2. In the plugin settings, click **+ Add**, give the appliance a name, paste
+   the code, and save. The settings show one appliance at a time, picked from
+   the list at the top; paired ones are ticked.
 3. Restart the child bridge. The code is valid for 15 minutes.
 4. The log shows `paired as node …`, then the plug's endpoints and clusters,
    and that it is learning. After that you can remove the code from the

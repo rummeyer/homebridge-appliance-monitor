@@ -31,6 +31,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     this.onRequest('/statistics', (request) => this.statistics(request));
     this.onRequest('/curve', (request) => this.curve(request));
     this.onRequest('/band', (request) => this.band(request));
+    this.onRequest('/paired', () => this.paired());
     this.ready();
   }
 
@@ -55,6 +56,18 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
       levels: findLevels(samples, to),
       spans: phaseSpans(samples, from, to, phases),
     };
+  }
+
+  /** The names of the plugs that are paired, for a mark in the Settings tab's list. */
+  async paired() {
+    if (!this.homebridgeStoragePath) {
+      return [];
+    }
+    try {
+      return Object.keys(readJson(join(findDataDir(this.homebridgeStoragePath), 'nodes.json')) ?? {});
+    } catch {
+      return [];
+    }
   }
 
   /** The power range for a stretch picked on the chart, or null if the plug drew nothing then. */

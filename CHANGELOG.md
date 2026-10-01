@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-10-01
+
+### Changed
+
+- The Settings tab is the plugin's own form: pick an appliance from a list —
+  sorted, paired ones ticked — and see only its settings, with its phases one
+  row each. "+ Add" starts a new one with a name to change, "Delete" asks
+  first. Only what differs from the default is written to the config.
+- The Curve tab opens on the last six hours.
+
 ## [0.7.0] — 2026-10-01
 
 ### Added
@@ -83,7 +93,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/rummeyer/homebridge-appliance-monitor/releases/tag/v0.6.0
