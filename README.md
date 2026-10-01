@@ -117,6 +117,11 @@ on. Pointing at the chart shows the time and the reading there.
 - drag across the chart over something the appliance did (a coffee at
   7:02, a spin) to take the range it drew then.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/curve-dark.png">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/curve-light.png" alt="The Curve tab: a coffee machine's power over an hour, with its phases Aufheizen, Bezug and Milchschaum, and a bar for each showing when it was on" width="760">
+</picture>
+
 Name the phase, adjust the range if you like, add it, and save. Each phase
 can have an occupancy sensor in HomeKit, occupied while it lasts, and its
 start and end are logged.
@@ -146,6 +151,11 @@ The settings page has a **Statistics** tab with the energy each plug used
 **Today** so far, and in the **Last Week** (Monday to Sunday), **Last Month**
 and **Last Year**, one row per plug and the total below. Point at a heading
 for its dates.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-dark.png">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per plug today, last week, last month and last year, and a count per appliance" width="760">
+</picture>
 
 Today counts from a plug's first reading of the day, so a plug added at noon
 shows its afternoon. A week or a month is shown only if a plug has been
@@ -208,6 +218,11 @@ while Homebridge is running. Time it was not running is not counted.
    config.
 5. Run the appliance once. When the log shows `learned from 1 cycle`, it is
    set up.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its sensors and phases" width="760">
+</picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
 again. Remove the old pairing from the Home app first, under the plug's

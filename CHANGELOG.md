@@ -15,6 +15,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   row each. "+ Add" starts a new one with a name to change, "Delete" asks
   first. Only what differs from the default is written to the config.
 - The Curve tab opens on the last six hours.
+- The README shows the Settings, Curve and Statistics tabs, in light and dark.
 
 ## [0.7.0] — 2026-10-01
 
