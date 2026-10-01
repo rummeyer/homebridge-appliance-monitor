@@ -346,7 +346,7 @@
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
               el('span', { title: 'Only draws shorter than this are the phase; it then goes on for a moment once the draw is over. A rinse beside a coffee in the same range.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {})),
             rows)
-          : el('div', { class: 'om-set-help mb-2' }, 'None. A phase is a range of power the appliance works in — heating, spinning, a coffee. The Curve tab finds them on the recorded curve.'),
+          : el('div', { class: 'om-set-help mb-2' }, 'None. A phase is a range of power the appliance works in — heating, spinning, a coffee. The Power tab finds them on the recorded curve.'),
         el('button', {
           type: 'button', class: 'btn btn-sm btn-outline-primary mt-2',
           onclick: () => {
@@ -365,7 +365,7 @@
         el('div', { class: 'om-set-grid' },
           el('div', {},
             check('om-set-record', 'Record power readings', config.recordPower !== false, (on) => { setOrDrop(config, 'recordPower', on, true); changed(); }),
-            el('div', { class: 'om-set-help' }, 'One file per day; the Curve tab needs it.')),
+            el('div', { class: 'om-set-help' }, 'One file per day; the Power tab needs it.')),
           field('Days of recordings to keep', number(config.recordDays, '14', (value) => {
             setOrDrop(config, 'recordDays', numberOrUndefined(value), 14);
             changed();
@@ -378,7 +378,7 @@
 
     render();
     return {
-      /** Picks up changes made elsewhere on the page, such as a phase added on the Curve tab. */
+      /** Picks up changes made elsewhere on the page, such as a phase added on the Power tab. */
       async reload() {
         const name = config.devices[selected]?.name;
         configs = await homebridge.getPluginConfig();

@@ -1,5 +1,5 @@
 /**
- * The chart on the Curve tab, drawn as an SVG string.
+ * The chart on the Power tab, drawn as an SVG string.
  *
  * Kept apart from the page, and free of the DOM, so that it can be drawn
  * outside a browser as well: the tests render it, and a picture of it can be

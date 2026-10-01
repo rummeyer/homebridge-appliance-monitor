@@ -90,7 +90,7 @@
               "title": "Phases",
               "type": "array",
               "listItems": 0,
-              "description": "What the appliance does inside a cycle, told apart by power: heating, spinning, a coffee running through. Easiest to add from the Curve tab, by picking a level or a stretch of time on the recorded curve.",
+              "description": "What the appliance does inside a cycle, told apart by power: heating, spinning, a coffee running through. Easiest to add from the Power tab, by picking a level or a stretch of time on the recorded curve.",
               "items": {
                 "type": "object",
                 "required": [
@@ -156,14 +156,14 @@
         "title": "Record power readings",
         "type": "boolean",
         "default": true,
-        "description": "Write every reading to a file per day under appliance-monitor/power in the Homebridge storage folder. The Curve tab needs it."
+        "description": "Write every reading to a file per day under appliance-monitor/power in the Homebridge storage folder. The Power tab needs it."
       },
       "recordDays": {
         "title": "Days of recordings to keep",
         "type": "integer",
         "default": 14,
         "minimum": 1,
-        "description": "One file per day under appliance-monitor/power, for the Curve tab. The statistics keep their own daily totals for two years and do not need these files."
+        "description": "One file per day under appliance-monitor/power, for the Power tab. The statistics keep their own daily totals for two years and do not need these files."
       },
       "matterLogLevel": {
         "title": "matter.js log level",

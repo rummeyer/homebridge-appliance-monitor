@@ -2,7 +2,7 @@
  * Backend for the plugin's settings page in the Homebridge UI.
  *
  * Serves the Statistics tab — the energy each plug used in the last complete
- * day, week, month and year — and the Curve tab: a plug's recorded power
+ * day, week, month and year — and the Power tab: a plug's recorded power
  * draw, the levels it dwells at, and a power range for a stretch picked on
  * it. All read from the files the plugin writes rather than asked of the
  * running plugin, which is a separate process this page has no line to.

@@ -10,11 +10,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- On the Curve tab, phases in the same range (a coffee and a rinse) have their
+- On the power chart, phases in the same range (a coffee and a rinse) have their
   names side by side instead of on top of each other.
 
 ### Changed
 
+- The **Curve** tab is called **Power**: what it shows, next to Statistics.
 - New screenshots in the README, which is brought up to date, and the
   settings say that the statistics do not depend on how many days of
   recordings are kept.

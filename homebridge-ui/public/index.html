@@ -27,7 +27,7 @@
 
 <ul class="nav nav-tabs om-tabs" role="tablist">
   <li class="nav-item"><button type="button" class="nav-link active" id="om-tab-settings" role="tab">Settings</button></li>
-  <li class="nav-item"><button type="button" class="nav-link" id="om-tab-curve" role="tab">Curve</button></li>
+  <li class="nav-item"><button type="button" class="nav-link" id="om-tab-curve" role="tab">Power</button></li>
   <li class="nav-item"><button type="button" class="nav-link" id="om-tab-stats" role="tab">Statistics</button></li>
 </ul>
 
@@ -199,7 +199,7 @@
       }
     }
 
-    // ---- Curve ---------------------------------------------------------------
+    // ---- Power ---------------------------------------------------------------
 
     const chartStyle = document.createElement('style');
     chartStyle.textContent = window.ApplianceChart.css;
@@ -410,8 +410,8 @@
 
     /**
      * Switch between the tabs. Each is read afresh on every visit: the plugin
-     * keeps writing what Curve and Statistics show while the page is open, and
-     * a phase added on the Curve tab belongs in Settings.
+     * keeps writing what Power and Statistics show while the page is open, and
+     * a phase added on the Power tab belongs in Settings.
      */
     const TABS = { settings: 'om-settings-card', curve: 'om-curve-card', stats: 'om-stats-card' };
     function showTab(name) {

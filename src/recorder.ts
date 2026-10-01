@@ -15,7 +15,7 @@ export const DEFAULT_RECORD_DAYS = 14;
  *
  * One file per day rather than one growing file: with every plug in the
  * house reporting, that one file would fill an SD card in time. Two weeks is
- * plenty for the Curve tab of the settings page, which reads them back.
+ * plenty for the Power tab of the settings page, which reads them back.
  *
  * Synchronous on purpose: a plug reports at most every few seconds, and a line
  * that is on disk the moment it is logged survives Homebridge being stopped

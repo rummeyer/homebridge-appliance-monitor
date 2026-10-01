@@ -1,5 +1,5 @@
 /**
- * What the Curve tab of the settings page draws, and the power range it
+ * What the Power tab of the settings page draws, and the power range it
  * suggests for a stretch of time picked on it.
  */
 import type { Sample } from './learn.ts';

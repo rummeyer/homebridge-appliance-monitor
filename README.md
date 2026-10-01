@@ -103,7 +103,7 @@ a coffee is less than heating. And a phase ends only once the draw has been
 out of its range for a while (30 seconds by default), because a heating
 element switched by a thermostat goes on and off every few seconds.
 
-The easiest way to set one up is the **Curve** tab of the settings page. It
+The easiest way to set one up is the **Power** tab of the settings page. It
 shows a plug's recorded power, from the last hour to the last two weeks, with
 the levels the plug dwells at as green markers on the right, the phases set up
 so far each in its colour, and a bar below for each phase showing when it was
@@ -114,8 +114,8 @@ on. Pointing at the chart shows the time and the reading there.
   7:02, a spin) to take the range it drew then.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/curve-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/curve-light.png" alt="The Curve tab: a coffee machine's power over an hour, with its phases Aufheizen, Bezug and Milchschaum, and a bar for each showing when it was on" width="760">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-dark.png">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over an hour, with its phases Aufheizen, Bezug, Spülen and Milchschaum, and a bar for each showing when it was on" width="760">
 </picture>
 
 Name the phase, adjust the range if you like, add it, and save. Each phase
@@ -311,8 +311,8 @@ appliance is on.
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see above) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
-| `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Curve tab needs it. |
-| `recordDays` | `14` | How many days of those files to keep, for the Curve tab. The statistics do not need them. |
+| `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
+| `recordDays` | `14` | How many days of those files to keep, for the Power tab. The statistics do not need them. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
 
 ## Files
