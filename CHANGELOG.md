@@ -6,6 +6,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.12.1] — 2026-10-01
+
+### Added
+
+- "Last 12 hours" on the Power tab.
+
 ## [0.12.0] — 2026-10-01
 
 ### Changed
@@ -208,7 +214,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.1...v0.11.2
