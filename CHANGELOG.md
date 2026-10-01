@@ -6,12 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-01
+
 ### Added
 
 - The Statistics tab counts how often each appliance finished, or how often
   a phase ticked "Count in statistics" happened — coffees drawn rather than
   mornings the machine was on. All of them are counted all along, so ticking
   another phase loses nothing.
+- An icon, and the usual badges at the top of the README.
 
 ## [0.6.1] — 2026-10-01
 
@@ -80,6 +83,7 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/rummeyer/homebridge-appliance-monitor/releases/tag/v0.6.0

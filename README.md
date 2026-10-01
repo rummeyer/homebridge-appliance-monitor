@@ -1,9 +1,33 @@
-# homebridge-appliance-monitor
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/icon.png" alt="" width="120" height="120">
+</p>
+
+<h1 align="center">homebridge-appliance-monitor</h1>
+
+<p align="center">
+  Your <b>washing machine, dryer and coffee machine</b> in the Apple Home app &mdash; <b>Running</b> and <b>Finished</b>, from their power draw through Matter smart plugs.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/homebridge-appliance-monitor"><img src="https://img.shields.io/npm/v/homebridge-appliance-monitor?label=npm" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/homebridge-appliance-monitor"><img src="https://img.shields.io/npm/dt/homebridge-appliance-monitor" alt="Downloads"></a>
+  <a href="https://github.com/rummeyer/homebridge-appliance-monitor/actions/workflows/build.yml"><img src="https://github.com/rummeyer/homebridge-appliance-monitor/actions/workflows/build.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/rummeyer/homebridge-appliance-monitor/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue" alt="Licence"></a>
+  <img src="https://img.shields.io/badge/homebridge-%E2%89%A5%202.0.0-purple" alt="Homebridge 2.0.0+">
+  <img src="https://img.shields.io/badge/node-22%20%7C%2024%20%7C%2026-green" alt="Node 22, 24 or 26">
+</p>
+
+<p align="center">
+  <a href="https://buymeacoffee.com/rummeyer"><img src="https://img.shields.io/badge/donate-Buy%20Me%20a%20Coffee-yellow" alt="Buy Me a Coffee"></a>
+</p>
+
+---
 
 Watches the power draw of **Matter smart plugs and power meters** and tells
-HomeKit when the washing machine is **Running** and when it is **Finished**.
-Built for the **Eve Energy** and the **Shelly Plug PM Gen3** (a meter without a
-relay), and meant for any Matter device the Home app shows watts for.
+HomeKit when an appliance is **Running** and when it is **Finished**, and what
+it is doing in between: heating, spinning, a coffee being drawn. Built for the
+**Eve Energy** and the **Shelly Plug PM Gen3** (a meter without a relay), and
+meant for any Matter device the Home app shows watts for.
 
 There are no thresholds to work out: add the plug, run the appliance once, and
 the plugin learns from that cycle what running, pausing and finished look like
