@@ -40,7 +40,6 @@
     .om-set-phase { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
     .om-set-phase.om-set-head { display: none; }
   }
-  .om-set-confirm { display: inline-flex; gap: .4rem; align-items: center; font-size: .85rem; }
   details.om-set-more > summary { cursor: pointer; font-size: .85rem; opacity: .8; margin-bottom: .75rem; }
   .om-set-badge { font-size: .75rem; padding: .1rem .45rem; border-radius: .25rem; background: rgba(46,158,91,.18); color: #2e9e5b; }
   `;
@@ -104,7 +103,6 @@
     const pairedNames = new Set(paired);
 
     let selected = config.devices.length ? sortedIndices()[0] : -1;
-    let confirmingDelete = false;
     let pending;
 
     /** Hands the config to Homebridge, a moment after the last change. */
@@ -176,7 +174,7 @@
     function bar() {
       const list = el('select', {
         class: 'form-select', 'aria-label': 'Appliance',
-        onchange: (e) => { selected = Number(e.target.value); confirmingDelete = false; render(); },
+        onchange: (e) => { selected = Number(e.target.value); render(); },
       }, sortedIndices().map((index) => {
         const name = config.devices[index].name || '(no name)';
         return el('option', { value: index, selected: index === selected }, `${name}${pairedNames.has(name) ? '  ✓' : ''}`);
@@ -186,7 +184,6 @@
         onclick: () => {
           config.devices.push({ name: uniqueName(NEW_NAME) });
           selected = config.devices.length - 1;
-          confirmingDelete = false;
           changed();
           render();
           const name = container.querySelector('#om-set-name');
@@ -194,23 +191,32 @@
           name?.select();
         },
       }, '+ Add');
-      const remove = confirmingDelete
-        ? el('span', { class: 'om-set-confirm' }, `Delete ${config.devices[selected]?.name}?`,
-          el('button', {
-            type: 'button', class: 'btn btn-sm btn-danger',
-            onclick: () => {
-              config.devices.splice(selected, 1);
-              selected = config.devices.length ? sortedIndices()[0] : -1;
-              confirmingDelete = false;
-              changed();
-              render();
-            },
-          }, 'Delete'),
-          el('button', { type: 'button', class: 'btn btn-sm btn-outline-secondary', onclick: () => { confirmingDelete = false; render(); } }, 'Keep'))
-        : el('button', {
-          type: 'button', class: 'btn btn-outline-danger', disabled: selected < 0,
-          onclick: () => { confirmingDelete = true; render(); },
-        }, 'Delete');
+      // Asked twice on the button itself rather than with confirm(), which
+      // the settings window's frame may not be allowed to show.
+      let armed = null;
+      const remove = el('button', {
+        type: 'button', class: 'btn btn-outline-danger', disabled: selected < 0,
+        title: selected < 0 ? '' : `Delete ${config.devices[selected]?.name}`,
+        onclick: (event) => {
+          const button = event.currentTarget;
+          if (!armed) {
+            button.textContent = 'SURE?';
+            button.classList.replace('btn-outline-danger', 'btn-danger');
+            armed = setTimeout(() => {
+              armed = null;
+              button.textContent = 'Delete';
+              button.classList.replace('btn-danger', 'btn-outline-danger');
+            }, 5000);
+            return;
+          }
+          clearTimeout(armed);
+          armed = null;
+          config.devices.splice(selected, 1);
+          selected = config.devices.length ? sortedIndices()[0] : -1;
+          changed();
+          render();
+        },
+      }, 'Delete');
       return el('div', { class: 'om-set-bar' }, config.devices.length ? list : null, add, remove);
     }
 
