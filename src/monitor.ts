@@ -10,7 +10,7 @@
  * timers of its own.
  */
 import { CycleMachine } from './cycle.ts';
-import type { CycleParams, CycleState, ResetOptions, Transition } from './cycle.ts';
+import type { CycleParams, CycleState, Transition } from './cycle.ts';
 import { learnFromCycle, merge } from './learn.ts';
 import type { Learned, Sample } from './learn.ts';
 
@@ -29,7 +29,6 @@ const AFTER_MS = 10 * 60_000;
 const MAX_SAMPLES = 50_000;
 
 export interface MonitorOptions {
-  reset: ResetOptions;
   /** Values from the config, which win over learned ones. */
   overrides?: Partial<CycleParams>;
   learned?: Learned;
@@ -65,7 +64,7 @@ export class DeviceMonitor {
     this.#learned = options.learned;
     this.#cycles = options.cycles ?? 0;
     this.#events = events;
-    this.#machine = new CycleMachine(this.#params(), options.reset, options.initial);
+    this.#machine = new CycleMachine(this.#params(), options.initial);
   }
 
   get state(): CycleState {

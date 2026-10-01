@@ -26,7 +26,7 @@
 
   const css = `
   .om-set-bar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: 1rem; }
-  .om-set-bar select { width: auto; min-width: 14rem; }
+  .om-set-bar select { width: 14rem; max-width: 100%; }
   .om-set-section { margin-bottom: 1.25rem; }
   .om-set-section > h6 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; opacity: .65; margin-bottom: .5rem; }
   .om-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem 1rem; }
@@ -107,10 +107,12 @@
 
     /** Hands the config to Homebridge, a moment after the last change. */
     function changed() {
-      // Earlier versions had a Finished switch; Running going off says the same.
+      // Settings of earlier versions that are no longer used: the Finished
+      // switch (Running going off says the same) and when Finished ended.
       for (const device of config.devices) {
-        delete device.finishedSwitch;
-        delete device.finishedSensor;
+        for (const key of ['finishedSwitch', 'finishedSensor', 'finishedReset', 'finishedResetMinutes']) {
+          delete device[key];
+        }
       }
       clearTimeout(pending);
       pending = setTimeout(() => void homebridge.updatePluginConfig(configs), 250);

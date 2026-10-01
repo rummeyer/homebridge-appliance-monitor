@@ -3,7 +3,7 @@
  *
  *   off ──(above runWatts for startSeconds in all)──▶ running
  *   running ──(below runWatts for finishSeconds)──▶ finished
- *   finished ──(reset, see below)──▶ off
+ *   finished ──(down to offWatts, see below)──▶ off
  *   finished ──(above runWatts for startSeconds in all)──▶ running
  *
  * The two durations are the hysteresis in time, the gap between offWatts and
@@ -24,7 +24,7 @@ export interface CycleParams {
   runWatts: number;
   /**
    * At or below this, the appliance is switched off rather than finished and
-   * waiting. Only used by the `off-level` reset.
+   * waiting: when a finished appliance goes back to off.
    */
   offWatts: number;
   /**
@@ -41,24 +41,12 @@ export interface CycleParams {
 }
 
 /**
- * When `finished` goes back to `off`.
- *
- * - `off-level`: when the draw falls to offWatts — the machine is switched
- *   off, or its door opened and its display went dark. Only once it has been
- *   seen above offWatts while finished: a machine that drops to nothing by
- *   itself at the end has no level to fall from, and stays finished until it
- *   is started again.
- * - `timeout`: a set number of minutes after finishing.
- * - `next-start`: not until it runs again.
+ * `finished` goes back to `off` when the draw falls to offWatts — the machine
+ * is switched off, or its door opened and its display went dark. Only once it
+ * has been seen above offWatts while finished: a machine that drops to nothing
+ * by itself at the end has no level to fall from, and stays finished until it
+ * is started again. Nothing in HomeKit tells the two apart; the log does.
  */
-export type ResetMode = 'off-level' | 'timeout' | 'next-start';
-
-export interface ResetOptions {
-  mode: ResetMode;
-  /** For `timeout`. */
-  minutes: number;
-}
-
 export interface Transition {
   from: CycleState;
   to: CycleState;
@@ -74,7 +62,6 @@ const OFF_SETTLE_MS = 30_000;
 
 export class CycleMachine {
   #params: CycleParams;
-  readonly #reset: ResetOptions;
 
   #state: CycleState;
   #since: number;
@@ -95,9 +82,8 @@ export class CycleMachine {
   #wattHours = 0;
   #peak = 0;
 
-  constructor(params: CycleParams, reset: ResetOptions, initial?: { state: CycleState; since: number }) {
+  constructor(params: CycleParams, initial?: { state: CycleState; since: number }) {
     this.#params = params;
-    this.#reset = reset;
     this.#state = initial?.state ?? 'off';
     this.#since = initial?.since ?? 0;
     // After a restart the machine may be anywhere; a finished one is assumed
@@ -199,12 +185,7 @@ export class CycleMachine {
     }
 
     if (this.#state === 'finished') {
-      const { mode, minutes } = this.#reset;
-      if (mode === 'timeout' && at - this.#since >= minutes * 60_000) {
-        return this.#go('off', at);
-      }
       if (
-        mode === 'off-level' &&
         this.#standbySeen &&
         this.#offSince !== undefined &&
         at - this.#offSince >= OFF_SETTLE_MS

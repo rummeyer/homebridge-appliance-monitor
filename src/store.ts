@@ -50,11 +50,4 @@ export class DeviceStore {
     counts[key] = { count: (current?.count ?? 0) + 1, since: current?.since ?? at };
     this.update(name, { counts });
   }
-
-  /** Forgets what was learned, so the next cycle is learned afresh. */
-  forget(name: string): void {
-    const { state, since, described, counts } = this.get(name);
-    this.#records[name] = { state, since, described, counts };
-    writeJson(this.#path, this.#records);
-  }
 }

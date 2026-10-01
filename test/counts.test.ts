@@ -39,10 +39,3 @@ test('counts add up across restarts, each from when it began', () => {
   });
   assert.equal(reloaded.state, 'running', 'the rest of the record is left as it was');
 });
-
-test('forgetting what was learned keeps the counts', () => {
-  const store = new DeviceStore(join(dir, 'forget.json'));
-  store.increment('Washer', FINISHED, 1);
-  store.forget('Washer');
-  assert.equal(store.get('Washer').counts?.[FINISHED]?.count, 1);
-});

@@ -6,6 +6,21 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-10-01
+
+### Changed
+
+- The appliance lists on Settings and Power are the same size, so switching
+  tabs does not jump.
+
+### Removed
+
+- `finishedReset` and `finishedResetMinutes`, no longer offered since 0.9.0:
+  with nothing in HomeKit telling Finished from Off, they only decided when
+  the log said Off. Finished now always goes back to Off when the appliance
+  is switched off, as it did by default. The settings page drops the old keys
+  when it saves.
+
 ## [0.11.3] — 2026-10-01
 
 ### Changed
@@ -193,7 +208,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.0...v0.11.1

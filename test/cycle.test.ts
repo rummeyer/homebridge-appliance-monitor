@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { CycleMachine } from '../src/cycle.ts';
-import type { ResetOptions, Transition } from '../src/cycle.ts';
+import type { Transition } from '../src/cycle.ts';
 import { learnFromCycle } from '../src/learn.ts';
 import type { Learned } from '../src/learn.ts';
 import { DeviceMonitor, LEARNING_DEFAULTS } from '../src/monitor.ts';
@@ -72,11 +72,11 @@ function play(
   }
 }
 
-function recording(reset: ResetOptions = { mode: 'off-level', minutes: 0 }, learned?: Learned) {
+function recording(learned?: Learned) {
   const transitions: Transition[] = [];
   const lessons: Learned[] = [];
   const monitor = new DeviceMonitor(
-    { reset, learned },
+    { learned },
     {
       transition: (transition) => transitions.push(transition),
       learned: (value) => lessons.push(value),
@@ -135,7 +135,7 @@ test('once learned, "finished" comes minutes after the end, not half an hour', (
 test('a machine that drops to nothing by itself stays finished until the next start', () => {
   const { curve, endsAt } = wash(0, 0);
   const learned = learnedFrom(wash(45 * 60));
-  const { monitor, path } = recording({ mode: 'off-level', minutes: 0 }, learned);
+  const { monitor, path } = recording(learned);
   play(monitor, curve, 0, (endsAt + 3 * 60 * 60) * S);
   assert.deepEqual(path(), ['off→running', 'running→finished']);
 
@@ -143,21 +143,6 @@ test('a machine that drops to nothing by itself stays finished until the next st
   const t0 = (endsAt + 3 * 60 * 60) * S;
   play(monitor, again.curve, t0, t0 + (again.endsAt + 20 * 60) * S);
   assert.deepEqual(path(), ['off→running', 'running→finished', 'finished→running', 'running→finished']);
-});
-
-test('the timeout reset clears "finished" after the set minutes, whatever the draw', () => {
-  const { curve, endsAt } = wash(5 * 60 * 60);
-  const { monitor, transitions, path } = recording({ mode: 'timeout', minutes: 20 }, learnedFrom(wash(45 * 60)));
-  play(monitor, curve, 0, (endsAt + 2 * 60 * 60) * S);
-  assert.deepEqual(path(), ['off→running', 'running→finished', 'finished→off']);
-  assert.equal(transitions[2]!.at - transitions[1]!.at, 20 * MIN);
-});
-
-test('the next-start reset leaves "finished" alone, even when switched off', () => {
-  const { curve, endsAt } = wash(15 * 60);
-  const { monitor, path } = recording({ mode: 'next-start', minutes: 0 }, learnedFrom(wash(45 * 60)));
-  play(monitor, curve, 0, (endsAt + 2 * 60 * 60) * S);
-  assert.deepEqual(path(), ['off→running', 'running→finished']);
 });
 
 test('a cold wash — bursts of half a minute, no heating — still starts', () => {
@@ -173,7 +158,7 @@ test('a cold wash — bursts of half a minute, no heating — still starts', () 
 });
 
 test('a short spike is not a start', () => {
-  const machine = new CycleMachine(LEARNING_DEFAULTS, { mode: 'off-level', minutes: 0 });
+  const machine = new CycleMachine(LEARNING_DEFAULTS);
   const seen = [
     ...machine.reading(0, 1),
     ...machine.reading(10 * S, 800), // door lock, pump for a moment
@@ -193,7 +178,7 @@ test('a pause longer than learned is taken back when the machine resumes, and le
   const lessons: Learned[] = [];
   const transitions: Transition[] = [];
   const monitor = new DeviceMonitor(
-    { reset: { mode: 'off-level', minutes: 0 }, learned: tooShort },
+    { learned: tooShort },
     {
       transition: (transition) => transitions.push(transition),
       learned: (value) => lessons.push(value),
@@ -210,7 +195,6 @@ test('a pause longer than learned is taken back when the machine resumes, and le
 test('settings from the config win over learned values, and empty ones do not count', () => {
   const monitor = new DeviceMonitor(
     {
-      reset: { mode: 'off-level', minutes: 0 },
       learned: learnedFrom(wash(45 * 60)),
       overrides: { runWatts: 12, finishSeconds: undefined, offWatts: null as unknown as number },
     },
@@ -223,7 +207,6 @@ test('after a restart, a finished machine can still be switched off', () => {
   const seen: string[] = [];
   const monitor = new DeviceMonitor(
     {
-      reset: { mode: 'off-level', minutes: 0 },
       learned: learnedFrom(wash(45 * 60)),
       initial: { state: 'finished', since: 0 },
     },

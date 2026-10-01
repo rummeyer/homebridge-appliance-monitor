@@ -20,6 +20,8 @@
 
   .om-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
   .om-controls select { width: auto; }
+  /* As wide as the appliance list on Settings, so switching tabs does not jump. */
+  .om-controls #om-curve-plug { width: 14rem; max-width: 100%; }
   .om-form   { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; align-items: end; }
 </style>
 <script src="chart.js"></script>
@@ -38,8 +40,8 @@
 <div class="card mb-3 om-hidden" id="om-curve-card">
   <div class="card-body">
     <div class="om-controls">
-      <select class="form-select form-select-sm" id="om-curve-plug" aria-label="Plug"></select>
-      <select class="form-select form-select-sm" id="om-curve-hours" aria-label="Time">
+      <select class="form-select" id="om-curve-plug" aria-label="Appliance"></select>
+      <select class="form-select" id="om-curve-hours" aria-label="Time">
         <option value="1">Last hour</option>
         <option value="6" selected>Last 6 hours</option>
         <option value="24">Last 24 hours</option>
@@ -47,7 +49,7 @@
         <option value="168">Last 7 days</option>
         <option value="336">Last 14 days</option>
       </select>
-      <button type="button" class="btn btn-sm btn-outline-secondary" id="om-curve-reload">Reload</button>
+      <button type="button" class="btn btn-outline-secondary" id="om-curve-reload">Reload</button>
     </div>
     <div id="om-curve"></div>
     <p class="om-hint mb-3" id="om-curve-help">

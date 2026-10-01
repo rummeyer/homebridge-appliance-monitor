@@ -1,7 +1,7 @@
 import type { PlatformConfig } from 'homebridge';
 import { ManualPairingCodeCodec, QrPairingCodeCodec } from '@matter/main/types';
 
-import type { CycleParams, ResetMode, ResetOptions } from './cycle.ts';
+import type { CycleParams } from './cycle.ts';
 import { DEFAULT_MIN_SECONDS } from './phases.ts';
 import type { PhaseConfig } from './phases.ts';
 
@@ -39,12 +39,11 @@ export interface DeviceConfig {
   finishedSwitch?: boolean;
   finishedSensor?: boolean;
   /**
-   * When the state goes from finished back to off. See ResetMode. No longer
-   * offered in the settings, since HomeKit only shows Running; it only
-   * decides when the log says Off.
+   * When Finished went back to Off, once a setting (`off-level`, `timeout`,
+   * `next-start`). No longer used: with nothing in HomeKit telling the two
+   * apart, it only decided when the log said Off.
    */
-  finishedReset?: ResetMode;
-  /** For the `timeout` reset. */
+  finishedReset?: string;
   finishedResetMinutes?: number;
   /**
    * Fixed values instead of learned ones, each on its own. Anything left out
@@ -75,17 +74,6 @@ export function showsInHomeKit(device: DeviceConfig): boolean {
     showsRunning(device) ||
     usablePhases(device).phases.some((phase) => phase.sensor !== false)
   );
-}
-
-export const RESET_MODES: readonly ResetMode[] = ['off-level', 'timeout', 'next-start'];
-export const DEFAULT_RESET_MINUTES = 60;
-
-/** The reset a device asked for, with the defaults filled in. */
-export function resetOptions(device: DeviceConfig): ResetOptions {
-  return {
-    mode: device.finishedReset ?? 'off-level',
-    minutes: device.finishedResetMinutes ?? DEFAULT_RESET_MINUTES,
-  };
 }
 
 export type MatterLogLevel = 'debug' | 'info' | 'notice' | 'warn' | 'error';
@@ -149,7 +137,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, finishedReset, finishedResetMinutes, thresholds, pollSeconds, runningAs } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, thresholds, pollSeconds, runningAs } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -163,15 +151,6 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   }
   if (runningAs !== undefined && runningAs !== null && !RUNNING_AS.includes(runningAs)) {
     problems.push(`${label} has an unknown runningAs "${String(runningAs)}"`);
-  }
-  if (finishedReset !== undefined && !RESET_MODES.includes(finishedReset)) {
-    problems.push(`${label} has an unknown finishedReset "${String(finishedReset)}"`);
-  }
-  if (
-    finishedResetMinutes !== undefined &&
-    (typeof finishedResetMinutes !== 'number' || !(finishedResetMinutes > 0))
-  ) {
-    problems.push(`${label} needs finishedResetMinutes above 0`);
   }
   if (
     pollSeconds !== undefined &&

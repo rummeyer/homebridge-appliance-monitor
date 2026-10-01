@@ -10,7 +10,6 @@ import {
   MATTER_LOG_LEVELS,
   usablePhases,
   parsePairingCode,
-  resetOptions,
   validateDeviceConfig,
 } from './config.ts';
 import type { DeviceConfig, MatterLogLevel, ApplianceMonitorPlatformConfig } from './config.ts';
@@ -366,7 +365,6 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
     const monitor = new DeviceMonitor(
       {
-        reset: resetOptions(device),
         overrides: device.thresholds,
         learned: record.learned,
         cycles: record.cycles,
