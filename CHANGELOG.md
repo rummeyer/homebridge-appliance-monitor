@@ -6,6 +6,19 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.1] — 2026-10-01
+
+### Fixed
+
+- On the Curve tab, phases in the same range (a coffee and a rinse) have their
+  names side by side instead of on top of each other.
+
+### Changed
+
+- New screenshots in the README, which is brought up to date, and the
+  settings say that the statistics do not depend on how many days of
+  recordings are kept.
+
 ## [0.11.0] — 2026-10-01
 
 ### Added
@@ -163,7 +176,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.1...v0.10.2

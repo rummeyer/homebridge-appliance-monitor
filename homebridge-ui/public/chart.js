@@ -182,13 +182,18 @@
       );
     }
 
-    // Phases already set up, each in its colour.
+    // Phases already set up, each in its colour. Two in the same range — a
+    // coffee and a rinse, told apart by how long — have their names side by
+    // side rather than on top of each other.
+    const labels = [];
     for (const phase of usable) {
       const y1 = f(yOf(Number.isFinite(phase.max) ? phase.max : 10 ** logMax));
       const y2 = f(yOf(phase.min));
+      const x = Math.max(PAD.left + 8, ...labels.filter((l) => Math.abs(l.y - y1) < 14).map((l) => l.end + 12));
+      labels.push({ y: y1, end: x + phase.name.length * 7.5 });
       parts.push(
         `<rect x="${PAD.left}" y="${y1}" width="${plotW}" height="${f(Math.max(3, y2 - y1))}" fill="${phase.colour}" fill-opacity="0.07" stroke="${phase.colour}" stroke-opacity="0.55" stroke-dasharray="6 4" class="om-phase"/>`,
-        `<text x="${PAD.left + 8}" y="${y1 + 14}" fill="${phase.colour}" class="om-phase-label">${escape(phase.name)}</text>`,
+        `<text x="${f(x)}" y="${y1 + 14}" fill="${phase.colour}" class="om-phase-label">${escape(phase.name)}</text>`,
       );
     }
 

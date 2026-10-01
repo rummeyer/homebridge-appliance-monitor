@@ -59,9 +59,10 @@ Each appliance is in one of three states:
 - **Finished**: the draw has stayed below the running level for longer than
   the longest pause in the programme.
 
-In HomeKit, Running is a switch that is on while the appliance runs. It
-goes off only when the appliance finishes, so "when Running turns off" is
-"when it is done". See [In the Home app](#in-the-home-app).
+In HomeKit, Running is a switch that is on while the appliance runs, or an
+occupancy sensor for a desk. It goes off only when the appliance finishes, so
+"when Running turns off" is "when it is done". See
+[In the Home app](#in-the-home-app).
 
 ### Learning
 
@@ -179,8 +180,8 @@ for its dates.
 
 Today counts from a plug's first reading of the day, so a plug added at noon
 shows its afternoon. A week or a month is shown only if a plug has been
-counted for all of it, and left empty until then. A year is shown once it is over even if the plug joined partway
-through, marked ¹ as part of a year: a plug added in September 2026 shows its
+counted for all of it, and left empty until then. A year is shown once it is
+over even if the plug joined partway through, marked ¹ as part of a year: a plug added in September 2026 shows its
 2026 from the 1st of January 2027. Where some plugs have a value and others do
 not yet, the total adds up those that have, and is marked with an asterisk.
 
@@ -192,7 +193,9 @@ all along, so ticking another phase shows its count from when the phase was
 set up, not from when it was ticked.
 
 The energy is worked out from the power readings, per local calendar day,
-while Homebridge is running. Time it was not running is not counted.
+while Homebridge is running. Time it was not running is not counted. The
+statistics keep only the total per plug and day, for a little over two years,
+so they do not depend on how many days of recordings are kept.
 
 ## Requirements
 
@@ -287,9 +290,9 @@ appliance is on.
     { "name": "Washing machine", "pairingCode": "3497-011-2332" },
     {
       "name": "Dryer",
-      "runningSwitch": false,
       "thresholds": { "runWatts": 20 }
-    }
+    },
+    { "name": "Desk", "runningAs": "occupancy" }
   ],
   "recordPower": true,
   "matterLogLevel": "warn"
@@ -298,7 +301,7 @@ appliance is on.
 
 | Option | Default | |
 | --- | --- | --- |
-| `devices[].name` | — | Name of the accessory, and of its switches, log lines and recording. |
+| `devices[].name` | — | The appliance. Its accessory is called "<name> Monitor", and its Running switch "<name> Running"; also the name in the log and the recordings. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
 | `devices[].runningSwitch` | `true` | Running in HomeKit, on while the appliance runs. |
 | `devices[].runningAs` | `switch` | `switch`, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
@@ -309,7 +312,7 @@ appliance is on.
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see above) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Curve tab needs it. |
-| `recordDays` | `14` | How many days of those files to keep. |
+| `recordDays` | `14` | How many days of those files to keep, for the Curve tab. The statistics do not need them. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
 
 ## Files
@@ -319,11 +322,13 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 - `matter/`: the controller's fabric, certificates and what it knows about
   the plugs. Deleting it unpairs everything, as far as the plugin is concerned.
 - `nodes.json`: which configured name is which Matter node.
-- `devices.json`: what each appliance has learned, and the state it is in, so
-  that a running appliance is still running after a restart. Remove an appliance's `learned` entry
-  (with the child bridge stopped) to have it learn afresh.
-- `energy.json`: watt-hours per plug and day, for the Statistics tab. Written
-  every five minutes. Plugs removed from the config keep their history here.
+- `devices.json`: what each appliance has learned, the state it is in, so that
+  a running appliance is still running after a restart, and its counts.
+  Remove an appliance's `learned` entry (with the child bridge stopped) to
+  have it learn afresh.
+- `energy.json`: watt-hours per plug and day, for the Statistics tab, kept for
+  a little over two years. Written every five minutes. Plugs removed from the
+  config keep their history here.
 - `power/`: one file per day, `time,device,endpoint,watts`, one line per
   reading. Older than `recordDays` is deleted.
 
@@ -332,7 +337,7 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 On each start, one line per plug: what it is, what it draws, its state, and
 whether it has learned yet. Everything a plug offers is listed once, when it
 is paired. After that the log has the changes: Running, Finished, Off, each
-phase starting and ending, what was learned, and a plug that became
+phase starting and ending (or, for a phase with "shorter than", having happened), what was learned, and a plug that became
 unreachable or came back. The single readings are in the recordings, not in
 the log.
 

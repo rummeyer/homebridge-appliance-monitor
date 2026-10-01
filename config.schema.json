@@ -163,7 +163,7 @@
         "type": "integer",
         "default": 14,
         "minimum": 1,
-        "description": "One file per day under appliance-monitor/power. The Curve tab shows what is kept."
+        "description": "One file per day under appliance-monitor/power, for the Curve tab. The statistics keep their own daily totals for two years and do not need these files."
       },
       "matterLogLevel": {
         "title": "matter.js log level",
