@@ -200,9 +200,13 @@ is fine for a wash cycle or for heating, but a coffee runs through in half a
 minute and may fall between two reports, or show as a single one.
 
 For such a plug, set **Ask for power every (seconds)**, and the plugin asks it
-on top of listening. Whether that gives finer readings depends on whether the
-plug measures more often than it reports; the Curve tab shows it. Each ask is
-a message over Thread or Wi-Fi, so keep it to the plugs that need it.
+on top of listening. The Eve Energy measures far more often than it reports,
+so asking every 5 seconds gives a fresh reading every 5 seconds. Each ask is a
+message over Thread or Wi-Fi, so keep it to the plugs that need it.
+
+A plug that draws nothing is not asked: the appliance is off, and the plug
+reports it being switched on by itself. The asking is left to the hours the
+appliance is on.
 
 ## Configuration
 

@@ -10,7 +10,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 - Ask a plug for its power every few seconds (`pollSeconds`), for plugs that
   report too seldom to see something short, such as the Eve Energy's once a
-  minute against a coffee's half a minute.
+  minute against a coffee's half a minute. A plug that draws nothing is not
+  asked; the plug reports being switched on by itself.
 
 ### Fixed
 

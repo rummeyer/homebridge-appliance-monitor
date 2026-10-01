@@ -48,7 +48,12 @@ interface Appliance {
   phases: PhaseTracker[];
   /** The last reading taken in, to drop the same one arriving twice. */
   last?: { endpointId: number; value: unknown; at: number };
+  /** The last power in watts, to know whether the plug is drawing anything. */
+  watts?: number;
 }
+
+/** At or below this a plug draws nothing, and is not asked; see #poll. */
+const IDLE_WATTS = 0.5;
 
 /**
  * Pairs the configured plugs, watches their power draw, and shows each
@@ -274,11 +279,19 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
    * slow Thread hop a read can take longer than the interval, and asks would
    * pile up. Failures are expected while the plug is unreachable and only go
    * to the debug log.
+   *
+   * Not while it draws nothing: an appliance that is switched off has nothing
+   * short to catch, and the plug reports it being switched on by itself —
+   * within a minute even for an Eve, which is fine for something that then
+   * heats for minutes. That leaves the asking to the hours it is on.
    */
   #poll(appliance: Appliance, node: PairedNode, seconds: number): void {
     let busy = false;
     const timer = setInterval(() => {
       if (busy || this.#stopping || !node.isConnected) {
+        return;
+      }
+      if (appliance.watts !== undefined && appliance.watts <= IDLE_WATTS) {
         return;
       }
       busy = true;
@@ -375,6 +388,9 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
     }
     appliance.last = { endpointId: report.endpointId, value: report.value, at: now };
     const watts = activePowerWatts(report.value);
+    if (watts !== undefined) {
+      appliance.watts = watts;
+    }
     this.#recorder?.record(device.name, report.endpointId, watts);
     monitor.reading(now, watts);
     appliance.energy.reading(now, watts);
