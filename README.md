@@ -59,14 +59,10 @@ Each appliance is in one of three states:
 - **Finished**: the draw has stayed below the running level for longer than
   the longest pause in the programme.
 
-What takes Finished back to Off is up to you:
-
-- **When the appliance is switched off** (the default): the draw falls from
-  the level the machine rests at when done, a lit display for instance, to
-  its off level. An appliance that drops to nothing by itself at the end has
-  no such level; it stays Finished until it runs again.
-- **After a set time.**
-- **Only when it runs again.**
+In HomeKit, Running is a switch that is on while the appliance runs, and
+Finished is a moment: the Finished switch turns on when the appliance
+finishes, and off again by itself a couple of seconds later. See
+[In the Home app](#in-the-home-app).
 
 ### Learning
 
@@ -123,26 +119,31 @@ on. Pointing at the chart shows the time and the reading there.
 </picture>
 
 Name the phase, adjust the range if you like, add it, and save. Each phase
-can have an occupancy sensor in HomeKit, occupied while it lasts, and its
-start and end are logged.
+can have a switch in HomeKit, on while it lasts, and its start and end are
+logged.
 
+## In the Home app
 
+Each appliance is one accessory with a switch for each thing it can tell, to
+hang automations on:
 
-Each appliance is one accessory with these sensors:
+- **Running**: on while the appliance runs.
+- **Finished**: turns on for a moment when the appliance finishes, then off
+  again by itself. An automation "when Washing machine Finished turns on" runs
+  once per cycle: a notification, a light, an announcement on the HomePod.
+- **One switch per phase**: on while the phase lasts, "Coffee machine Bezug"
+  say.
 
-- **Running**: an occupancy sensor, occupied while the appliance runs.
-- **Finished**: a contact sensor, open while it is finished. The Home app can
-  notify you when it opens, with no automation needed.
-- One occupancy sensor for each phase, if it has any.
+The plugin only measures, so the switches only report: one tapped in the Home
+app is put back to what the appliance is doing straight away, and an
+automation never sees a state that is not true.
 
-Running and Finished are on by default, and each sensor can be turned off in
-the settings. A new sensor is named after the appliance, followed by
-"Running", "Finished" or the phase's name: "Coffee machine Heating", say. To
-call it something else, rename it in the Home app; the plugin never sets the
-name again. While a plug cannot be reached, its sensors are shown as not
-responding.
+Running and Finished are on by default; each switch can be turned off in the
+settings, a phase's too. A new switch is named after the appliance, followed
+by "Running", "Finished" or the phase's name. To call it something else,
+rename it in the Home app; the plugin never sets the name again.
 
-A plug with every sensor turned off, a lamp say, does not appear in HomeKit at
+A plug with every switch turned off, a lamp say, does not appear in HomeKit at
 all, and is still counted in the statistics.
 
 ## Statistics
@@ -221,7 +222,7 @@ while Homebridge is running. Time it was not running is not counted.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its sensors and phases" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its switches and phases" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -267,9 +268,7 @@ appliance is on.
     { "name": "Washing machine", "pairingCode": "3497-011-2332" },
     {
       "name": "Dryer",
-      "runningSensor": false,
-      "finishedReset": "timeout",
-      "finishedResetMinutes": 30,
+      "runningSwitch": false,
       "thresholds": { "runWatts": 20 }
     }
   ],
@@ -280,17 +279,15 @@ appliance is on.
 
 | Option | Default | |
 | --- | --- | --- |
-| `devices[].name` | — | Name of the accessory, and of the sensors, log lines and recording. |
+| `devices[].name` | — | Name of the accessory, and of its switches, log lines and recording. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
-| `devices[].runningSensor` | `true` | Show the Running occupancy sensor. |
-| `devices[].finishedSensor` | `true` | Show the Finished contact sensor. |
-| `devices[].finishedReset` | `off-level` | Finished goes back to Off: `off-level` when switched off, `timeout` after a set time, `next-start` only when it runs again. |
-| `devices[].finishedResetMinutes` | `60` | The time for `timeout`. |
+| `devices[].runningSwitch` | `true` | The Running switch, on while the appliance runs. |
+| `devices[].finishedSwitch` | `true` | The Finished switch, on for a moment when it finishes. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.offWatts` | learned | Switched off at or below this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Curve tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep. |

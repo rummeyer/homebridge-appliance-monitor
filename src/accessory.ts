@@ -1,5 +1,6 @@
-import type { API, PlatformAccessory, Service } from 'homebridge';
+import type { API, CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
+import { showsFinished, showsRunning } from './config.ts';
 import type { DeviceConfig } from './config.ts';
 import type { CycleState } from './cycle.ts';
 
@@ -11,13 +12,25 @@ export interface DeviceInfo {
   softwareVersionString?: string;
 }
 
+/** How long the Finished switch stays on: long enough for an automation to see it. */
+export const FINISHED_PULSE_MS = 2000;
+
+/** How soon a switch tapped in the Home app is put back to what the appliance is doing. */
+const PUT_BACK_MS = 300;
+
 /**
- * One appliance in HomeKit: "running" as an occupancy sensor, "finished" as a
- * contact sensor that opens, and an occupancy sensor for each phase.
+ * One appliance in HomeKit, as switches to hang automations on:
  *
- * Sensors rather than switches: the Home app offers notifications for them
- * without an automation ("Washing machine Finished opened"), and nobody can
- * tap them into a state the appliance is not in.
+ * - **Running**, on while the appliance runs;
+ * - one switch per phase, on while the phase lasts;
+ * - **Finished**, which goes on for a moment when the appliance finishes, and
+ *   off again by itself — an event, as a switch, because "when it turns on"
+ *   is what an automation can wait for.
+ *
+ * Switches rather than sensors, at the owner's choice: an occupancy sensor
+ * "detecting" a coffee being drawn read oddly, and the Home app tucks
+ * sensors away. A switch can be tapped, though, and the plugin only
+ * measures, so one tapped is put back to the truth straight away.
  */
 export class ApplianceAccessory {
   readonly #api: API;
@@ -25,80 +38,67 @@ export class ApplianceAccessory {
   readonly #running: Service | undefined;
   readonly #finished: Service | undefined;
   readonly #phases = new Map<string, Service>();
+  /** What each switch should show, by subtype, to put a tapped one back to. */
+  readonly #truth = new Map<string, boolean>();
+  #pulse: NodeJS.Timeout | undefined;
 
   constructor(api: API, accessory: PlatformAccessory, device: DeviceConfig, state: CycleState) {
     this.#api = api;
     this.#accessory = accessory;
     const { Service } = api.hap;
 
-    // Homebridge brings a cached accessory back with every service it had, so
-    // one turned off in the config has to be removed, not just not built.
-    this.#running = this.#sensor(
-      Service.OccupancySensor,
-      'running',
-      device.runningSensor !== false,
-      `${device.name} Running`,
-    );
-    this.#finished = this.#sensor(
-      Service.ContactSensor,
-      'finished',
-      device.finishedSensor !== false,
-      `${device.name} Finished`,
-    );
+    // Earlier versions showed sensors; Homebridge brings a cached accessory
+    // back with every service it had, so they are removed here.
+    for (const service of [...accessory.services]) {
+      if (service.UUID === Service.OccupancySensor.UUID || service.UUID === Service.ContactSensor.UUID) {
+        accessory.removeService(service);
+      }
+    }
+
+    this.#running = this.#switch('running', showsRunning(device), `${device.name} Running`);
+    this.#finished = this.#switch('finished', showsFinished(device), `${device.name} Finished`);
 
     const wanted = new Set<string>();
     for (const phase of device.phases ?? []) {
       const name = phase.name.trim();
       const subtype = `phase:${name}`;
       wanted.add(subtype);
-      const service = this.#sensor(Service.OccupancySensor, subtype, phase.sensor !== false, `${device.name} ${name}`);
+      const service = this.#switch(subtype, phase.sensor !== false, `${device.name} ${name}`);
       if (service) {
         this.#phases.set(name, service);
       }
     }
-    for (const service of [...this.#accessory.services]) {
+    for (const service of [...accessory.services]) {
       if (service.subtype?.startsWith('phase:') && !wanted.has(service.subtype)) {
-        this.#accessory.removeService(service);
+        accessory.removeService(service);
       }
     }
 
     this.update(state);
+    this.#show('finished', false);
     for (const name of this.#phases.keys()) {
       this.setPhase(name, false);
     }
   }
 
-  /** A phase, occupied while it lasts. */
-  setPhase(name: string, active: boolean): void {
-    const { Characteristic } = this.#api.hap;
-    this.#phases.get(name)?.updateCharacteristic(
-      Characteristic.OccupancyDetected,
-      active ? Characteristic.OccupancyDetected.OCCUPANCY_DETECTED : Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED,
-    );
-  }
-
+  /** Running follows the state; Finished is a pulse of its own (see finished()). */
   update(state: CycleState): void {
-    const { Characteristic } = this.#api.hap;
-    this.#running?.updateCharacteristic(
-      Characteristic.OccupancyDetected,
-      state === 'running'
-        ? Characteristic.OccupancyDetected.OCCUPANCY_DETECTED
-        : Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED,
-    );
-    this.#finished?.updateCharacteristic(
-      Characteristic.ContactSensorState,
-      state === 'finished'
-        ? Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
-        : Characteristic.ContactSensorState.CONTACT_DETECTED,
-    );
+    this.#show('running', state === 'running');
   }
 
-  /** Greys the sensors out in the Home app while the plug cannot be reached. */
-  setReachable(reachable: boolean): void {
-    const { Characteristic } = this.#api.hap;
-    for (const service of [this.#running, this.#finished, ...this.#phases.values()]) {
-      service?.updateCharacteristic(Characteristic.StatusActive, reachable);
+  /** Turns Finished on for a moment. */
+  finished(): void {
+    if (!this.#finished) {
+      return;
     }
+    clearTimeout(this.#pulse);
+    this.#show('finished', true);
+    this.#pulse = setTimeout(() => this.#show('finished', false), FINISHED_PULSE_MS);
+  }
+
+  /** A phase, on while it lasts. */
+  setPhase(name: string, active: boolean): void {
+    this.#show(`phase:${name}`, active);
   }
 
   setInfo(info: DeviceInfo): void {
@@ -118,32 +118,47 @@ export class ApplianceAccessory {
     set(Characteristic.FirmwareRevision, firmware(info.softwareVersionString));
   }
 
-  #sensor(
-    type: typeof Service.OccupancySensor | typeof Service.ContactSensor,
-    subtype: string,
-    wanted: boolean,
-    name: string,
-  ): Service | undefined {
-    const { Characteristic } = this.#api.hap;
-    const existing = this.#accessory.getServiceById(type, subtype);
+  #service(subtype: string): Service | undefined {
+    if (subtype === 'running') {
+      return this.#running;
+    }
+    if (subtype === 'finished') {
+      return this.#finished;
+    }
+    return this.#phases.get(subtype.slice('phase:'.length));
+  }
+
+  #show(subtype: string, on: boolean): void {
+    this.#truth.set(subtype, on);
+    this.#service(subtype)?.updateCharacteristic(this.#api.hap.Characteristic.On, on);
+  }
+
+  #switch(subtype: string, wanted: boolean, name: string): Service | undefined {
+    const { Characteristic, Service } = this.#api.hap;
+    const existing = this.#accessory.getServiceById(Service.Switch, subtype);
     if (!wanted) {
       if (existing) {
         this.#accessory.removeService(existing);
       }
       return undefined;
     }
-    if (existing) {
-      existing.setCharacteristic(Characteristic.StatusActive, true);
-      return existing;
+    let service = existing;
+    if (!service) {
+      // Named once, when it is new. Renaming is done in the Home app, and a
+      // name set on every start would undo it.
+      service = this.#accessory.addService(Service.Switch, name, subtype);
+      if (!service.testCharacteristic(Characteristic.ConfiguredName)) {
+        service.addOptionalCharacteristic(Characteristic.ConfiguredName);
+      }
+      service.setCharacteristic(Characteristic.ConfiguredName, name);
     }
-    // Named once, when it is new. Renaming is done in the Home app, and a
-    // name set on every start would undo it.
-    const service = this.#accessory.addService(type, name, subtype);
-    if (!service.testCharacteristic(Characteristic.ConfiguredName)) {
-      service.addOptionalCharacteristic(Characteristic.ConfiguredName);
-    }
-    service.setCharacteristic(Characteristic.ConfiguredName, name);
-    service.setCharacteristic(Characteristic.StatusActive, true);
+    // Restored services come back without handlers, so this is set every time.
+    service.getCharacteristic(Characteristic.On).onSet((value: CharacteristicValue) => {
+      const truth = this.#truth.get(subtype) ?? false;
+      if (value !== truth) {
+        setTimeout(() => service.updateCharacteristic(Characteristic.On, this.#truth.get(subtype) ?? false), PUT_BACK_MS);
+      }
+    });
     return service;
   }
 }

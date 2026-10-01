@@ -6,6 +6,20 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-01
+
+### Changed
+
+- Each appliance is one accessory with switches instead of sensors, to hang
+  automations on: Running on while it runs, a switch per phase on while the
+  phase lasts, and Finished on for a moment when it finishes, then off by
+  itself. A switch tapped in the Home app is put back straight away, since the
+  plugin only measures. The sensors of earlier versions are removed; their
+  settings (`runningSensor`, `finishedSensor`) still count, as
+  `runningSwitch` and `finishedSwitch`.
+- Finished going back to Off is no longer a setting, since Finished is now a
+  moment in HomeKit.
+
 ## [0.8.0] — 2026-10-01
 
 ### Changed
@@ -94,7 +108,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.0...v0.6.1

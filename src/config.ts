@@ -22,11 +22,18 @@ export interface DeviceConfig {
    * the code in place inside that time.
    */
   pairingCode?: string;
-  /** Show "running" in HomeKit, as an occupancy sensor. On by default. */
+  /** A Running switch in HomeKit, on while the appliance runs. On by default. */
+  runningSwitch?: boolean;
+  /** A Finished switch in HomeKit, on for a moment when it finishes. On by default. */
+  finishedSwitch?: boolean;
+  /** What runningSwitch and finishedSwitch were called while they were sensors. */
   runningSensor?: boolean;
-  /** Show "finished" in HomeKit, as a contact sensor that opens. On by default. */
   finishedSensor?: boolean;
-  /** When "finished" goes back to off. See ResetMode. Default `off-level`. */
+  /**
+   * When the state goes from finished back to off. See ResetMode. No longer
+   * offered in the settings, since Finished is a moment in HomeKit; it only
+   * decides when the log says Off.
+   */
   finishedReset?: ResetMode;
   /** For the `timeout` reset. */
   finishedResetMinutes?: number;
@@ -47,11 +54,17 @@ export interface DeviceConfig {
 
 export const MIN_POLL_SECONDS = 2;
 
+/** Whether the appliance has a Running switch; the earlier sensor setting counts too. */
+export const showsRunning = (device: DeviceConfig): boolean => (device.runningSwitch ?? device.runningSensor) !== false;
+
+/** Whether the appliance has a Finished switch. */
+export const showsFinished = (device: DeviceConfig): boolean => (device.finishedSwitch ?? device.finishedSensor) !== false;
+
 /** Whether a device shows anything in HomeKit; one with nothing is only counted. */
-export function hasSensors(device: DeviceConfig): boolean {
+export function showsInHomeKit(device: DeviceConfig): boolean {
   return (
-    device.runningSensor !== false ||
-    device.finishedSensor !== false ||
+    showsRunning(device) ||
+    showsFinished(device) ||
     usablePhases(device).phases.some((phase) => phase.sensor !== false)
   );
 }

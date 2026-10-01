@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { DEFAULT_RESET_MINUTES, MATTER_LOG_LEVELS, MIN_POLL_SECONDS, parsePairingCode, RESET_MODES } from '../src/config.ts';
+import { MATTER_LOG_LEVELS, MIN_POLL_SECONDS, parsePairingCode } from '../src/config.ts';
 import { LEARNING_DEFAULTS } from '../src/monitor.ts';
 import { DEFAULT_HOLD_SECONDS, DEFAULT_MIN_SECONDS } from '../src/phases.ts';
 import { DEFAULT_RECORD_DAYS } from '../src/recorder.ts';
@@ -45,11 +45,12 @@ test('the package is a Homebridge platform plugin', () => {
   assert.equal(pkg.name, 'homebridge-appliance-monitor');
 });
 
-test('the resets offered are the ones the plugin understands, with the same default', () => {
-  const offered = device.finishedReset.oneOf.map((option: { enum: string[] }) => option.enum[0]);
-  assert.deepEqual([...offered].sort(), [...RESET_MODES].sort());
-  assert.equal(device.finishedReset.default, 'off-level');
-  assert.equal(device.finishedResetMinutes.default, DEFAULT_RESET_MINUTES);
+test('the switches are offered under their own names, and Finished is not reset by hand', () => {
+  assert.equal(device.runningSwitch.default, true);
+  assert.equal(device.finishedSwitch.default, true);
+  for (const gone of ['runningSensor', 'finishedSensor', 'finishedReset', 'finishedResetMinutes']) {
+    assert.equal(device[gone], undefined, gone);
+  }
 });
 
 test('every threshold the plugin uses can be fixed on the settings page, and no other', () => {

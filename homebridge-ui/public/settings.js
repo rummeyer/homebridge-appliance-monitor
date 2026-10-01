@@ -16,11 +16,6 @@
   const PLATFORM = 'ApplianceMonitor';
   const NEW_NAME = 'New appliance';
   const PAIRING_CODE = /^\s*((\d[\s-]*){11}|(\d[\s-]*){21}|MT:[0-9A-Z.\-]+)\s*$/i;
-  const RESETS = [
-    ['off-level', 'When it is switched off'],
-    ['timeout', 'After a set time'],
-    ['next-start', 'Only when it runs again'],
-  ];
   const LOG_LEVELS = [
     ['error', 'Errors only'],
     ['warn', 'Warnings'],
@@ -244,36 +239,24 @@
         changed();
       });
 
-      const reset = device.finishedReset ?? 'off-level';
       const isPaired = pairedNames.has(device.name);
 
       return el('div', {},
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
           el('div', { class: 'om-set-grid' },
-            field('Name', nameInput, 'Also the start of its sensors\' names in HomeKit. Renaming it means pairing it again.', nameError(device.name ?? '')),
+            field('Name', nameInput, 'Also the start of its switches\' names in HomeKit. Renaming it means pairing it again.', nameError(device.name ?? '')),
             field('Pairing code', codeInput,
               isPaired ? 'Paired; the code is no longer needed.' : 'In the Home app: the plug\'s settings → Turn On Pairing Mode. Valid for 15 minutes.',
               codeError(device.pairingCode ?? '')))),
 
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'In HomeKit'),
-          el('div', { class: 'om-set-grid' },
-            el('div', {},
-              check('om-set-running', 'Running sensor', device.runningSensor !== false, (on) => { setOrDrop(device, 'runningSensor', on, true); changed(); }),
-              check('om-set-finished', 'Finished sensor', device.finishedSensor !== false, (on) => { setOrDrop(device, 'finishedSensor', on, true); changed(); }),
-              el('div', { class: 'om-set-help' }, 'Without any sensor, the plug is only counted in the statistics.')),
-            field('Finished goes back to Off', choice(reset, RESETS, (value) => {
-              setOrDrop(device, 'finishedReset', value, 'off-level');
-              changed();
-              render();
-            })),
-            reset === 'timeout'
-              ? field('Minutes until Off', number(device.finishedResetMinutes, '60', (value) => {
-                setOrDrop(device, 'finishedResetMinutes', numberOrUndefined(value), 60);
-                changed();
-              }, 1))
-              : null)),
+          el('div', {},
+            check('om-set-running', 'Running switch — on while it runs', showing(device, 'running'), (on) => { setSwitch(device, 'running', on); changed(); }),
+            check('om-set-finished', 'Finished switch — on for a moment when it is done', showing(device, 'finished'), (on) => { setSwitch(device, 'finished', on); changed(); }),
+            el('div', { class: 'om-set-help' },
+              'One accessory per appliance, with a switch each for Running, Finished and every phase, to hang automations on. Without any switch, the plug is only counted in the statistics.'))),
 
         phasesSection(device),
 
@@ -297,6 +280,14 @@
             }))))));
     }
 
+    /** Whether a switch is shown, reading the earlier sensor setting too. */
+    const showing = (device, which) => (device[`${which}Switch`] ?? device[`${which}Sensor`]) !== false;
+    /** Sets a switch, and drops the earlier sensor setting it replaces. */
+    const setSwitch = (device, which, on) => {
+      delete device[`${which}Sensor`];
+      setOrDrop(device, `${which}Switch`, on, true);
+    };
+
     const hasThresholds = (device) => device.thresholds && Object.values(device.thresholds).some((v) => v !== null && v !== undefined && v !== '');
 
     function phasesSection(device) {
@@ -315,7 +306,7 @@
           labelled(number(phase.maxWatts, 'no limit', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'Below (W)'),
           labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
-          check(`${id}-sensor`, 'HomeKit', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
+          check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
           check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
           el('button', {
             type: 'button', class: 'btn btn-sm btn-outline-danger', title: `Remove ${phase.name || 'this phase'}`,

@@ -25,7 +25,7 @@ export interface PhaseConfig {
    * seconds, and the phase should not.
    */
   holdSeconds?: number;
-  /** Show it in HomeKit, as an occupancy sensor. On by default. */
+  /** Show it in HomeKit, as a switch that is on while the phase lasts. On by default. */
   sensor?: boolean;
   /**
    * Count it on the Statistics tab, instead of the appliance's finished

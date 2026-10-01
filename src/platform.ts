@@ -5,8 +5,8 @@ import type { API, DynamicPlatformPlugin, Logging, PlatformAccessory } from 'hom
 import { ApplianceAccessory } from './accessory.ts';
 import {
   duplicateNames,
-  hasSensors,
   isChildBridgeProcess,
+  showsInHomeKit,
   MATTER_LOG_LEVELS,
   usablePhases,
   parsePairingCode,
@@ -223,7 +223,6 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     await controller.connect(nodeId, {
       onState: (state) => {
         const connected = state === 'Connected';
-        appliance.accessory?.setReachable(connected);
         // Only a change worth knowing about: lost after having been there, or
         // back after being lost. The steps in between (reconnecting,
         // waiting for discovery) and the start-up connect are left out.
@@ -329,7 +328,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       record.state !== undefined && record.since !== undefined ? { state: record.state, since: record.since } : undefined;
 
     let handle: ApplianceAccessory | undefined;
-    if (hasSensors(device)) {
+    if (showsInHomeKit(device)) {
       const uuid = this.#uuid(device.name);
       let accessory = this.#cached.get(uuid);
       if (accessory) {
@@ -440,6 +439,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   #onTransition(device: DeviceConfig, accessory: ApplianceAccessory | undefined, transition: Transition): void {
     accessory?.update(transition.to);
+    if (transition.to === 'finished') {
+      accessory?.finished();
+    }
     this.#store?.update(device.name, { state: transition.to, since: transition.at });
 
     const { cycle } = transition;
@@ -474,7 +476,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   /** Drops accessories whose plug was removed from config.json, or shows nothing any more. */
   #prune(devices: DeviceConfig[]): void {
-    const wanted = new Set(devices.filter(hasSensors).map(({ name }) => this.#uuid(name)));
+    const wanted = new Set(devices.filter(showsInHomeKit).map(({ name }) => this.#uuid(name)));
     const stale = [...this.#cached.entries()].filter(([uuid]) => !wanted.has(uuid));
     if (stale.length === 0) {
       return;

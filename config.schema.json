@@ -35,52 +35,17 @@
               "pattern": "^\\s*((\\d[\\s-]*){11}|(\\d[\\s-]*){21}|MT:[0-9A-Z.\\-]+)\\s*$",
               "description": "In the Home app: the plug's settings → Turn On Pairing Mode. The code is valid for 15 minutes, so save and restart the child bridge straight away. Only needed once; it can be removed after pairing."
             },
-            "runningSensor": {
-              "title": "Running sensor",
+            "runningSwitch": {
+              "title": "Running switch",
               "type": "boolean",
               "default": true,
-              "description": "An occupancy sensor that detects while the appliance runs. It is named after the plug, followed by Running; rename it in the Home app."
+              "description": "A switch that is on while the appliance runs, to hang automations on. Named after the appliance, followed by Running; rename it in the Home app."
             },
-            "finishedSensor": {
-              "title": "Finished sensor",
+            "finishedSwitch": {
+              "title": "Finished switch",
               "type": "boolean",
               "default": true,
-              "description": "A contact sensor that opens when the appliance is finished; the Home app can notify you when it opens. It is named after the plug, followed by Finished; rename it in the Home app."
-            },
-            "finishedReset": {
-              "title": "Finished goes back to Off",
-              "type": "string",
-              "default": "off-level",
-              "oneOf": [
-                {
-                  "title": "When the appliance is switched off (learned off level)",
-                  "enum": [
-                    "off-level"
-                  ]
-                },
-                {
-                  "title": "After a set time",
-                  "enum": [
-                    "timeout"
-                  ]
-                },
-                {
-                  "title": "Only when it runs again",
-                  "enum": [
-                    "next-start"
-                  ]
-                }
-              ],
-              "description": "An appliance that drops to nothing by itself when done has no level to be switched off from; it stays Finished until it runs again."
-            },
-            "finishedResetMinutes": {
-              "title": "Minutes until Off",
-              "type": "integer",
-              "default": 60,
-              "minimum": 1,
-              "condition": {
-                "functionBody": "return model.devices[arrayIndices].finishedReset === 'timeout';"
-              }
+              "description": "A switch that turns on for a moment when the appliance finishes, and off again by itself: an automation \"when it turns on\" runs then. Named after the appliance, followed by Finished."
             },
             "pollSeconds": {
               "title": "Ask for power every (seconds)",
@@ -133,7 +98,7 @@
                     "title": "Name",
                     "type": "string",
                     "placeholder": "Heating",
-                    "description": "Its sensor is named after the plug, followed by this; rename it in the Home app."
+                    "description": "Its switch is named after the plug, followed by this; rename it in the Home app."
                   },
                   "minWatts": {
                     "title": "From (W)",
@@ -160,10 +125,10 @@
                     "placeholder": "30"
                   },
                   "sensor": {
-                    "title": "Show in HomeKit",
+                    "title": "Switch in HomeKit",
                     "type": "boolean",
                     "default": true,
-                    "description": "As an occupancy sensor, occupied while the phase lasts."
+                    "description": "A switch that is on while the phase lasts. Named after the appliance, followed by the phase."
                   },
                   "count": {
                     "title": "Count in statistics",

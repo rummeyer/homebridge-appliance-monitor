@@ -3,8 +3,8 @@ import test from 'node:test';
 
 import {
   duplicateNames,
-  hasSensors,
   isChildBridgeProcess,
+  showsInHomeKit,
   parsePairingCode,
   usablePhases,
   validateDeviceConfig,
@@ -97,11 +97,11 @@ test('the empty phase the settings page offers is skipped without a word', () =>
 
 const check0 = (phases: unknown) => usablePhases({ name: 'Coffee', phases: phases as PhaseConfig[] });
 
-test('a plug shows something in HomeKit unless every sensor is off', () => {
-  assert.equal(hasSensors({ name: 'Lamp' }), true);
-  assert.equal(hasSensors({ name: 'Lamp', runningSensor: false, finishedSensor: false }), false);
+test('a plug shows something in HomeKit unless every switch is off', () => {
+  assert.equal(showsInHomeKit({ name: 'Lamp' }), true);
+  assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false, finishedSensor: false }), false);
   assert.equal(
-    hasSensors({
+    showsInHomeKit({
       name: 'Coffee',
       runningSensor: false,
       finishedSensor: false,
@@ -110,7 +110,7 @@ test('a plug shows something in HomeKit unless every sensor is off', () => {
     true,
   );
   assert.equal(
-    hasSensors({
+    showsInHomeKit({
       name: 'Coffee',
       runningSensor: false,
       finishedSensor: false,
@@ -119,7 +119,7 @@ test('a plug shows something in HomeKit unless every sensor is off', () => {
     false,
   );
   assert.equal(
-    hasSensors({ name: 'Lamp', runningSensor: false, finishedSensor: false, phases: [{ sensor: true } as PhaseConfig] }),
+    showsInHomeKit({ name: 'Lamp', runningSensor: false, finishedSensor: false, phases: [{ sensor: true } as PhaseConfig] }),
     false,
     'an empty phase is no sensor',
   );
@@ -144,4 +144,9 @@ test('a phase marked to be counted keeps the mark; a mark that is not on or off 
   const check = (phase: object) => usablePhases({ name: 'Coffee', phases: [phase as PhaseConfig] });
   assert.equal(check({ name: 'Bezug', minWatts: 30, maxWatts: 100, count: true }).phases[0]!.count, true);
   assert.match(check({ name: 'Bezug', minWatts: 30, maxWatts: 100, count: 'yes' }).problems[0]!, /count/);
+});
+
+test('the switches read the setting from when they were sensors, the new one winning', () => {
+  assert.equal(showsInHomeKit({ name: 'Lamp', runningSwitch: false, finishedSwitch: false }), false);
+  assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false, finishedSensor: false, runningSwitch: true }), true);
 });
