@@ -69,7 +69,7 @@ export function resetOptions(device: DeviceConfig): ResetOptions {
 
 export type MatterLogLevel = 'debug' | 'info' | 'notice' | 'warn' | 'error';
 
-export interface OutletMonitorPlatformConfig extends PlatformConfig {
+export interface ApplianceMonitorPlatformConfig extends PlatformConfig {
   devices?: DeviceConfig[];
   /**
    * Write every power reading to a CSV file next to the pairing data.

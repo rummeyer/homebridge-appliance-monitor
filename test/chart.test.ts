@@ -1,7 +1,7 @@
 /**
  * The Curve tab's chart. It runs in the browser, so it is plain JavaScript;
  * here it is loaded the way the page loads it, as a script that sets
- * `window.OutletChart`.
+ * `window.ApplianceChart`.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -16,9 +16,9 @@ type Chart = {
   timeMarks(from: number, to: number): { at: number; label: string }[];
 };
 
-const scope: { OutletChart?: Chart } = {};
+const scope: { ApplianceChart?: Chart } = {};
 new Function('window', readFileSync(new URL('../homebridge-ui/public/chart.js', import.meta.url), 'utf8'))(scope);
-const chart = scope.OutletChart!;
+const chart = scope.ApplianceChart!;
 
 const curve = {
   from: 0,

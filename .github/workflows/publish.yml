@@ -59,7 +59,21 @@ jobs:
             exit 1
           fi
 
+      # The first version of a package goes up by hand (see CONTRIBUTING.md),
+      # and its GitHub release would otherwise fail here trying to publish it
+      # again. A version on npm cannot be replaced, so there is nothing to do.
+      - name: Check whether this version is already on npm
+        id: published
+        run: |
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already on npm; nothing to publish."
+            echo "already=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # prepublishOnly builds and runs the tests, so a release that would not
       # build never reaches the registry
       - name: Publish
+        if: steps.published.outputs.already != 'true'
         run: npm publish

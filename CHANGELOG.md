@@ -6,80 +6,66 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-
-- Ask a plug for its power every few seconds (`pollSeconds`), for plugs that
-  report too seldom to see something short, such as the Eve Energy's once a
-  minute against a coffee's half a minute. A plug that draws nothing is not
-  asked; the plug reports being switched on by itself.
-
-### Changed
-
-- The Curve tab opens on the last hour, and its chart is easier to read: a
-  stronger line over a filled area, time and power marks with a grid, each
-  phase in a colour of its own with a bar below showing when it was on — by
-  the phase's own rules, so a heater's short pulses are not a phase — and the
-  levels found as markers to the right. Pointing at the chart shows the time
-  and the reading there.
-
-### Fixed
-
-- Learning took where an appliance rests from a single reading a minute
-  after the end. On a coffee machine that was its fan running on after
-  frothing milk, so keeping warm at 1.9 W was later taken for switched off.
-  It now takes the middle of the ten minutes after the end, and sets "off"
-  below the lowest the machine drew while on.
-- A coffee machine's cycle was not learned from at all: the check that a
-  cycle had real work in it looked at the median, and a coffee machine
-  spends most of a cycle keeping warm. It now looks at the peak.
-
-## [0.4.1] — 2026-09-30
+## [0.6.0] — 2026-10-01
 
 The first published version.
 
 ### Added
 
-- Pairs Matter plugs as a second controller, using the setup code from the
-  Home app.
-- On connecting, logs each plug's endpoints, device types and clusters, with
-  the values of the power-measurement attributes.
-- Logs every power reading from the standard ActivePower attribute, and
-  records it with its endpoint to `power.csv`.
-- Warns at startup when the plugin isn't running as a child bridge.
+**Plugs**
+
+- Pairs Matter plugs and power meters as a second controller, next to Apple
+  Home, with the setup code from the Home app — over Thread or Wi-Fi, with no
+  Bluetooth and no extra service to run. Tried with the Eve Energy (Thread) and
+  the Shelly Plug PM Gen3 (Wi-Fi).
+- Reads power from the standard Electrical Power Measurement cluster, which
+  is where the Home app reads it; nothing vendor-specific.
+- Asks a plug for its power every few seconds (`pollSeconds`), for plugs that
+  report too seldom to see something short — the Eve Energy reports once a
+  minute, a coffee runs through in half of one. A plug that draws nothing is
+  not asked.
+
+**Off, Running, Finished**
+
 - Each appliance is Off, Running or Finished, shown in HomeKit as an
   occupancy sensor (Running) and a contact sensor that opens (Finished). Both
-  can be turned off, and renamed in the Home app.
-- Learns each appliance's running level, longest pause and off level from its
-  first cycle, and refines them with every cycle after. A cycle that ended too
-  early is caught when the machine runs again, and its pause learned.
+  can be turned off, and are renamed in the Home app.
+- No thresholds to set: the plugin learns each appliance's resting level,
+  running level, longest pause and off level from its first cycle, and
+  refines them with every cycle after. A cycle that ended too early is caught
+  when the machine runs again, and its pause learned.
 - Finished goes back to Off when the appliance is switched off, after a set
-  time, or when it runs again, as configured.
+  time, or when it runs again.
 - Any threshold can be fixed in the settings instead of learned.
 - The state survives a restart.
-- A Statistics tab on the settings page shows the energy each plug used
-  today, last week, last month and last year, with the total. Today counts
-  from the first reading of the day; a week or a month is shown only if it has
-  been counted for all of it; a year once it is over, marked if the plug
-  joined partway through.
-- Phases: ranges of power an appliance works in, such as heating, spinning or
-  a coffee running through, each with an optional occupancy sensor. A phase
-  ends only once the draw has been out of range for a while, so a heating
-  element switched by a thermostat is one phase, not many.
-- A Curve tab on the settings page shows a plug's recorded power with the
-  levels it dwells at. Click a level, or drag across the chart over something
-  the appliance did, to add it as a phase.
-- A plug with every sensor turned off does not appear in HomeKit, and is
-  still counted in the statistics.
-- A phase can leave out its upper end: heating is 1000 W and up.
-- A plug starts with no phases on the settings page. An empty phase, as the
-  page may save, is skipped; a phase that is wrong is skipped with a warning,
-  and costs only itself, not the plug.
 
-- Readings are recorded to a file per day under `power/`, kept for 14 days
-  by default (`recordDays`).
-- A short log: one line per plug on start, the full list of what a plug
-  offers only once when it is paired, then only what changes. matter.js's
-  expected start-up warnings only show with debug logging.
+**Phases**
 
-[Unreleased]: https://github.com/rummeyer/homebridge-outlet-monitor/compare/v0.4.1...HEAD
-[0.4.1]: https://github.com/rummeyer/homebridge-outlet-monitor/releases/tag/v0.4.1
+- Ranges of power an appliance works in — heating, spinning, a coffee or milk
+  being frothed — each with an optional occupancy sensor. A phase may be open
+  at the top ("1000 W and up"), and ends only once the draw has been out of
+  range for a while, so a heater switched by a thermostat is one phase.
+
+**Settings page**
+
+- Curve tab: a plug's recorded power over the last hour to two weeks, the
+  levels it dwells at, its phases each in a colour, and a bar per phase
+  showing when it was on. Click a level, or drag across what the appliance
+  did, to add it as a phase. Pointing at the chart shows the time and the
+  reading.
+- Statistics tab: the energy each plug used today, last week, last month and
+  last year, with the total. Today counts from the first reading of the day;
+  a week or a month is shown once it has been counted for all of it; a year
+  once it is over, marked if the plug joined partway through.
+
+**And**
+
+- A plug with every sensor turned off is not in HomeKit, and is still
+  counted in the statistics.
+- Readings are recorded to a file per day under `appliance-monitor/power/`,
+  kept for 14 days by default (`recordDays`).
+- A short log: one line per plug on start, what a plug offers once when it is
+  paired, then only what changes.
+
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/rummeyer/homebridge-appliance-monitor/releases/tag/v0.6.0

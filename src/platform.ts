@@ -13,7 +13,7 @@ import {
   resetOptions,
   validateDeviceConfig,
 } from './config.ts';
-import type { DeviceConfig, MatterLogLevel, OutletMonitorPlatformConfig } from './config.ts';
+import type { DeviceConfig, MatterLogLevel, ApplianceMonitorPlatformConfig } from './config.ts';
 import type { CycleState, Transition } from './cycle.ts';
 import { EnergyMeter } from './energy.ts';
 import type { DeviceEnergy } from './energy.ts';
@@ -22,6 +22,7 @@ import type { Learned } from './learn.ts';
 import { activePowerValues, describeNode, MatterController, readActivePower } from './matter.ts';
 import type { AttributeReport } from './matter.ts';
 import type { PairedNode } from '@project-chip/matter.js/device';
+import { takeDataDir } from './data-dir.ts';
 import { DeviceMonitor } from './monitor.ts';
 import { PhaseTracker } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
@@ -59,9 +60,9 @@ const IDLE_WATTS = 0.5;
  * Pairs the configured plugs, watches their power draw, and shows each
  * appliance in HomeKit as running or finished.
  */
-export class OutletMonitorPlatform implements DynamicPlatformPlugin {
+export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   readonly log: Logging;
-  readonly config: OutletMonitorPlatformConfig;
+  readonly config: ApplianceMonitorPlatformConfig;
   readonly api: API;
   readonly #dataPath: string;
   /** Accessories restored from Homebridge's cache, keyed by UUID. */
@@ -80,11 +81,11 @@ export class OutletMonitorPlatform implements DynamicPlatformPlugin {
 
   // Plain fields rather than parameter properties, so that Node can run this
   // file directly — which is how the tests load it.
-  constructor(log: Logging, config: OutletMonitorPlatformConfig, api: API) {
+  constructor(log: Logging, config: ApplianceMonitorPlatformConfig, api: API) {
     this.log = log;
     this.config = config;
     this.api = api;
-    this.#dataPath = join(api.user.storagePath(), 'outlet-monitor');
+    this.#dataPath = takeDataDir(api.user.storagePath());
     this.api.on('didFinishLaunching', () => {
       this.#start().catch((error: unknown) => {
         this.log.error(`Could not start the Matter controller: ${message(error)}`);

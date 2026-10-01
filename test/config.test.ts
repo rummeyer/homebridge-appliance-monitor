@@ -53,7 +53,7 @@ test('duplicate names are reported once each', () => {
 });
 
 test('a child bridge is recognised by the title Homebridge gives its process', () => {
-  assert.equal(isChildBridgeProcess('homebridge: homebridge-outlet-monitor'), true);
+  assert.equal(isChildBridgeProcess('homebridge: homebridge-appliance-monitor'), true);
   assert.equal(isChildBridgeProcess('homebridge: child bridge'), true, 'before the plugin is known');
   assert.equal(isChildBridgeProcess('homebridge'), false);
   assert.equal(isChildBridgeProcess('node'), false);

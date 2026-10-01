@@ -177,7 +177,7 @@
     // ---- Curve ---------------------------------------------------------------
 
     const chartStyle = document.createElement('style');
-    chartStyle.textContent = window.OutletChart.css;
+    chartStyle.textContent = window.ApplianceChart.css;
     document.head.append(chartStyle);
     const clock = (ms, long) =>
       new Date(ms).toLocaleString([], long
@@ -231,7 +231,7 @@
     }
 
     function draw(box, name, curve, phases) {
-      const chart = window.OutletChart.render({ ...curve, phases });
+      const chart = window.ApplianceChart.render({ ...curve, phases });
       current = { name };
       box.innerHTML = chart.svg;
       const element = box.querySelector('svg');

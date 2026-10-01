@@ -40,6 +40,8 @@ export class MatterController {
 
   async start(): Promise<void> {
     const controller = new CommissioningController({
+      // The plugin's name while it was being tried out. matter.js keeps the
+      // fabric under this name, so it stays, and plugs paired then stay paired.
       environment: { environment: Environment.default, id: 'outlet-monitor' },
       autoConnect: false,
       adminFabricLabel: FABRIC_LABEL,

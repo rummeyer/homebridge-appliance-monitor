@@ -42,7 +42,7 @@ test('the log levels offered are the ones the plugin understands', () => {
 
 test('the package is a Homebridge platform plugin', () => {
   assert.ok(pkg.keywords.includes('homebridge-plugin'));
-  assert.equal(pkg.name, 'homebridge-outlet-monitor');
+  assert.equal(pkg.name, 'homebridge-appliance-monitor');
 });
 
 test('the resets offered are the ones the plugin understands, with the same default', () => {

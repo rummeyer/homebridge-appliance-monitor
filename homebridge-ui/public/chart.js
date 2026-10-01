@@ -253,5 +253,5 @@
   .om-pick { fill: rgba(47,128,237,.16); stroke: rgba(47,128,237,.55); pointer-events: none; }
   `;
 
-  root.OutletChart = { render, css, watts, timeMarks, stretches };
+  root.ApplianceChart = { render, css, watts, timeMarks, stretches };
 })(typeof window !== 'undefined' ? window : globalThis);

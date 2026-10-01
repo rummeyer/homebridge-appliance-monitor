@@ -14,6 +14,7 @@ import { HomebridgePluginUiServer } from '@homebridge/plugin-ui-utils';
 
 import { bandFor, phaseSpans, thin } from '../dist/curve.js';
 import { usablePhases } from '../dist/config.js';
+import { findDataDir } from '../dist/data-dir.js';
 import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
 import { findLevels } from '../dist/phases.js';
@@ -23,7 +24,7 @@ import { readSamples } from '../dist/recorder.js';
 const CHART_BUCKETS = 600;
 const MAX_HOURS = 24 * 14;
 
-class OutletMonitorUiServer extends HomebridgePluginUiServer {
+class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
   constructor() {
     super();
     this.onRequest('/statistics', (request) => this.statistics(request));
@@ -33,7 +34,7 @@ class OutletMonitorUiServer extends HomebridgePluginUiServer {
   }
 
   get powerDir() {
-    return this.homebridgeStoragePath ? join(this.homebridgeStoragePath, 'outlet-monitor', 'power') : undefined;
+    return this.homebridgeStoragePath ? join(findDataDir(this.homebridgeStoragePath), 'power') : undefined;
   }
 
   /** A plug's last hours, thinned for drawing, the levels found in them, and when its phases were on. */
@@ -73,7 +74,7 @@ class OutletMonitorUiServer extends HomebridgePluginUiServer {
     let ledger = {};
     if (dir) {
       try {
-        ledger = readJson(join(dir, 'outlet-monitor', 'energy.json')) ?? {};
+        ledger = readJson(join(findDataDir(dir), 'energy.json')) ?? {};
       } catch {
         // A half-written or damaged file shows as nothing counted yet.
       }
@@ -82,4 +83,4 @@ class OutletMonitorUiServer extends HomebridgePluginUiServer {
   }
 }
 
-void new OutletMonitorUiServer();
+void new ApplianceMonitorUiServer();

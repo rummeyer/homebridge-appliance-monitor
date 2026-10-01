@@ -1,4 +1,4 @@
-# homebridge-outlet-monitor
+# homebridge-appliance-monitor
 
 Watches the power draw of **Matter smart plugs and power meters** and tells
 HomeKit when the washing machine is **Running** and when it is **Finished**.
@@ -66,7 +66,7 @@ refines this, and a longer pause only ever lengthens the wait. If a cycle
 does turn out to have ended too early (the machine runs again within ten
 minutes), the plugin logs it, treats it as one cycle and learns the pause.
 
-What was learned is logged and kept in `outlet-monitor/devices.json`. Any
+What was learned is logged and kept in `appliance-monitor/devices.json`. Any
 threshold can be fixed in the settings instead, each on its own; the rest are
 still learned.
 
@@ -183,7 +183,7 @@ connected services.
 ### Why the Home app calls it "Matter Test"
 
 Under the plug's connected services, the Home app lists this plugin as
-**Matter Test**, not as Homebridge Outlet Monitor. The plugin does give the
+**Matter Test**, not as Homebridge Appliance Monitor. The plugin does give the
 plug that name (the fabric label, set again on every connection), but the Home
 app appears to name other controllers by their vendor ID instead. This plugin
 uses `0xFFF1`, the ID the Matter specification sets aside for testing and
@@ -214,7 +214,7 @@ appliance is on.
 
 ```json
 {
-  "platform": "OutletMonitor",
+  "platform": "ApplianceMonitor",
   "devices": [
     { "name": "Washing machine", "pairingCode": "3497-011-2332" },
     {
@@ -244,13 +244,13 @@ appliance is on.
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30) and `sensor` (`true`). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
-| `recordPower` | `true` | Write each reading to a file per day under `outlet-monitor/power/`. The Curve tab needs it. |
+| `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Curve tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
 
 ## Files
 
-All files are kept in the Homebridge storage folder, under `outlet-monitor/`:
+All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 
 - `matter/`: the controller's fabric, certificates and what it knows about
   the plugs. Deleting it unpairs everything, as far as the plugin is concerned.

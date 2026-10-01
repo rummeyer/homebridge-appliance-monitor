@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "OutletMonitor",
+  "pluginAlias": "ApplianceMonitor",
   "pluginType": "platform",
   "singular": true,
   "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, such as the Eve Energy or the Shelly Plug PM Gen3, and shows each appliance in HomeKit as Running or Finished. It learns each appliance's thresholds from its first cycle. Run it as a child bridge.",
@@ -10,7 +10,7 @@
       "name": {
         "title": "Name",
         "type": "string",
-        "default": "Outlet Monitor",
+        "default": "Appliance Monitor",
         "description": "Only the log prefix."
       },
       "devices": {
@@ -175,14 +175,14 @@
         "title": "Record power readings",
         "type": "boolean",
         "default": true,
-        "description": "Write every reading to a file per day under outlet-monitor/power in the Homebridge storage folder. The Curve tab needs it."
+        "description": "Write every reading to a file per day under appliance-monitor/power in the Homebridge storage folder. The Curve tab needs it."
       },
       "recordDays": {
         "title": "Days of recordings to keep",
         "type": "integer",
         "default": 14,
         "minimum": 1,
-        "description": "One file per day under outlet-monitor/power. The Curve tab shows what is kept."
+        "description": "One file per day under appliance-monitor/power. The Curve tab shows what is kept."
       },
       "matterLogLevel": {
         "title": "matter.js log level",

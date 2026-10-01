@@ -15,7 +15,7 @@ HAP-NodeJS — takes time and readings as arguments, so it runs anywhere.
 ## Working against real plugs
 
 Run the plugin as a child bridge on the machine that can reach the plugs, and
-read the log. Every reading is recorded under `outlet-monitor/power/` in the
+read the log. Every reading is recorded under `appliance-monitor/power/` in the
 Homebridge storage folder, one file per day, and the Curve tab of the settings
 page draws them. A recorded cycle is the best test there is for the learning:
 the curves in `test/cycle.test.ts` are made up, a real machine is not.
@@ -33,7 +33,7 @@ publisher*:
 |---|---|
 | Publisher | GitHub Actions |
 | Organization or user | `rummeyer` |
-| Repository | `homebridge-outlet-monitor` |
+| Repository | `homebridge-appliance-monitor` |
 | Workflow filename | `publish.yml` |
 
 That page only exists once the package does, so the very first version has to
