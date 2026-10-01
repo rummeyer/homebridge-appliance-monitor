@@ -100,8 +100,23 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
       clearInterval(this.#energySaver);
       this.#saveEnergy();
-      void this.#controller?.stop();
+      this.#controller?.stop().catch((error: unknown) => {
+        this.log.debug(`Could not stop the Matter controller cleanly: ${message(error)}`);
+      });
     });
+  }
+
+  /**
+   * Runs what a timer or a Matter event calls for. An error thrown there — a
+   * full disk when saving, say — would otherwise go uncaught and end the
+   * child bridge; here it is logged, and the next reading carries on.
+   */
+  #safely(what: string, run: () => void): void {
+    try {
+      run();
+    } catch (error) {
+      this.log.error(`${what}: ${message(error)}`);
+    }
   }
 
   /** Homebridge replays cached accessories here before `didFinishLaunching`. */
@@ -142,11 +157,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#ticker = setInterval(() => {
       const now = Date.now();
       for (const appliance of this.#appliances.values()) {
-        appliance.monitor.tick(now);
-        appliance.energy.tick(now);
-        for (const tracker of appliance.phases) {
-          this.#onPhase(appliance, tracker, tracker.tick(now));
-        }
+        this.#safely(appliance.device.name, () => {
+          appliance.monitor.tick(now);
+          appliance.energy.tick(now);
+          for (const tracker of appliance.phases) {
+            this.#onPhase(appliance, tracker, tracker.tick(now));
+          }
+        });
       }
     }, TICK_MS);
     this.#energySaver = setInterval(() => this.#saveEnergy(), SAVE_ENERGY_MS);
@@ -221,7 +238,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     let introduced = false;
     let reachable: boolean | undefined;
     await controller.connect(nodeId, {
-      onState: (state) => {
+      onState: (state) => this.#safely(device.name, () => {
         const connected = state === 'Connected';
         // Only a change worth knowing about: lost after having been there, or
         // back after being lost. The steps in between (reconnecting,
@@ -236,8 +253,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         if (connected || state === 'Disconnected') {
           reachable = connected;
         }
-      },
-      onReady: (node) => {
+      }),
+      onReady: (node) => this.#safely(device.name, () => {
         // A device reports changes only, so without this nothing would be
         // known until the first change after every (re)connection.
         const current = activePowerValues(node);
@@ -270,8 +287,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         if (device.pollSeconds) {
           this.#poll(appliance, node, device.pollSeconds);
         }
-      },
-      onAttribute: (report) => this.#onAttribute(appliance, report),
+      }),
+      onAttribute: (report) => this.#safely(device.name, () => this.#onAttribute(appliance, report)),
     });
   }
 
@@ -299,7 +316,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       readActivePower(node)
         .then((reports) => {
           for (const report of reports) {
-            this.#onAttribute(appliance, report);
+            this.#safely(appliance.device.name, () => this.#onAttribute(appliance, report));
           }
         })
         .catch((error: unknown) => {

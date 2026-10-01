@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.2] — 2026-10-01
+
+### Fixed
+
+- An error while handling a reading or a tick — a full disk when saving, say —
+  is logged instead of ending the child bridge. So is a failure to stop the
+  Matter controller on shutdown, and a data folder from the plugin's earlier
+  name that cannot be moved.
+
 ## [0.11.1] — 2026-10-01
 
 ### Fixed
@@ -177,7 +186,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.10.2...v0.10.3

@@ -19,7 +19,12 @@ export function takeDataDir(storagePath: string): string {
   const path = join(storagePath, DATA_DIR);
   const earlier = join(storagePath, EARLIER_DATA_DIR);
   if (!existsSync(path) && existsSync(earlier)) {
-    renameSync(earlier, path);
+    try {
+      renameSync(earlier, path);
+    } catch {
+      // Not movable (permissions, say): carry on in the folder as it is.
+      return earlier;
+    }
   }
   return path;
 }
