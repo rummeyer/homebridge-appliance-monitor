@@ -86,17 +86,20 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
   }
 
   /**
-   * Resets an appliance's energy and count. Asked of the plugin, which holds
-   * them in memory; done here on the files if it does not answer, because it
-   * is not running.
+   * Resets the energy, last cycle and count of the appliances named. Asked
+   * of the plugin, which holds them in memory; done here on the files if it
+   * does not answer, because it is not running.
    */
   async reset(request) {
-    const name = String(request?.name ?? '').trim();
-    if (!name || !this.homebridgeStoragePath) {
+    const asked = Array.isArray(request?.names) ? request.names : [request?.name];
+    const names = asked.map((name) => String(name ?? '').trim()).filter(Boolean);
+    if (names.length === 0 || !this.homebridgeStoragePath) {
       throw new RequestError('No such appliance', { status: 400 });
     }
     const dir = findDataDir(this.homebridgeStoragePath);
-    requestReset(dir, name);
+    for (const name of names) {
+      requestReset(dir, name);
+    }
     for (const until = Date.now() + RESET_WAIT_MS; Date.now() < until; ) {
       await new Promise((resolve) => setTimeout(resolve, 250));
       if (pendingResets(dir).length === 0) {

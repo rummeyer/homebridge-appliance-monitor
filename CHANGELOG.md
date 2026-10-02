@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-10-02
+
+### Changed
+
+- One **Reset data** button below the Statistics table instead of one per
+  row: click it, tick the appliances to reset, click **Reset selected**, then
+  **SURE?**. Left alone, it goes back with nothing ticked.
+- The Statistics table has a proper header. The only tooltip left is on Last
+  Cycle: when it finished and how long it ran. Its text is no longer
+  greyed out by the Homebridge UI's table style.
+
 ## [0.15.0] — 2026-10-01
 
 ### Added
@@ -284,7 +295,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.0...v0.14.1

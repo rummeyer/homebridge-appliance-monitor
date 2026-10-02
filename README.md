@@ -217,8 +217,7 @@ turns off" for a coffee drawn.
 
 The settings page has a **Statistics** tab with the energy each plug used
 **Today** so far, and in the **Last Week** (Monday to Sunday), **Last Month**
-and **Last Year**, one row per plug and the total below. Point at a heading
-for its dates.
+and **Last Year**, one row per plug and the total below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-dark.png">
@@ -234,20 +233,22 @@ not yet, the total adds up those that have, and is marked with an asterisk.
 
 The **Last Cycle** column shows what each appliance used in its last
 cycle, from the moment it counted as running to the moment it finished.
-Point at it for when that was and how long it ran.
+Point at it for when it finished and how long it ran.
 
 The **Count** column shows how often each appliance finished a cycle — or, if
 one of its phases is ticked **Count in statistics**, how often that phase
 happened: coffees drawn rather than mornings the machine was on. If several
 are ticked, the first counts. Every finished cycle and every phase is counted
 all along, so ticking another phase shows its count from when the phase was
-set up, not from when it was ticked. Point at a count for the day counting
-began.
+set up, not from when it was ticked.
 
-**Reset data** on an appliance's row empties its energy, last cycle and count, which
-start again from then; what it has learned is kept. Click it twice to confirm.
-The running plugin does it within a few seconds; if the child bridge is not
-running, the settings page does it on the files itself.
+**Reset data** below the table empties the energy, last cycle and count of
+the appliances you pick, which start again from then; what they have learned
+is kept. Click it to show a checkbox per appliance, tick the ones to reset,
+click **Reset selected**, then **SURE?**. Left alone for 20 seconds (5 at
+SURE?), it goes back with nothing ticked. The running plugin does the reset
+within a few seconds; if the child bridge is not running, the settings page
+does it on the files itself.
 
 The energy is worked out from the power readings, per local calendar day,
 while Homebridge is running, and saved every five minutes. Time it was not

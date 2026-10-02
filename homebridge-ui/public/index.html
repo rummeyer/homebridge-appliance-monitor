@@ -13,11 +13,24 @@
   .om-hint   { font-size: .8rem; opacity: .7; }
   .om-tabs   { margin-bottom: 1rem; }
   .om-tabs .nav-link { cursor: pointer; }
-  .om-table  { width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums; }
-  .om-table th, .om-table td { padding: .3rem .5rem .3rem 0; }
+  .om-table  { width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums; border-collapse: collapse; }
+  .om-table th, .om-table td { padding: .45rem .5rem; vertical-align: top; }
+  /* The host greys every table cell out, with !important; not this table's. */
+  .om-table td { color: inherit !important; font-weight: 400; font-size: .9rem; }
   .om-table th:not(:first-child), .om-table td:not(:first-child) { text-align: right; }
-  .om-table td.om-action { width: 1%; white-space: nowrap; padding-right: 0; }
+  .om-table thead th { background: rgba(128,128,128,.1); font-size: .72rem; font-weight: 600;
+                       text-transform: uppercase; letter-spacing: .03em; padding-top: .55rem; padding-bottom: .55rem;
+                       border-bottom: 1px solid rgba(128,128,128,.35); }
+  .om-table thead th:first-child { border-top-left-radius: .375rem; }
+  .om-table thead th:last-child { border-top-right-radius: .375rem; }
+  .om-table tbody td:first-child { font-weight: 500; }
+  .om-table tbody tr + tr td { border-top: 1px solid rgba(128,128,128,.15); }
+  /* The checkboxes for resetting, shown only while picking. */
+  .om-table .om-reset-pick { display: none; margin-right: .5rem; vertical-align: -.1em; }
+  .om-table.om-picking .om-reset-pick { display: inline-block; }
+  .om-reset { display: flex; justify-content: flex-end; margin-top: .5rem; }
   .om-table tfoot td { border-top: 1px solid rgba(128,128,128,.5); font-weight: 600; }
+  .om-table tfoot td:first-child { text-transform: uppercase; font-size: .72rem; letter-spacing: .04em; padding-top: .55rem; }
 
   .om-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
   .om-controls select { width: auto; }
@@ -95,12 +108,9 @@
 
 <div class="card mb-3 om-hidden" id="om-stats-card">
   <div class="card-body">
-    <h5 class="card-title">Energy and counts</h5>
+    <h5 class="card-title mb-4">Energy and counts</h5>
     <div id="om-stats"></div>
-    <p class="om-hint mb-0" id="om-stats-note">
-      Point at a heading for its dates, at a last cycle for when it ran, at a count for when counting began.
-      Saved every five minutes.
-    </p>
+    <p class="om-hint mb-0" id="om-stats-note">Saved every five minutes.</p>
     <p class="om-hint mb-0 om-hidden" id="om-stats-none">No plugs configured yet.</p>
   </div>
 </div>
@@ -159,35 +169,35 @@
       const element = document.createElement('table');
       element.className = 'om-table';
       const head = element.createTHead().insertRow();
-      cell(head, 'Plug', 'th');
-      for (const { label, dates } of table.periods) {
+      cell(head, 'Appliance', 'th');
+      for (const { label } of table.periods) {
         cell(head, label, 'th');
-        head.lastElementChild.title = dates;
       }
       cell(head, 'Last Cycle', 'th');
-      head.lastElementChild.title = 'What the last cycle used, from running to finished';
       cell(head, 'Count', 'th');
-      head.lastElementChild.title = 'Finished cycles, or the phase ticked "Count"';
-      cell(head, '', 'th');
+
       const body = element.createTBody();
       for (const [index, { name, values, partial }] of table.rows.entries()) {
         const row = body.insertRow();
         cell(row, name);
+        const pick = document.createElement('span');
+        pick.className = 'om-reset-pick form-check-inline';
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.className = 'form-check-input';
+        box.value = name;
+        box.setAttribute('aria-label', `Reset ${name}`);
+        pick.append(box);
+        row.lastElementChild.prepend(pick);
         values.forEach((value, column) => cell(row, `${kwh(value)}${partial[column] ? ' ¹' : ''}`));
         const last = table.lastCycles?.[index];
-        cell(row, last ? kwh(last.wattHours) : '');
+        cell(row, last ? kwh(last.wattHours) : '–');
         if (last) {
-          const ended = new Date(last.endedAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-          row.lastElementChild.title = `Finished ${ended}, ran ${duration(last.seconds)}`;
+          const ended = new Date(last.endedAt).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+          row.lastElementChild.title = `${ended} · ${duration(last.seconds)}`;
         }
-        const { label, count, since } = table.counts[index];
+        const { label, count } = table.counts[index];
         cell(row, `${count} × ${label}`);
-        row.lastElementChild.title = since
-          ? `Since ${new Date(since).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}`
-          : 'Nothing counted yet';
-        const action = row.insertCell();
-        action.className = 'om-action';
-        action.append(resetButton(name));
       }
       const { total } = table;
       const foot = element.createTFoot().insertRow();
@@ -198,8 +208,11 @@
       });
       cell(foot, ''); // last cycles of different appliances are no total
       cell(foot, ''); // counts of different things do not add up
-      cell(foot, '');
       box.append(element);
+      const reset = document.createElement('div');
+      reset.className = 'om-reset';
+      reset.append(resetControl(element));
+      box.append(reset);
 
       const shown = (flags) => total.values.some((value, column) => value !== null && flags[column]);
       for (const [flags, text] of [
@@ -216,44 +229,60 @@
     }
 
     /**
-     * Empties an appliance's energy and count. Asked twice on the button
-     * itself rather than with confirm(), which the host's iframe may not be
-     * allowed to show.
+     * One button for resetting any of the appliances, in three clicks: show
+     * a checkbox per appliance, then ask, then reset the ones ticked. Asked
+     * on the button itself rather than with confirm(), which the host's
+     * iframe may not be allowed to show. Left alone for a while, it goes
+     * back to the start with nothing ticked.
      */
-    function resetButton(name) {
-      const label = 'Reset data';
+    function resetControl(element) {
+      const IDLE_MS = 20_000;
+      const SURE_MS = 5000;
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'btn btn-sm btn-outline-danger ms-2';
-      button.textContent = label;
-      button.title = `Reset the energy and count of ${name}`;
-      let armed = null;
+      let step = 'idle';
+      let timer = null;
+      const boxes = () => [...element.querySelectorAll('.om-reset-pick input')];
+      const picked = () => boxes().filter((box) => box.checked).map((box) => box.value);
+
+      function show(next) {
+        step = next;
+        clearTimeout(timer);
+        element.classList.toggle('om-picking', step !== 'idle');
+        button.disabled = step === 'pick' && picked().length === 0;
+        button.className = `btn btn-sm ${step === 'sure' ? 'btn-danger' : 'btn-outline-danger'}`;
+        button.textContent = { idle: 'Reset data', pick: 'Reset selected', sure: 'SURE?' }[step];
+        if (step === 'idle') {
+          boxes().forEach((box) => { box.checked = false; });
+        } else {
+          timer = setTimeout(() => show('idle'), step === 'sure' ? SURE_MS : IDLE_MS);
+        }
+      }
+
+      element.addEventListener('change', (event) => {
+        if (event.target.closest('.om-reset-pick')) {
+          show('pick'); // and the time starts again
+        }
+      });
       button.addEventListener('click', async () => {
-        if (!armed) {
-          button.textContent = 'SURE?';
-          button.classList.replace('btn-outline-danger', 'btn-danger');
-          armed = setTimeout(() => {
-            armed = null;
-            button.textContent = label;
-            button.classList.replace('btn-danger', 'btn-outline-danger');
-          }, 5000);
+        if (step !== 'sure') {
+          show(step === 'idle' ? 'pick' : 'sure');
           return;
         }
-        clearTimeout(armed);
-        armed = null;
+        clearTimeout(timer);
+        const names = picked();
         button.disabled = true;
         button.textContent = '…';
         try {
-          await homebridge.request('/reset', { name });
-          homebridge.toast.success(`${name} counts again from now.`, 'Data reset');
+          await homebridge.request('/reset', { names });
+          homebridge.toast.success(`${names.join(', ')}: counting again from now.`, 'Data reset');
           await showStats();
         } catch (error) {
           homebridge.toast.error(error?.message ?? String(error), 'Reset failed');
-          button.disabled = false;
-          button.textContent = label;
-          button.classList.replace('btn-danger', 'btn-outline-danger');
+          show('idle');
         }
       });
+      show('idle');
       return button;
     }
 
