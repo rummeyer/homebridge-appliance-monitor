@@ -6,6 +6,32 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-10-02
+
+### Added
+
+- **Learn from this cycle** on the Power tab: drag across a whole cycle and
+  the plugin learns from it at once, as from one it saw itself, instead of
+  waiting for a first cycle with the slow defaults.
+- **Forget what was learned** under More in the settings, to start again
+  from the defaults.
+- The empty threshold fields show the value in use and where it comes from:
+  `38.4 learned`, `20.6 standby`, `60 default`; below them, how many cycles
+  it was learned from.
+
+### Changed
+
+- On the Power tab, a phase is made by clicking a level marker only; dragging
+  across the chart now marks a cycle to learn from. The two have panels of
+  their own. Pointing at a marker shows no time line, and pressing on one
+  starts no drag. Dragging no longer selects the text around the chart.
+- Learning from a cycle that ends with nothing drawn after it — switched off
+  at the plug — no longer takes 0 W for standby and puts the running level
+  at 2 W. Standby is then taken from the highest steady low level inside the
+  cycle (a computer asleep over lunch), or the running level stays as it is.
+  For a cycle marked by hand, the reading before it is not taken for standby
+  either, since the marked start is never exact.
+
 ## [0.15.1] — 2026-10-02
 
 ### Changed
@@ -295,7 +321,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.1...v0.14.2

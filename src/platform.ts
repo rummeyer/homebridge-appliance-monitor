@@ -24,11 +24,13 @@ import type { AttributeReport } from './matter.ts';
 import type { PairedNode } from '@project-chip/matter.js/device';
 import { FINISHED, phaseKey } from './counts.ts';
 import { takeDataDir } from './data-dir.ts';
-import { DeviceMonitor } from './monitor.ts';
+import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff } from './power.ts';
-import { PowerRecorder } from './recorder.ts';
+import { PowerRecorder, readSamples } from './recorder.ts';
+import { answer, takeRequests } from './requests.ts';
+import type { PluginRequest } from './requests.ts';
 import { clearResets, pendingResets } from './resets.ts';
 import { NodeRegistry } from './registry.ts';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.ts';
@@ -158,6 +160,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#ticker = setInterval(() => {
       const now = Date.now();
       this.#safely('Resetting statistics', () => this.#reset(now));
+      for (const request of takeRequests(this.#dataPath)) {
+        this.#safely(`${request.name}: ${request.action}`, () => this.#onRequest(request, now));
+      }
       for (const appliance of this.#appliances.values()) {
         this.#safely(appliance.device.name, () => {
           appliance.monitor.tick(now);
@@ -494,6 +499,38 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     } catch (error) {
       this.log.warn(`Could not save the energy statistics: ${message(error)}`);
     }
+  }
+
+  /** Does what the settings page asked for, and answers it; see requests.ts. */
+  #onRequest(request: PluginRequest, now: number): void {
+    const { name } = request;
+    const reply = (ok: boolean, text: string) => answer(this.#dataPath, request.id, { ok, message: text });
+    const appliance = this.#appliances.get(name);
+    if (!appliance) {
+      reply(false, `${name} is not running here yet: is it paired?`);
+      return;
+    }
+    if (request.action === 'forget') {
+      appliance.monitor.forget(now);
+      this.#store?.update(name, { learned: undefined, cycles: undefined, standbyWatts: undefined });
+      this.log.info(`${name}: forgot what was learned — learning again from the next cycle`);
+      reply(true, 'Forgotten. It learns again from the next cycle.');
+      return;
+    }
+    if (!this.#recorder) {
+      reply(false, 'Turn on "Record power readings" first: learning needs the recording.');
+      return;
+    }
+    const samples = readSamples(this.#recorder.dir, name, request.from - BEFORE_MS, request.to + AFTER_MS);
+    const learned = appliance.monitor.learnFromMarked(samples, { startedAt: request.from, endedAt: request.to }, now);
+    if (!learned) {
+      reply(false, 'Nothing to learn there: the draw never went well above where the appliance rests.');
+      return;
+    }
+    this.log.info(`${name}: that was learned from a cycle marked on the Power tab`);
+    // What is used now: a threshold fixed in the settings wins over a learned one.
+    const { runWatts, finishSeconds } = appliance.monitor.params;
+    reply(true, `Running above ${formatWatts(runWatts)}, finished after ${formatDuration(finishSeconds)} below it.`);
   }
 
   /** Resets the statistics the settings page asked to; see resets.ts. */

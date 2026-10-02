@@ -49,13 +49,14 @@ const MAX_FINISH_SECONDS = 3600;
 /**
  * `switchedOff`: the cycle ended with the plug being switched off, so what
  * came after shows nothing about where the machine rests, and the running
- * level stays as it is. The pause is learned all the same.
+ * level stays as it is. The pause is learned all the same. `marked`: marked
+ * by hand on the Power tab, so its start is not exact.
  */
 export function learnFromCycle(
   samples: Sample[],
   cycle: CycleWindow,
   current: CycleParams,
-  switchedOff = false,
+  { switchedOff = false, marked = false }: { switchedOff?: boolean; marked?: boolean } = {},
 ): Learned | undefined {
   const sorted = [...samples].sort((a, b) => a.at - b.at);
   const before = sorted.filter(({ at }) => at < cycle.startedAt);
@@ -72,11 +73,18 @@ export function learnFromCycle(
   const restingReadings = after.map(({ watts }) => watts).filter((watts) => watts >= NOTHING_WATTS);
   const restWatts =
     after.length === 0 ? (valueAt(sorted, cycle.endedAt) ?? 0) : restingReadings.length > 0 ? round1(median(restingReadings)) : 0;
-  const levelBefore = before.length > 0 ? before[before.length - 1]!.watts : undefined;
+  // What it rose from. Not for a cycle marked by hand, whose start is never
+  // exact: the reading before may already be the machine at work, or booting.
+  const levelBefore = before.length > 0 && !marked ? before[before.length - 1]!.watts : undefined;
 
-  // Where running starts: clearly above anything the machine rests at.
-  const resting = Math.max(restWatts, levelBefore ?? 0);
-  const runWatts = switchedOff ? current.runWatts : runLevelAbove(resting);
+  // Where running starts: clearly above anything the machine rests at. A
+  // machine that drew nothing after, and before — switched off at the plug,
+  // say — showed its standby, if at all, inside the cycle: a computer asleep
+  // over lunch. Failing that, the level already in use stays, rather than
+  // dropping to just above nothing and taking standby for running.
+  const outside = Math.max(restWatts, levelBefore ?? 0);
+  const resting = outside >= NOTHING_WATTS ? outside : steadyStandby(sorted, cycle);
+  const runWatts = switchedOff || resting === undefined ? current.runWatts : runLevelAbove(resting);
 
   // A cycle worth learning from went well above that at some point. Not the
   // median: a coffee machine spends most of a cycle keeping warm.
@@ -94,7 +102,8 @@ export function learnFromCycle(
 
   return {
     params: { runWatts, startSeconds: current.startSeconds, finishSeconds },
-    restWatts,
+    // The standby the running level was set above, wherever it was seen.
+    restWatts: resting ?? restWatts,
     longestPauseSeconds,
   };
 }
@@ -143,6 +152,44 @@ function longestPause(samples: Sample[], cycle: CycleWindow, runWatts: number): 
     }
   }
   return longest;
+}
+
+/** How long a level has to be held, and how steady and small, to be standby. */
+export const STANDBY_HELD_MS = 10 * 60_000;
+export const STANDBY_STEADY_RATIO = 1.5;
+export const MAX_STANDBY_WATTS = 25;
+
+/**
+ * The highest level held steady for ten minutes inside a cycle and small
+ * enough to be standby, or undefined if there is none: a washing machine's
+ * drum turning in bursts is neither steady nor small. The highest, since
+ * running has to start above every level the machine rests at — a computer
+ * asleep at 5 W and with its screens off at 10 W rests at both.
+ */
+function steadyStandby(samples: Sample[], cycle: CycleWindow): number | undefined {
+  const inside = samples.filter(({ at }) => at >= cycle.startedAt && at < cycle.endedAt);
+  let best: number | undefined;
+  for (let first = 0; first < inside.length; first++) {
+    const from = inside[first]!.at;
+    let lowest = Infinity;
+    let highest = 0;
+    for (let index = first; index < inside.length; index++) {
+      const sample = inside[index]!;
+      lowest = Math.min(lowest, sample.watts);
+      highest = Math.max(highest, sample.watts);
+      if (highest > lowest * STANDBY_STEADY_RATIO) {
+        break;
+      }
+      const until = inside[index + 1]?.at ?? cycle.endedAt;
+      if (until - from >= STANDBY_HELD_MS) {
+        if (lowest >= NOTHING_WATTS && highest <= MAX_STANDBY_WATTS && (best === undefined || highest > best)) {
+          best = highest;
+        }
+        break;
+      }
+    }
+  }
+  return best === undefined ? undefined : round1(best);
 }
 
 /** The reading in effect at a moment: the last one at or before it. */

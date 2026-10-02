@@ -1,6 +1,5 @@
 /**
- * What the Power tab of the settings page draws, and the power range it
- * suggests for a stretch of time picked on it.
+ * What the Power tab of the settings page draws.
  */
 import type { Sample } from './learn.ts';
 import { PhaseTracker } from './phases.ts';
@@ -42,50 +41,6 @@ export function thin(samples: Sample[], from: number, to: number, buckets: numbe
     }
   }
   return points;
-}
-
-/**
- * A power range for what the appliance did between two moments: where the
- * draw was for most of that time, and a quarter again on either side.
- * Readings far from the middle — less than half, more than double — belong
- * to another level and are left out.
- *
- * The tenth and ninetieth percentile by time, not the lowest and highest,
- * because a stretch picked by hand starts and ends a little before or after
- * the thing it is meant to catch.
- */
-export function bandFor(samples: Sample[], from: number, to: number): { minWatts: number; maxWatts: number } | undefined {
-  const weighted: { watts: number; ms: number }[] = [];
-  for (const [index, sample] of samples.entries()) {
-    const start = Math.max(sample.at, from);
-    const end = Math.min(samples[index + 1]?.at ?? to, to);
-    if (end > start && sample.watts >= 0.5) {
-      weighted.push({ watts: sample.watts, ms: end - start });
-    }
-  }
-  if (weighted.length === 0) {
-    return undefined;
-  }
-  weighted.sort((a, b) => a.watts - b.watts);
-  const percentile = (values: typeof weighted, share: number): number => {
-    const total = values.reduce((sum, { ms }) => sum + ms, 0);
-    let seen = 0;
-    for (const { watts, ms } of values) {
-      seen += ms;
-      if (seen >= share * total) {
-        return watts;
-      }
-    }
-    return values.at(-1)!.watts;
-  };
-  // Only what is near the middle: the seconds of keeping warm either side of
-  // a coffee are another level, not the low end of this one.
-  const middle = percentile(weighted, 0.5);
-  const near = weighted.filter(({ watts }) => watts >= middle / 2 && watts <= middle * 2);
-  return {
-    minWatts: Number((percentile(near, 0.1) / 1.25).toPrecision(2)),
-    maxWatts: Number((percentile(near, 0.9) * 1.25).toPrecision(2)),
-  };
 }
 
 /**

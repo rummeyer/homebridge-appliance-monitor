@@ -44,7 +44,7 @@
   .om-set-poll input { max-width: 13rem; }
   .om-set-rule { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; margin-bottom: .5rem; font-size: .9rem; }
   .om-set-rule strong { min-width: 4.5rem; }
-  .om-set-rule .input-group { width: 7.5rem; }
+  .om-set-rule .input-group { width: 9.5rem; }
   /* An empty field shows what applies instead, and must not pass for a value. */
   .om-set-more input::placeholder { font-style: italic; opacity: .45; }
   details.om-set-more > summary { cursor: pointer; font-size: .85rem; opacity: .8; margin-bottom: .75rem; }
@@ -108,6 +108,8 @@
     const config = configs[0];
     config.devices = Array.isArray(config.devices) ? config.devices.filter((d) => d && typeof d === 'object') : [];
     const pairedNames = new Set(paired);
+    /** What each appliance uses where its thresholds are empty; see the server's /learned. */
+    let inUse = await homebridge.request('/learned').catch(() => ({}));
 
     let selected = config.devices.length ? sortedIndices()[0] : -1;
     let pending;
@@ -307,8 +309,11 @@
      * at least … s", "Finished when below that for … s". Empty ones are learned.
      */
     function thresholdsTable(device) {
-      const input = (key, placeholder, unit, label) => {
-        const element = number(device.thresholds?.[key], placeholder, (value) => {
+      const used = inUse[String(device.name ?? '').trim()];
+      // An empty field shows the value used instead, and where it comes from.
+      const shown = (key, fallback) => (used?.[key] ? `${used[key].value} ${used[key].from}` : fallback);
+      const input = (key, fallback, unit, label) => {
+        const element = number(device.thresholds?.[key], shown(key, fallback), (value) => {
           const thresholds = { ...device.thresholds };
           setOrDrop(thresholds, key, numberOrUndefined(value));
           setOrDrop(device, 'thresholds', Object.keys(thresholds).length ? thresholds : undefined);
@@ -328,8 +333,52 @@
           el('strong', {}, 'Finished'), words('when below that for'),
           input('finishSeconds', 'learned', 's', 'Finished when below that for (s)')),
         el('div', { class: 'om-set-help' },
-          'Empty fields are learned from the appliance\'s cycles. Keep standby below the running power, '
-          + 'and the finished time longer than any pause.'));
+          `${!used ? 'Nothing learned yet.'
+            : used.cycles > 0 ? `Learned from ${used.cycles} cycle${used.cycles === 1 ? '' : 's'}.`
+            : used.standbyWatts != null ? `Nothing learned yet; standby found at ${used.standbyWatts} W.`
+            : 'Nothing learned yet: defaults until the first cycle.'} `
+          + 'Empty fields use the value shown.'),
+        forgetButton(device));
+    }
+
+    /**
+     * Forgets what the appliance has learned, after a second click — asked on
+     * the button rather than with confirm(), which the frame may not allow.
+     */
+    function forgetButton(device) {
+      const label = 'Forget what was learned';
+      let armed = null;
+      const button = el('button', {
+        type: 'button', class: 'btn btn-sm btn-outline-danger mt-2',
+        onclick: async () => {
+          if (!armed) {
+            button.textContent = 'SURE?';
+            button.classList.replace('btn-outline-danger', 'btn-danger');
+            armed = setTimeout(() => {
+              armed = null;
+              button.textContent = label;
+              button.classList.replace('btn-danger', 'btn-outline-danger');
+            }, 5000);
+            return;
+          }
+          clearTimeout(armed);
+          armed = null;
+          button.disabled = true;
+          try {
+            const result = await homebridge.request('/forget', { name: String(device.name ?? '').trim() });
+            homebridge.toast.success(result.message, `${device.name}: forgotten`);
+            inUse = await homebridge.request('/learned').catch(() => inUse);
+            render();
+            return;
+          } catch (error) {
+            homebridge.toast.error(error?.message ?? String(error), 'Not forgotten');
+          }
+          button.disabled = false;
+          button.textContent = label;
+          button.classList.replace('btn-danger', 'btn-outline-danger');
+        },
+      }, label);
+      return button;
     }
 
     /** Whether a switch is shown, reading the earlier sensor setting too. */
@@ -414,6 +463,7 @@
     return {
       /** Picks up changes made elsewhere on the page, such as a phase added on the Power tab. */
       async reload() {
+        inUse = await homebridge.request('/learned').catch(() => inUse);
         const name = config.devices[selected]?.name;
         configs = await homebridge.getPluginConfig();
         if (!configs.length) {

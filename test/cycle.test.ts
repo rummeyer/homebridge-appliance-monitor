@@ -291,7 +291,7 @@ test('what follows a switch-off says nothing about standby, so the running level
     { at: 1 * MIN, watts: 2000 },
     { at: 20 * MIN, watts: 0 },
   ];
-  const learned = learnFromCycle(samples, { startedAt: 1 * MIN, endedAt: 20 * MIN }, LEARNING_DEFAULTS, true);
+  const learned = learnFromCycle(samples, { startedAt: 1 * MIN, endedAt: 20 * MIN }, LEARNING_DEFAULTS, { switchedOff: true });
   assert.equal(learned!.params.runWatts, LEARNING_DEFAULTS.runWatts);
 });
 
@@ -364,4 +364,61 @@ test('a cycle running across a restart keeps what it had used, and goes on addin
   assert.equal(Math.round(finished!.cycle!.wattHours), 1075, 'and the hour after the restart, from its first reading');
   assert.equal(finished!.cycle!.peakWatts, 2000, 'the peak from before the restart');
   assert.equal(after.progress(131 * MIN), undefined, 'nothing running, nothing to save');
+});
+
+test('a cycle marked on the Power tab is learned from the recording around it', () => {
+  const { curve, startsAt, endsAt } = wash(45 * 60);
+  const samples = curve.map(([seconds, watts]) => ({ at: seconds * S, watts }));
+  const { monitor, lessons } = recording();
+  const learned = monitor.learnFromMarked(samples, { startedAt: startsAt * S, endedAt: endsAt * S }, (endsAt + 60 * 60) * S);
+  assert.equal(learned!.params.runWatts, 3.2, 'as from one seen live');
+  assert.equal(learned!.params.finishSeconds, 590);
+  assert.equal(lessons.length, 1, 'saved and logged like any other');
+  assert.equal(monitor.isLearned, true);
+});
+
+test('a marked stretch with nothing in it teaches nothing', () => {
+  const { monitor, lessons } = recording();
+  const samples = [{ at: 0, watts: 1.2 }, { at: 30 * MIN, watts: 1.3 }];
+  assert.equal(monitor.learnFromMarked(samples, { startedAt: 5 * MIN, endedAt: 20 * MIN }, 40 * MIN), undefined);
+  assert.equal(lessons.length, 0);
+  assert.equal(monitor.isLearned, false);
+});
+
+test('forgetting goes back to the defaults, standby included', () => {
+  const monitor = new DeviceMonitor(
+    { learned: learnedFrom(wash(45 * 60)), cycles: 3, standbyWatts: 10.3 },
+    { transition: () => {}, learned: () => {}, resumed: () => {} },
+  );
+  assert.equal(monitor.isLearned, true);
+  monitor.forget(0);
+  assert.equal(monitor.isLearned, false);
+  assert.equal(monitor.standbyWatts, undefined);
+  assert.deepEqual(monitor.params, LEARNING_DEFAULTS);
+});
+
+test('switched on and off at the plug: standby is found inside the cycle', () => {
+  // A computer switched on at the plug, used, asleep over lunch, used, switched off.
+  const samples = [
+    { at: 0, watts: 0 },
+    { at: 10 * MIN, watts: 95 },
+    { at: 60 * MIN, watts: 9.5 },
+    { at: 65 * MIN, watts: 10.3 },
+    { at: 80 * MIN, watts: 90 },
+    { at: 120 * MIN, watts: 0 },
+  ];
+  const learned = learnFromCycle(samples, { startedAt: 10 * MIN, endedAt: 120 * MIN }, LEARNING_DEFAULTS);
+  assert.equal(learned!.restWatts, 10.3, 'standby from inside, as nothing came after');
+  assert.equal(learned!.params.runWatts, 20.6, 'twice the 10.3 W it slept at, not 2 W');
+});
+
+test('switched on and off at the plug, with no standby inside either: the running level in use stays', () => {
+  const samples = [
+    { at: 0, watts: 0 },
+    { at: 10 * MIN, watts: 95 },
+    { at: 120 * MIN, watts: 0 },
+  ];
+  const current = { ...LEARNING_DEFAULTS, runWatts: 20.6 };
+  const learned = learnFromCycle(samples, { startedAt: 10 * MIN, endedAt: 120 * MIN }, current);
+  assert.equal(learned!.params.runWatts, 20.6, 'not 2 W');
 });

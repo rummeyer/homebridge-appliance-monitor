@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { bandFor, phaseSpans, thin } from '../src/curve.ts';
+import { phaseSpans, thin } from '../src/curve.ts';
 import type { Sample } from '../src/learn.ts';
 
 const S = 1000;
@@ -33,20 +33,6 @@ test('thinning a long curve keeps a half-minute spike among a day of readings', 
     [...points.map(([at]) => at)].sort((a, b) => a - b),
     'in time order',
   );
-});
-
-test('a stretch picked by hand gives the range the draw sat in, not its stray edges', () => {
-  const samples: Sample[] = [
-    { at: 0, watts: 2.5 },
-    { at: 100 * S, watts: 300 },
-    { at: 101 * S, watts: 310 },
-    { at: 125 * S, watts: 295 },
-    { at: 130 * S, watts: 2.5 },
-  ];
-  // Picked a few seconds too early and too late.
-  assert.deepEqual(bandFor(samples, 97 * S, 133 * S), { minWatts: 240, maxWatts: 390 });
-  assert.equal(bandFor(samples, 10 * S, 20 * S)?.minWatts, 2, 'keeping warm is a range too');
-  assert.equal(bandFor([{ at: 0, watts: 0 }], 0, 10 * S), undefined, 'off has none');
 });
 
 test('phase spans follow the phase rules, not every moment in range', () => {

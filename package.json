@@ -1,7 +1,7 @@
 {
   "name": "homebridge-appliance-monitor",
   "displayName": "Appliance Monitor",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "description": "Homebridge plugin that watches the power draw of Matter smart plugs and tells HomeKit when an appliance is running or finished",
   "license": "MIT",
   "author": "Oliver Rummeyer",

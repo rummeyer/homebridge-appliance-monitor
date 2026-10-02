@@ -11,7 +11,15 @@
  */
 import { CycleMachine } from './cycle.ts';
 import type { CycleParams, CycleProgress, CycleState, SavedState, Transition } from './cycle.ts';
-import { learnFromCycle, merge, NOTHING_WATTS, runLevelAbove } from './learn.ts';
+import {
+  learnFromCycle,
+  MAX_STANDBY_WATTS,
+  merge,
+  NOTHING_WATTS,
+  runLevelAbove,
+  STANDBY_HELD_MS as HELD_MS,
+  STANDBY_STEADY_RATIO as STEADY_RATIO,
+} from './learn.ts';
 import type { Learned, Sample } from './learn.ts';
 
 export const LEARNING_DEFAULTS: CycleParams = {
@@ -21,19 +29,13 @@ export const LEARNING_DEFAULTS: CycleParams = {
 };
 
 /** How much of what came before a cycle is kept, to see the level it rose from. */
-const BEFORE_MS = 10 * 60_000;
+export const BEFORE_MS = 10 * 60_000;
 /** How long after finishing to keep watching before learning — to see where the machine rests. */
-const AFTER_MS = 10 * 60_000;
+export const AFTER_MS = 10 * 60_000;
 /** A machine that runs for days (a PC, say) is not a cycle; stop collecting. */
 const MAX_SAMPLES = 50_000;
-/** How long a level has to be held to be a level the machine sits at. */
-const HELD_MS = 10 * 60_000;
 /** How far above standby a machine has to have been seen for the low level to be standby. */
 const STANDBY_RATIO = 3;
-/** Standby is steady: the readings stay within this ratio of each other. */
-const STEADY_RATIO = 1.5;
-/** And small. Anything more is the machine at work, a drum turning, a fan. */
-const MAX_STANDBY_WATTS = 25;
 
 export interface MonitorOptions {
   /** Values from the config, which win over learned ones. */
@@ -207,8 +209,37 @@ export class DeviceMonitor {
     }
   }
 
+  /**
+   * Learns from a cycle marked on the Power tab, from the recorded readings
+   * around it — 10 minutes before and after, as for one seen here. Undefined
+   * when there is nothing to learn: the stretch never went well above where
+   * the machine rests.
+   */
+  learnFromMarked(samples: Sample[], cycle: { startedAt: number; endedAt: number }, at: number): Learned | undefined {
+    const fresh = learnFromCycle(samples, cycle, this.#machine.params, { marked: true });
+    if (!fresh) {
+      return undefined;
+    }
+    this.#learned = merge(this.#learned, fresh);
+    this.#cycles += 1;
+    this.#machine.retune(this.#params(), at);
+    this.#events.learned(this.#learned, this.#cycles);
+    return this.#learned;
+  }
+
+  /** Forgets what was learned, standby included, and starts again from the defaults. */
+  forget(at: number): void {
+    this.#learned = undefined;
+    this.#cycles = 0;
+    this.#standby = undefined;
+    this.#lowestHeld = undefined;
+    this.#highest = 0;
+    this.#pending = undefined;
+    this.#machine.retune(this.#params(), at);
+  }
+
   #learn(cycle: { startedAt: number; endedAt: number; switchedOff: boolean }, at: number): void {
-    const fresh = learnFromCycle(this.#samples, cycle, this.#machine.params, cycle.switchedOff);
+    const fresh = learnFromCycle(this.#samples, cycle, this.#machine.params, { switchedOff: cycle.switchedOff });
     if (!fresh) {
       return;
     }

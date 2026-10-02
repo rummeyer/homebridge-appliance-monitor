@@ -106,6 +106,13 @@ To set it yourself instead, put the **Running** power under **More** in the
 settings between standby and what it draws in use, and the **Finished** time
 to how long it should wait before it counts as done.
 
+**Learn from a cycle you mark.** To skip the wait for a first cycle, drag
+across a whole cycle on the **Power** tab, from start to end, and click
+**Learn from this cycle**. The plugin learns from it just as from one it saw
+itself, and the answer says what it learned. If something was learned wrong,
+**Forget what was learned** under **More** in the settings starts again from
+the defaults.
+
 ## Phases
 
 Inside a cycle an appliance does different things, and many of them can be
@@ -123,11 +130,9 @@ The easiest way to set one up is the **Power** tab of the settings page. It
 shows a plug's recorded power, from the last hour to the last two weeks, with
 the levels the plug dwells at as green markers on the right, the phases set up
 so far each in its colour, and a bar below for each phase showing when it was
-on. Pointing at the chart shows the time and the reading there.
-
-- click a marker to make that level a phase, or
-- drag across the chart over something the appliance did (a coffee at
-  7:02, a spin) to take the range it drew then.
+on. Pointing at the chart shows the time and the reading there. Click a
+marker to make that level a phase. (Dragging across the chart marks a cycle
+to learn from; see [Learning](#learning).)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-dark.png">
@@ -387,8 +392,9 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 - `energy.json`: watt-hours per plug and day, for the Statistics tab, kept for
   a little over two years. Written every five minutes. Plugs removed from the
   config keep their history here.
-- `resets.json`: statistics resets asked for on the settings page, there
-  only until the plugin has done them.
+- `resets.json`, `requests/` and `answers/`: what the settings page asked of
+  the plugin (resetting statistics, learning from a marked cycle,
+  forgetting), there only until it has been done.
 - `power/`: one file per day, `time,device,endpoint,watts`, one line per
   reading. Older than `recordDays` is deleted.
 

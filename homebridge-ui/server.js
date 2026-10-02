@@ -3,39 +3,48 @@
  *
  * Serves the Statistics tab — the energy each plug used in the last complete
  * day, week, month and year — and the Power tab: a plug's recorded power
- * draw, the levels it dwells at, and a power range for a stretch picked on
- * it. All read from the files the plugin writes rather than asked of the
- * running plugin, which is a separate process this page has no line to.
- * Energy is written every five minutes, readings as they come.
+ * draw and the levels it dwells at. All read from the files the plugin
+ * writes rather than asked of the running plugin, which is a separate
+ * process this page has no line to; what only it can do (learning,
+ * forgetting) is asked of it through files too, see requests.ts. Energy is
+ * written every five minutes, readings as they come.
  */
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils';
 
-import { bandFor, phaseSpans, thin } from '../dist/curve.js';
+import { phaseSpans, thin } from '../dist/curve.js';
 import { usablePhases } from '../dist/config.js';
 import { shownCount } from '../dist/counts.js';
 import { findDataDir } from '../dist/data-dir.js';
 import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
+import { runLevelAbove } from '../dist/learn.js';
+import { LEARNING_DEFAULTS } from '../dist/monitor.js';
 import { findLevels } from '../dist/phases.js';
 import { readSamples } from '../dist/recorder.js';
 import { applyResets, pendingResets, requestReset } from '../dist/resets.js';
+import { addRequest, dropRequest, takeAnswer } from '../dist/requests.js';
 
 /** Points drawn across the chart: about two per pixel of a wide settings page. */
 const CHART_BUCKETS = 600;
 const MAX_HOURS = 24 * 14;
 /** How long to wait for the plugin to do a reset, which it looks for every five seconds. */
 const RESET_WAIT_MS = 8000;
+/** How long to wait for it to answer a request, which it also looks for every five seconds. */
+const ANSWER_WAIT_MS = 12_000;
 
 class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
   constructor() {
     super();
     this.onRequest('/statistics', (request) => this.statistics(request));
     this.onRequest('/curve', (request) => this.curve(request));
-    this.onRequest('/band', (request) => this.band(request));
     this.onRequest('/paired', () => this.paired());
+    this.onRequest('/learned', () => this.learned());
     this.onRequest('/reset', (request) => this.reset(request));
+    this.onRequest('/learn', (request) => this.learn(request));
+    this.onRequest('/forget', (request) => this.forget(request));
     this.ready();
   }
 
@@ -62,6 +71,47 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     };
   }
 
+  /**
+   * The thresholds each appliance uses unless the settings fix them, and
+   * where each comes from — learned, found from standby, or the default —
+   * for the Settings tab to show in its empty fields.
+   */
+  async learned() {
+    if (!this.homebridgeStoragePath) {
+      return {};
+    }
+    let records;
+    try {
+      records = readJson(join(findDataDir(this.homebridgeStoragePath), 'devices.json')) ?? {};
+    } catch {
+      return {};
+    }
+    const result = {};
+    for (const [name, record] of Object.entries(records)) {
+      const learned = record?.learned?.params;
+      if (learned) {
+        result[name] = {
+          cycles: record.cycles ?? 1,
+          runWatts: { value: learned.runWatts, from: 'learned' },
+          startSeconds: { value: learned.startSeconds, from: 'default' },
+          finishSeconds: { value: learned.finishSeconds, from: 'learned' },
+        };
+        continue;
+      }
+      const standby = record?.standbyWatts;
+      result[name] = {
+        cycles: 0,
+        standbyWatts: standby ?? null,
+        runWatts: typeof standby === 'number'
+          ? { value: Math.max(LEARNING_DEFAULTS.runWatts, runLevelAbove(standby)), from: 'standby' }
+          : { value: LEARNING_DEFAULTS.runWatts, from: 'default' },
+        startSeconds: { value: LEARNING_DEFAULTS.startSeconds, from: 'default' },
+        finishSeconds: { value: LEARNING_DEFAULTS.finishSeconds, from: 'default' },
+      };
+    }
+    return result;
+  }
+
   /** The names of the plugs that are paired, for a mark in the Settings tab's list. */
   async paired() {
     if (!this.homebridgeStoragePath) {
@@ -72,17 +122,6 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     } catch {
       return [];
     }
-  }
-
-  /** The power range for a stretch picked on the chart, or null if the plug drew nothing then. */
-  async band(request) {
-    const name = String(request?.name ?? '');
-    const from = Number(request?.from);
-    const to = Number(request?.to);
-    if (!this.powerDir || !Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
-      return null;
-    }
-    return bandFor(readSamples(this.powerDir, name, from, to), from, to) ?? null;
   }
 
   /**
@@ -108,6 +147,51 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     }
     applyResets(dir);
     return { ok: true };
+  }
+
+  /** Learns from a stretch marked on the Power tab as one cycle of the appliance. */
+  async learn(request) {
+    const name = String(request?.name ?? '').trim();
+    const from = Number(request?.from);
+    const to = Number(request?.to);
+    if (!name || !Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+      throw new RequestError('Mark a stretch of the chart first', { status: 400 });
+    }
+    return this.ask({ name, action: 'learn', from: Math.round(from), to: Math.round(to) });
+  }
+
+  /** Forgets what an appliance has learned. */
+  async forget(request) {
+    const name = String(request?.name ?? '').trim();
+    if (!name) {
+      throw new RequestError('No such appliance', { status: 400 });
+    }
+    return this.ask({ name, action: 'forget' });
+  }
+
+  /**
+   * Asks the running plugin and waits for its answer; see requests.ts. Only
+   * it can do these, as it holds what was learned in memory.
+   */
+  async ask(request) {
+    if (!this.homebridgeStoragePath) {
+      throw new RequestError('No Homebridge storage folder', { status: 500 });
+    }
+    const dir = findDataDir(this.homebridgeStoragePath);
+    const id = randomUUID();
+    addRequest(dir, { id, ...request });
+    for (const until = Date.now() + ANSWER_WAIT_MS; Date.now() < until; ) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const result = takeAnswer(dir, id);
+      if (result) {
+        if (!result.ok) {
+          throw new RequestError(result.message, { status: 409 });
+        }
+        return result;
+      }
+    }
+    dropRequest(dir, id);
+    throw new RequestError('The plugin did not answer. Is its child bridge running?', { status: 504 });
   }
 
   /** The table for the plugs named, in the order the page lists them, with what each has counted. */

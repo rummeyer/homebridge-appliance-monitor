@@ -32,6 +32,9 @@
   .om-table tfoot td { border-top: 1px solid rgba(128,128,128,.5); font-weight: 600; }
   .om-table tfoot td:first-child { text-transform: uppercase; font-size: .72rem; letter-spacing: .04em; padding-top: .55rem; }
 
+  /* Dragging across the chart must not select the text around it. */
+  #om-curve { user-select: none; -webkit-user-select: none; }
+
   .om-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
   .om-controls select { width: auto; }
   /* As wide as the appliance list on Settings, so switching tabs does not jump. */
@@ -68,8 +71,16 @@
     </div>
     <div id="om-curve"></div>
     <p class="om-hint mb-3" id="om-curve-help">
-      Click a green level marker, or drag across something the appliance did, to make it a phase.
+      Click a green level marker to make it a phase. Drag across a whole cycle to learn from it.
     </p>
+
+    <div class="om-hidden mb-3" id="om-cycle-form">
+      <h6 id="om-cycle-title">Marked</h6>
+      <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="btn btn-sm btn-primary" id="om-cycle-learn">Learn from this cycle</button>
+        <span class="om-hint" id="om-cycle-msg"></span>
+      </div>
+    </div>
 
     <div class="om-hidden" id="om-phase-form">
       <h6 id="om-phase-title">New phase</h6>
@@ -326,6 +337,9 @@
       const name = document.getElementById('om-curve-plug').value;
       const hours = Number(document.getElementById('om-curve-hours').value);
       box.innerHTML = '';
+      // A stretch marked before was on the chart as it was, maybe of another appliance.
+      marked = null;
+      document.getElementById('om-cycle-form').classList.add('om-hidden');
       if (!name) {
         box.textContent = 'No plugs configured yet.';
         return;
@@ -403,6 +417,8 @@
         if (event.target.closest('[data-level]')) {
           return; // a click on a level, not a drag
         }
+        // A drag here marks a stretch of time, not the text around the chart.
+        event.preventDefault();
         const point = toChart(event);
         if (!inPlot(point)) {
           return;
@@ -415,7 +431,8 @@
       });
       element.addEventListener('pointermove', (event) => {
         const point = toChart(event);
-        hover(point);
+        // On a level marker, which is clicked rather than read: no time line.
+        hover(start === null && event.target.closest('[data-level]') ? { x: -1, y: -1 } : point);
         if (start === null) {
           return;
         }
@@ -436,16 +453,27 @@
         }
         const pickedFrom = chart.timeOf(a);
         const pickedTo = chart.timeOf(b);
-        const band = await homebridge.request('/band', { name, from: Math.round(pickedFrom), to: Math.round(pickedTo) });
-        if (!band) {
-          homebridge.toast.info('The plug drew next to nothing then.');
-          return;
-        }
-        offerPhase(band.minWatts, band.maxWatts, `${clock(pickedFrom, long)} to ${clock(pickedTo, long)}`);
+        offerCycle({ from: Math.round(pickedFrom), to: Math.round(pickedTo) },
+          `${clock(pickedFrom, long)} to ${clock(pickedTo, long)}`);
       });
     }
 
+    /** The stretch dragged across, to learn from as a cycle. */
+    let marked = null;
+
+    /** A drag marks a cycle to learn from; a level clicked makes a phase. One at a time. */
+    function offerCycle(stretch, source) {
+      marked = stretch;
+      document.getElementById('om-phase-form').classList.add('om-hidden');
+      document.getElementById('om-cycle-form').classList.remove('om-hidden');
+      document.getElementById('om-cycle-title').textContent = `Marked ${source}`;
+      document.getElementById('om-cycle-msg').textContent = '';
+    }
+
     function offerPhase(minWatts, maxWatts, source) {
+      marked = null;
+      document.getElementById('om-cycle-form').classList.add('om-hidden');
+      document.getElementById('om-pick')?.setAttribute('visibility', 'hidden');
       document.getElementById('om-phase-form').classList.remove('om-hidden');
       document.getElementById('om-phase-title').textContent = `New phase from ${source}`;
       document.getElementById('om-phase-min').value = minWatts;
@@ -453,6 +481,25 @@
       document.getElementById('om-phase-msg').textContent = '';
       document.getElementById('om-phase-name').focus();
     }
+
+    document.getElementById('om-cycle-learn').addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const message = document.getElementById('om-cycle-msg');
+      if (!marked || !current) {
+        return;
+      }
+      button.disabled = true;
+      message.textContent = 'Learning…';
+      try {
+        const result = await homebridge.request('/learn', { name: current.name, ...marked });
+        message.textContent = '';
+        homebridge.toast.success(result.message, `${current.name}: learned`);
+      } catch (error) {
+        message.textContent = error?.message ?? String(error);
+      } finally {
+        button.disabled = false;
+      }
+    });
 
     document.getElementById('om-phase-add').addEventListener('click', async () => {
       const message = document.getElementById('om-phase-msg');
