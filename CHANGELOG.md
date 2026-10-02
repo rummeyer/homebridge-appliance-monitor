@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.16.1] — 2026-10-02
+
+### Changed
+
+- **Forget what was learned** shows only when something has been learned.
+- A click on the Power chart removes the marked stretch, and with it
+  **Learn from this cycle**.
+- New screenshots in the README, and the README covers the learned values
+  shown in the settings. The dark screenshots are the light ones for now.
+
 ## [0.16.0] — 2026-10-02
 
 ### Added
@@ -321,7 +331,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.14.2...v0.15.0

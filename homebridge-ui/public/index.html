@@ -448,7 +448,10 @@
         const [a, b] = [start, end].sort((p, q) => p - q);
         start = null;
         if (b - a < 4) {
+          // A click rather than a drag: the marking goes, and with it what to do with it.
           pick.setAttribute('visibility', 'hidden');
+          marked = null;
+          document.getElementById('om-cycle-form').classList.add('om-hidden');
           return;
         }
         const pickedFrom = chart.timeOf(a);

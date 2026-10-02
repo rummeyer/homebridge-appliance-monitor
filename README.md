@@ -92,9 +92,10 @@ refines this, and a longer pause only ever lengthens the wait. If a cycle
 does turn out to have ended too early (the machine runs again within ten
 minutes), the plugin logs it, treats it as one cycle and learns the pause.
 
-What was learned is logged and kept in `appliance-monitor/devices.json`. Any
-threshold can be fixed in the settings instead, each on its own; the rest are
-still learned.
+What was learned is logged, kept in `appliance-monitor/devices.json`, and
+shown under **More** in the settings, in the empty threshold fields: `38.4
+learned`, `20.6 standby` or `60 default`. Any threshold can be fixed there
+instead, each on its own; the rest are still learned.
 
 An appliance whose standby is above 5 W, a computer at 9 W say, would never
 drop below the default running level, and so never finish and never learn.
@@ -109,9 +110,10 @@ to how long it should wait before it counts as done.
 **Learn from a cycle you mark.** To skip the wait for a first cycle, drag
 across a whole cycle on the **Power** tab, from start to end, and click
 **Learn from this cycle**. The plugin learns from it just as from one it saw
-itself, and the answer says what it learned. If something was learned wrong,
-**Forget what was learned** under **More** in the settings starts again from
-the defaults.
+itself, and the answer says what it learned. A click on the chart removes the
+marking. If something was learned wrong, **Forget what was learned** under
+**More** in the settings starts again from the defaults; it shows once
+something has been learned.
 
 ## Phases
 
@@ -226,7 +228,7 @@ and **Last Year**, one row per plug and the total below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per plug today, last week, last month and last year, and a count per appliance" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week, last month and last year, its last cycle, and a count per appliance" width="760">
 </picture>
 
 Today counts from a plug's first reading of the day, so a plug added at noon
@@ -308,7 +310,7 @@ so they do not depend on how many days of recordings are kept.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its switches and phases" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its phases and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it

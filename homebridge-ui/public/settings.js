@@ -109,7 +109,7 @@
     config.devices = Array.isArray(config.devices) ? config.devices.filter((d) => d && typeof d === 'object') : [];
     const pairedNames = new Set(paired);
     /** What each appliance uses where its thresholds are empty; see the server's /learned. */
-    let inUse = await homebridge.request('/learned').catch(() => ({}));
+    let inUse = (await homebridge.request('/learned').catch(() => null)) ?? {};
 
     let selected = config.devices.length ? sortedIndices()[0] : -1;
     let pending;
@@ -338,7 +338,8 @@
             : used.standbyWatts != null ? `Nothing learned yet; standby found at ${used.standbyWatts} W.`
             : 'Nothing learned yet: defaults until the first cycle.'} `
           + 'Empty fields use the value shown.'),
-        forgetButton(device));
+        // Only with something to forget: a learned cycle, or standby found.
+        used && (used.cycles > 0 || used.standbyWatts != null) ? forgetButton(device) : null);
     }
 
     /**
@@ -367,7 +368,7 @@
           try {
             const result = await homebridge.request('/forget', { name: String(device.name ?? '').trim() });
             homebridge.toast.success(result.message, `${device.name}: forgotten`);
-            inUse = await homebridge.request('/learned').catch(() => inUse);
+            inUse = (await homebridge.request('/learned').catch(() => null)) ?? inUse;
             render();
             return;
           } catch (error) {
@@ -463,7 +464,7 @@
     return {
       /** Picks up changes made elsewhere on the page, such as a phase added on the Power tab. */
       async reload() {
-        inUse = await homebridge.request('/learned').catch(() => inUse);
+        inUse = (await homebridge.request('/learned').catch(() => null)) ?? inUse;
         const name = config.devices[selected]?.name;
         configs = await homebridge.getPluginConfig();
         if (!configs.length) {
