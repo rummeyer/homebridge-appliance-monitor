@@ -5,6 +5,11 @@
  * which with a dozen plugs is a long page to find one in. This shows a list
  * to pick from, and below it the one picked.
  *
+ * An appliance's phases are only listed here; they are edited on the Power
+ * tab, next to the chart they are found in. This module draws them there too
+ * (`showPhases`), on the same config, so the two tabs cannot write over each
+ * other.
+ *
  * Changes go to Homebridge as they are made (`updatePluginConfig`), and are
  * saved with the Save button of the settings window, as with Homebridge's own
  * form. Only what differs from the default is written, so the config stays as
@@ -113,6 +118,8 @@
 
     let selected = config.devices.length ? sortedIndices()[0] : -1;
     let pending;
+    /** Where the Power tab shows the phases, and of which appliance. */
+    let phaseView = null; // { target, name, onChange }
 
     /** Hands the config to Homebridge, a moment after the last change. */
     function changed() {
@@ -131,7 +138,10 @@
         }
       }
       clearTimeout(pending);
-      pending = setTimeout(() => void homebridge.updatePluginConfig(configs), 250);
+      pending = setTimeout(() => {
+        pending = undefined;
+        void homebridge.updatePluginConfig(configs);
+      }, 250);
     }
 
     function sortedIndices() {
@@ -292,7 +302,7 @@
                 }),
               'Changing it replaces it in HomeKit, with its automations.'))),
 
-        phasesSection(device),
+        phasesTable(device),
 
         el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
           el('summary', {}, 'More: polling, thresholds'),
@@ -392,11 +402,51 @@
 
     const hasThresholds = (device) => device.thresholds && Object.values(device.thresholds).some((v) => v !== null && v !== undefined && v !== '');
 
+    /** The phases, to read: they are edited on the Power tab. */
+    function phasesTable(device) {
+      const phases = Array.isArray(device.phases) ? device.phases : [];
+      const seconds = (value, fallback) => (value ?? fallback);
+      const table = el('table', { class: 'om-table' },
+        el('thead', {}, el('tr', {},
+          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'Switch', 'Count']
+            .map((label) => el('th', {}, label)))),
+        el('tbody', {}, phases.map((phase) => el('tr', {},
+          el('td', {}, phase.name || '(no name)'),
+          el('td', {}, phase.minWatts ?? '–'),
+          el('td', {}, phase.maxWatts ?? 'no limit'),
+          el('td', {}, seconds(phase.minSeconds, 5)),
+          el('td', {}, seconds(phase.holdSeconds, 30)),
+          el('td', {}, phase.maxSeconds ?? 'any'),
+          el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
+          el('td', {}, phase.count === true ? 'yes' : 'no')))));
+      return el('div', { class: 'om-set-section' },
+        el('h6', {}, 'Phases'),
+        phases.length ? table : null,
+        el('div', { class: 'om-set-help' }, phases.length ? 'Changed on the Power tab.' : 'None yet. They are set up on the Power tab.'));
+    }
+
+    const deviceNamed = (name) => config.devices.find((d) => String(d.name ?? '').trim() === name);
+
+    /** Draws the phases where the Power tab has them, after a change or for another appliance. */
+    function drawPhases() {
+      if (!phaseView) {
+        return;
+      }
+      const device = deviceNamed(phaseView.name);
+      phaseView.target.replaceChildren(device ? phasesSection(device) : '');
+    }
+
+    /** A phase changed: to Homebridge, and the chart redrawn with it. */
+    function phasesChanged() {
+      changed();
+      phaseView?.onChange();
+    }
+
     function phasesSection(device) {
       const phases = Array.isArray(device.phases) ? device.phases : [];
       const rows = phases.map((phase, index) => {
         const id = `om-set-phase-${index}`;
-        const update = (mutate) => { mutate(phase); changed(); };
+        const update = (mutate) => { mutate(phase); phasesChanged(); };
         const labelled = (input, label) => {
           input.setAttribute('aria-label', label);
           input.title = label;
@@ -417,8 +467,8 @@
             onclick: () => {
               phases.splice(index, 1);
               setOrDrop(device, 'phases', phases.length ? phases : undefined);
-              changed();
-              render();
+              phasesChanged();
+              drawPhases();
             },
           }, '×'));
       });
@@ -431,16 +481,20 @@
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
               el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {})),
             rows)
-          : el('div', { class: 'om-set-help mb-2' }, 'None yet. The Power tab finds them.'),
-        el('button', {
-          type: 'button', class: 'btn btn-sm btn-outline-primary mt-2',
-          onclick: () => {
-            device.phases = [...phases, { name: '' }];
-            changed();
-            render();
-            [...container.querySelectorAll('.om-set-phase')].at(-1)?.querySelector('input')?.focus();
-          },
-        }, '+ Add phase'));
+          : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
+        el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));
+    }
+
+    /** A new line at the end of the phases, ready for its name. */
+    function addPhase(values) {
+      const device = phaseView && deviceNamed(phaseView.name);
+      if (!device) {
+        return;
+      }
+      device.phases = [...(Array.isArray(device.phases) ? device.phases : []), { name: '', ...values }];
+      phasesChanged();
+      drawPhases();
+      [...phaseView.target.querySelectorAll('.om-set-phase')].at(-1)?.querySelector('input')?.focus();
     }
 
     function general() {
@@ -462,8 +516,15 @@
 
     render();
     return {
-      /** Picks up changes made elsewhere on the page, such as a phase added on the Power tab. */
+      /** Picks up what the plugin learned meanwhile, and the config as Homebridge has it. */
       async reload() {
+        // A change not yet handed over, made on the Power tab a moment ago,
+        // would be lost in reading the config back.
+        if (pending !== undefined) {
+          clearTimeout(pending);
+          pending = undefined;
+          await homebridge.updatePluginConfig(configs);
+        }
         inUse = (await homebridge.request('/learned').catch(() => null)) ?? inUse;
         const name = config.devices[selected]?.name;
         configs = await homebridge.getPluginConfig();
@@ -487,6 +548,21 @@
       /** The appliance shown, for the Power tab to open on the same one. */
       selectedName() {
         return config.devices[selected]?.name;
+      },
+      /**
+       * Shows the phases of the appliance `name` in `target`, for the Power
+       * tab; `onChange` is called after each change to them.
+       */
+      showPhases(target, name, onChange) {
+        phaseView = { target, name, onChange };
+        drawPhases();
+      },
+      /** A new phase line with these values, such as a level's range clicked on the chart. */
+      addPhase,
+      /** The phases as being edited, saved or not, for the chart to show. */
+      phasesOf(name) {
+        const phases = deviceNamed(name)?.phases;
+        return Array.isArray(phases) ? phases : [];
       },
     };
   }

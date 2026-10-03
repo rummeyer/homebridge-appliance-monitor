@@ -39,7 +39,6 @@
   .om-controls select { width: auto; }
   /* As wide as the appliance list on Settings, so switching tabs does not jump. */
   .om-controls #om-curve-plug { width: 14rem; max-width: 100%; }
-  .om-form   { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; align-items: end; }
 </style>
 <script src="chart.js"></script>
 <script src="settings.js"></script>
@@ -70,7 +69,7 @@
     </div>
     <div id="om-curve"></div>
     <p class="om-hint mb-3" id="om-curve-help">
-      Click a green level marker to make it a phase. Drag across a whole cycle to learn from it.
+      Click a green level marker to add it as a phase below. Drag across a whole cycle to learn from it.
     </p>
 
     <div class="om-hidden mb-3" id="om-cycle-form">
@@ -81,38 +80,7 @@
       </div>
     </div>
 
-    <div class="om-hidden" id="om-phase-form">
-      <h6 id="om-phase-title">New phase</h6>
-      <div class="om-form">
-        <label class="form-label mb-0">Name
-          <input class="form-control form-control-sm" id="om-phase-name" placeholder="Heating">
-        </label>
-        <label class="form-label mb-0">From (W)
-          <input class="form-control form-control-sm" id="om-phase-min" type="number" min="0" step="any">
-        </label>
-        <label class="form-label mb-0">Below (W)
-          <input class="form-control form-control-sm" id="om-phase-max" type="number" min="0" step="any" placeholder="no limit">
-        </label>
-        <label class="form-label mb-0">On after (s)
-          <input class="form-control form-control-sm" id="om-phase-on" type="number" min="0" value="5">
-        </label>
-        <label class="form-label mb-0">Off after (s)
-          <input class="form-control form-control-sm" id="om-phase-off" type="number" min="0" value="30">
-        </label>
-        <div class="form-check mb-1">
-          <input class="form-check-input" type="checkbox" id="om-phase-sensor" checked>
-          <label class="form-check-label" for="om-phase-sensor">Switch in HomeKit</label>
-        </div>
-        <div class="form-check mb-1">
-          <input class="form-check-input" type="checkbox" id="om-phase-count">
-          <label class="form-check-label" for="om-phase-count">Count in statistics</label>
-        </div>
-      </div>
-      <div class="mt-2 d-flex gap-2 align-items-center">
-        <button type="button" class="btn btn-sm btn-primary" id="om-phase-add">Add phase</button>
-        <span class="om-hint" id="om-phase-msg"></span>
-      </div>
-    </div>
+    <div id="om-phases"></div>
   </div>
 </div>
 
@@ -351,8 +319,7 @@
         box.textContent = 'No plugs configured yet.';
         return;
       }
-      const device = (await configuredPlugs()).find((d) => d.name.trim() === name);
-      const phases = device?.phases ?? [];
+      const phases = settings.phasesOf(name);
       let curve;
       try {
         curve = await homebridge.request('/curve', { name, hours, phases });
@@ -433,7 +400,7 @@
       for (const marker of element.querySelectorAll('[data-level]')) {
         const level = curve.levels[Number(marker.dataset.level)];
         marker.addEventListener('click', () =>
-          offerPhase(level.minWatts, level.maxWatts, `the ${chart.watts(level.watts)} level`));
+          addPhase(level.minWatts, level.maxWatts));
       }
 
       const toChart = (event) => {
@@ -539,25 +506,29 @@
     /** The stretch dragged across, to learn from as a cycle. */
     let marked = null;
 
-    /** A drag marks a cycle to learn from; a level clicked makes a phase. One at a time. */
+    /** A drag marks a cycle to learn from. */
     function offerCycle(stretch, source) {
       marked = stretch;
-      document.getElementById('om-phase-form').classList.add('om-hidden');
       document.getElementById('om-cycle-form').classList.remove('om-hidden');
       document.getElementById('om-cycle-title').textContent = `Marked ${source}`;
       document.getElementById('om-cycle-msg').textContent = '';
     }
 
-    function offerPhase(minWatts, maxWatts, source) {
+    /** A level clicked: a new phase line with its range, the marked stretch gone. */
+    function addPhase(minWatts, maxWatts) {
       marked = null;
       document.getElementById('om-cycle-form').classList.add('om-hidden');
       document.getElementById('om-pick')?.setAttribute('visibility', 'hidden');
-      document.getElementById('om-phase-form').classList.remove('om-hidden');
-      document.getElementById('om-phase-title').textContent = `New phase from ${source}`;
-      document.getElementById('om-phase-min').value = minWatts;
-      document.getElementById('om-phase-max').value = maxWatts;
-      document.getElementById('om-phase-msg').textContent = '';
-      document.getElementById('om-phase-name').focus();
+      settings.addPhase({ minWatts, maxWatts });
+    }
+
+    /** The phases under the chart, edited there; the chart follows a moment after a change. */
+    let phaseRedraw;
+    function showPhases() {
+      settings.showPhases(document.getElementById('om-phases'), document.getElementById('om-curve-plug').value, () => {
+        clearTimeout(phaseRedraw);
+        phaseRedraw = setTimeout(() => void showCurve(true), 400);
+      });
     }
 
     document.getElementById('om-cycle-learn').addEventListener('click', async (event) => {
@@ -579,44 +550,9 @@
       }
     });
 
-    document.getElementById('om-phase-add').addEventListener('click', async () => {
-      const message = document.getElementById('om-phase-msg');
-      const name = document.getElementById('om-phase-name').value.trim();
-      const minWatts = Number(document.getElementById('om-phase-min').value);
-      const maxText = document.getElementById('om-phase-max').value.trim();
-      const maxWatts = maxText === '' ? undefined : Number(maxText);
-      const minSeconds = Number(document.getElementById('om-phase-on').value);
-      const holdSeconds = Number(document.getElementById('om-phase-off').value);
-      const sensor = document.getElementById('om-phase-sensor').checked;
-      const count = document.getElementById('om-phase-count').checked;
-      if (!name) {
-        message.textContent = 'Give the phase a name.';
-        return;
-      }
-      if (!(minWatts >= 0) || (maxWatts !== undefined && !(maxWatts > minWatts))) {
-        message.textContent = '"Below" has to be more than "From", or empty for no upper end.';
-        return;
-      }
-      const configs = await homebridge.getPluginConfig();
-      const device = (configs[0]?.devices ?? []).find((d) => d?.name?.trim() === current?.name);
-      if (!device) {
-        message.textContent = 'That plug is no longer in the settings.';
-        return;
-      }
-      device.phases ??= [];
-      if (device.phases.some((phase) => phase?.name?.trim() === name)) {
-        message.textContent = `${current.name} already has a phase called "${name}".`;
-        return;
-      }
-      device.phases.push({ name, minWatts, ...(maxWatts === undefined ? {} : { maxWatts }), minSeconds, holdSeconds, sensor, count });
-      await homebridge.updatePluginConfig(configs);
-      message.textContent = 'Added. Save and restart the child bridge to use it.';
-      document.getElementById('om-phase-name').value = '';
-      void showCurve();
-    });
-
     document.getElementById('om-curve-plug').addEventListener('change', (event) => {
       settings.select(event.target.value);
+      showPhases();
       void showCurve();
     });
     document.getElementById('om-curve-hours').addEventListener('change', () => void showCurve());
@@ -644,7 +580,10 @@
         return;
       }
       if (name === 'curve') {
-        void fillPlugs().then(showCurve);
+        void fillPlugs().then(() => {
+          showPhases();
+          return showCurve();
+        });
       } else {
         void showStats();
       }

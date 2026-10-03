@@ -134,16 +134,19 @@ the levels the plug dwells at as green markers on the right, the phases set up
 so far each in its colour, and a bar below for each phase showing when it was
 on. It keeps itself up to date while it is open: every 5 seconds, or every
 30 seconds when it shows more than a day. Pointing at the chart shows the
-time and the reading there. Click a
-marker to make that level a phase. (Dragging across the chart marks a cycle
-to learn from; see [Learning](#learning).)
+time and the reading there. Below the chart are the appliance's phases, one
+line each. Click a marker to add that level as a new line, or **+ Add phase**
+for an empty one; × removes one. (Dragging across the chart marks a cycle to
+learn from; see [Learning](#learning).)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-dark.png">
   <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over an hour, with its phases Aufheizen, Bezug, Spülen and Milchschaum, and a bar for each showing when it was on" width="760">
 </picture>
 
-Name the phase, adjust the range if you like, add it, and save. Each phase
+Name the phase, adjust the range if you like, and save; the chart shows a
+change to a phase a moment later. The Settings tab only lists the phases.
+Each phase
 can have a switch in HomeKit, on while it lasts, and its start and end are
 logged.
 

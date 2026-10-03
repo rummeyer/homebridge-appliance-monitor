@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-10-03
+
+### Changed
+
+- Phases are edited on the Power tab only, below the chart, as the list the
+  Settings tab had: one line per phase, × to remove one, **+ Add phase** for
+  an empty line. A green level marker adds a line with its range. The chart
+  follows a change a moment later.
+- The Settings tab lists the phases in a table, to read.
+- The **New phase** form on the Power tab is gone.
+
 ## [0.17.0] — 2026-10-03
 
 ### Changed
@@ -339,7 +350,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.1...v0.16.0
