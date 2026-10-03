@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.2] — 2026-10-03
+
+### Changed
+
+- The section on the Settings tab reads **More: Polling, Phases & Thresholds**.
+
+### Fixed
+
+- The button that removes a phase shows a drawn cross, now in its middle in
+  the Homebridge UI too; the "×" before sat where the font put it.
+
 ## [0.18.1] — 2026-10-03
 
 ### Changed
@@ -364,7 +375,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.2...HEAD
+[0.18.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.1...v0.18.2
 [0.18.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.1...v0.17.0

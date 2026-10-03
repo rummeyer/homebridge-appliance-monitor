@@ -41,9 +41,12 @@
                   padding: .3rem 0; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; }
   .om-set-phase .form-check { margin: 0; white-space: nowrap; }
-  /* As high as the fields beside it, square, the × in the middle of it. */
-  .om-set-x { width: 2rem; height: calc(1.8125rem + 2px); padding: 0; display: flex; align-items: center; justify-content: center;
-              font-size: 1.1rem; line-height: 1; }
+  /* As high as the fields beside it, square, the cross in the middle of it. A
+     drawn cross rather than "×", which each font puts somewhere else; and
+     !important, as the host's own button styles would win otherwise. */
+  .om-set-x { width: 2rem !important; height: calc(1.8125rem + 2px) !important; padding: 0 !important;
+              display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+  .om-set-x svg { display: block; width: .7rem; height: .7rem; }
   @media (max-width: 760px) {
     .om-set-phase { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
     .om-set-phase.om-set-head { display: none; }
@@ -102,6 +105,13 @@
     const value = Number(trimmed);
     return Number.isFinite(value) ? value : undefined;
   };
+
+  /** A cross drawn in the colour of the text, for a button that removes something. */
+  function cross() {
+    const template = document.createElement('template');
+    template.innerHTML = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    return template.content.firstChild;
+  }
 
   const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
 
@@ -307,7 +317,7 @@
               'Changing it replaces it in HomeKit, with its automations.'))),
 
         el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
-          el('summary', {}, 'More: polling, phases, thresholds'),
+          el('summary', {}, 'More: Polling, Phases & Thresholds'),
           el('div', { class: 'om-set-section' },
             el('h6', {}, 'Polling'),
             el('div', { class: 'om-set-poll' },
@@ -470,14 +480,14 @@
           labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
             'Count on the Statistics tab instead of finished cycles'),
           el('button', {
-            type: 'button', class: 'btn btn-sm btn-outline-danger om-set-x', title: `Remove ${phase.name || 'this phase'}`,
+            type: 'button', class: 'btn btn-sm btn-outline-danger om-set-x', title: `Remove ${phase.name || 'this phase'}`, 'aria-label': `Remove ${phase.name || 'this phase'}`,
             onclick: () => {
               phases.splice(index, 1);
               setOrDrop(device, 'phases', phases.length ? phases : undefined);
               phasesChanged();
               drawPhases();
             },
-          }, '×'));
+          }, cross()));
       });
       return el('div', { class: 'om-set-section' },
         el('h6', {}, 'Phases'),
