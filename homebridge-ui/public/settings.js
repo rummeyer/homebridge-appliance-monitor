@@ -41,11 +41,14 @@
                   padding: .3rem 0; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; }
   .om-set-phase .form-check { margin: 0; white-space: nowrap; }
+  /* As high as the fields beside it, square, the × in the middle of it. */
+  .om-set-x { width: 2rem; height: calc(1.8125rem + 2px); padding: 0; display: flex; align-items: center; justify-content: center;
+              font-size: 1.1rem; line-height: 1; }
   @media (max-width: 760px) {
     .om-set-phase { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
     .om-set-phase.om-set-head { display: none; }
   }
-  .om-set-poll { margin-bottom: 1rem; }
+  .om-set-poll { margin-bottom: 0; }
   .om-set-poll input { max-width: 13rem; }
   .om-set-rule { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; margin-bottom: .5rem; font-size: .9rem; }
   .om-set-rule strong { min-width: 4.5rem; }
@@ -53,6 +56,7 @@
   /* An empty field shows what applies instead, and must not pass for a value. */
   .om-set-more input::placeholder { font-style: italic; opacity: .45; }
   details.om-set-more > summary { cursor: pointer; font-size: .85rem; opacity: .8; margin-bottom: .75rem; }
+  .om-set-small { font-size: .75rem; padding: .1rem .5rem; }
   .om-set-badge { font-size: .75rem; padding: .1rem .45rem; border-radius: .25rem; background: rgba(46,158,91,.18); color: #2e9e5b; }
   `;
 
@@ -302,16 +306,19 @@
                 }),
               'Changing it replaces it in HomeKit, with its automations.'))),
 
-        phasesTable(device),
-
         el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
-          el('summary', {}, 'More: polling, thresholds'),
-          el('div', { class: 'om-set-poll' },
-            field('Polling interval (s)', number(device.pollSeconds, 'off, only listen', (value) => {
-              setOrDrop(device, 'pollSeconds', numberOrUndefined(value));
-              changed();
-            }, 2), 'For plugs that report seldom, like the Eve Energy.')),
-          thresholdsTable(device)));
+          el('summary', {}, 'More: polling, phases, thresholds'),
+          el('div', { class: 'om-set-section' },
+            el('h6', {}, 'Polling'),
+            el('div', { class: 'om-set-poll' },
+              field('Polling interval (s)', number(device.pollSeconds, 'off, only listen', (value) => {
+                setOrDrop(device, 'pollSeconds', numberOrUndefined(value));
+                changed();
+              }, 2), 'For plugs that report seldom, like the Eve Energy.'))),
+          phasesTable(device),
+          el('div', { class: 'om-set-section' },
+            el('h6', {}, 'Thresholds'),
+            thresholdsTable(device))));
     }
 
     /**
@@ -357,10 +364,10 @@
      * the button rather than with confirm(), which the frame may not allow.
      */
     function forgetButton(device) {
-      const label = 'Forget what was learned';
+      const label = 'Forget';
       let armed = null;
       const button = el('button', {
-        type: 'button', class: 'btn btn-sm btn-outline-danger mt-2',
+        type: 'button', class: 'btn btn-outline-danger om-set-small mt-2',
         onclick: async () => {
           if (!armed) {
             button.textContent = 'SURE?';
@@ -463,7 +470,7 @@
           labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
             'Count on the Statistics tab instead of finished cycles'),
           el('button', {
-            type: 'button', class: 'btn btn-sm btn-outline-danger', title: `Remove ${phase.name || 'this phase'}`,
+            type: 'button', class: 'btn btn-sm btn-outline-danger om-set-x', title: `Remove ${phase.name || 'this phase'}`,
             onclick: () => {
               phases.splice(index, 1);
               setOrDrop(device, 'phases', phases.length ? phases : undefined);

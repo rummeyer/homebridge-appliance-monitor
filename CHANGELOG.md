@@ -6,6 +6,20 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.1] — 2026-10-03
+
+### Changed
+
+- On the Settings tab the phases are under **More**, with polling and the
+  thresholds, each under its own heading.
+- **Forget what was learned** is now just **Forget**, under Thresholds, as a
+  smaller button; the README says what it forgets and what it keeps.
+
+### Fixed
+
+- The × that removes a phase sits in the middle of its button, which is as
+  high as the fields beside it.
+
 ## [0.18.0] — 2026-10-03
 
 ### Changed
@@ -350,7 +364,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.0...v0.16.1

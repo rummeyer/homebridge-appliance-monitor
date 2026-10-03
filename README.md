@@ -111,9 +111,17 @@ to how long it should wait before it counts as done.
 across a whole cycle on the **Power** tab, from start to end, and click
 **Learn from this cycle**. The plugin learns from it just as from one it saw
 itself, and the answer says what it learned. A click on the chart removes the
-marking. If something was learned wrong, **Forget what was learned** under
-**More** in the settings starts again from the defaults; it shows once
-something has been learned.
+marking.
+
+**Forget.** If something was learned wrong, from a cycle that was not a
+normal one say, **Forget** under **More** → Thresholds in the settings
+starts that appliance again from the defaults. It throws away the learned
+running level and finish time, the count of cycles they were learned from,
+and the standby found; the next cycle is learned afresh, or mark one on the
+Power tab. Thresholds you set yourself, the phases, the statistics and the
+power recordings stay as they are. It takes effect at once, without a
+restart, after a second click on the button to be sure. The button shows
+only once something has been learned or standby found.
 
 ## Phases
 
@@ -145,7 +153,8 @@ learn from; see [Learning](#learning).)
 </picture>
 
 Name the phase, adjust the range if you like, and save; the chart shows a
-change to a phase a moment later. The Settings tab only lists the phases.
+change to a phase a moment later. The Settings tab only lists the phases,
+under **More**.
 Each phase
 can have a switch in HomeKit, on while it lasts, and its start and end are
 logged.
