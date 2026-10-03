@@ -67,7 +67,6 @@
         <option value="168">Last 7 days</option>
         <option value="336">Last 14 days</option>
       </select>
-      <button type="button" class="btn btn-outline-secondary" id="om-curve-reload">Reload</button>
     </div>
     <div id="om-curve"></div>
     <p class="om-hint mb-3" id="om-curve-help">
@@ -332,14 +331,22 @@
       }
     }
 
-    async function showCurve() {
+    /**
+     * Draws the chart afresh. `live` is a redraw by the timer: it keeps the
+     * old chart up until the new one is there, and leaves an error to the
+     * next tick rather than replacing the chart with it.
+     */
+    async function showCurve(live = false) {
       const box = document.getElementById('om-curve');
       const name = document.getElementById('om-curve-plug').value;
       const hours = Number(document.getElementById('om-curve-hours').value);
-      box.innerHTML = '';
-      // A stretch marked before was on the chart as it was, maybe of another appliance.
-      marked = null;
-      document.getElementById('om-cycle-form').classList.add('om-hidden');
+      if (!live) {
+        box.innerHTML = '';
+        // A stretch marked before was on the chart as it was, maybe of another appliance.
+        marked = null;
+        document.getElementById('om-cycle-form').classList.add('om-hidden');
+      }
+      scheduleLive(hours);
       if (!name) {
         box.textContent = 'No plugs configured yet.';
         return;
@@ -350,7 +357,15 @@
       try {
         curve = await homebridge.request('/curve', { name, hours, phases });
       } catch (error) {
-        box.textContent = `Could not read the recording: ${error?.message ?? error}`;
+        if (!live) {
+          box.textContent = `Could not read the recording: ${error?.message ?? error}`;
+        }
+        return;
+      }
+      // The page moved on while the readings were on their way.
+      if (name !== document.getElementById('om-curve-plug').value
+        || hours !== Number(document.getElementById('om-curve-hours').value)
+        || (live && !liveAllowed())) {
         return;
       }
       if (curve.points.length === 0) {
@@ -359,6 +374,52 @@
       }
       draw(box, name, curve, phases);
     }
+
+    // ---- Live ----------------------------------------------------------------
+
+    /**
+     * While the Power tab is on screen, the chart is drawn again every few
+     * seconds, so a reading shows up soon after the plug reports it. Days
+     * back, where that means reading a file per day each time, less often.
+     */
+    let liveTimer = null;
+    let dragging = false;
+    let pointer = null; // where the pointer is on the chart, to point there again after a redraw
+
+    function scheduleLive(hours) {
+      clearTimeout(liveTimer);
+      const every = hours > 24 ? 30_000 : 5_000;
+      liveTimer = setTimeout(liveTick, every);
+    }
+
+    function stopLive() {
+      clearTimeout(liveTimer);
+      liveTimer = null;
+    }
+
+    /** Not while a stretch is being dragged or is marked: the redraw would take it away. */
+    const liveAllowed = () =>
+      !document.getElementById('om-curve-card').classList.contains('om-hidden')
+      && !document.hidden && !dragging && marked === null;
+
+    function liveTick() {
+      if (document.getElementById('om-curve-card').classList.contains('om-hidden')) {
+        stopLive();
+        return;
+      }
+      if (!liveAllowed()) {
+        scheduleLive(Number(document.getElementById('om-curve-hours').value));
+        return;
+      }
+      void showCurve(true);
+    }
+
+    // Back on the page after a while: draw at once rather than at the next tick.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && liveTimer !== null) {
+        liveTick();
+      }
+    });
 
     function draw(box, name, curve, phases) {
       const chart = window.ApplianceChart.render({ ...curve, phases });
@@ -410,6 +471,9 @@
         tipText.setAttribute('x', 8);
         tip.setAttribute('visibility', 'visible');
       };
+      if (pointer) {
+        hover(pointer);
+      }
 
       // Dragging across the chart picks a stretch of time.
       let start = null;
@@ -424,6 +488,7 @@
           return;
         }
         start = point.x;
+        dragging = true;
         element.setPointerCapture(event.pointerId);
         pick.setAttribute('x', start);
         pick.setAttribute('width', 0);
@@ -431,6 +496,7 @@
       });
       element.addEventListener('pointermove', (event) => {
         const point = toChart(event);
+        pointer = point;
         // On a level marker, which is clicked rather than read: no time line.
         hover(start === null && event.target.closest('[data-level]') ? { x: -1, y: -1 } : point);
         if (start === null) {
@@ -439,7 +505,15 @@
         pick.setAttribute('x', Math.min(start, point.x));
         pick.setAttribute('width', Math.abs(point.x - start));
       });
-      element.addEventListener('pointerleave', () => hover({ x: -1, y: -1 }));
+      element.addEventListener('pointercancel', () => {
+        start = null;
+        dragging = false;
+        pick.setAttribute('visibility', 'hidden');
+      });
+      element.addEventListener('pointerleave', () => {
+        pointer = null;
+        hover({ x: -1, y: -1 });
+      });
       element.addEventListener('pointerup', async (event) => {
         if (start === null) {
           return;
@@ -447,6 +521,7 @@
         const end = toChart(event).x;
         const [a, b] = [start, end].sort((p, q) => p - q);
         start = null;
+        dragging = false;
         if (b - a < 4) {
           // A click rather than a drag: the marking goes, and with it what to do with it.
           pick.setAttribute('visibility', 'hidden');
@@ -545,7 +620,6 @@
       void showCurve();
     });
     document.getElementById('om-curve-hours').addEventListener('change', () => void showCurve());
-    document.getElementById('om-curve-reload').addEventListener('click', () => void showCurve());
 
     // ---- Tabs ----------------------------------------------------------------
 
@@ -561,6 +635,9 @@
         if (panel) {
           document.getElementById(panel).classList.toggle('om-hidden', tab !== name);
         }
+      }
+      if (name !== 'curve') {
+        stopLive();
       }
       if (name === 'settings') {
         void settings.reload();

@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-10-03
+
+### Changed
+
+- The Power tab updates itself while it is open: every 5 seconds, or every
+  30 seconds when it shows more than a day. It holds still while a stretch
+  is marked. The **Reload** button is gone.
+
 ## [0.16.1] — 2026-10-02
 
 ### Changed
@@ -331,7 +339,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.15.0...v0.15.1

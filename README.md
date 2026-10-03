@@ -132,7 +132,9 @@ The easiest way to set one up is the **Power** tab of the settings page. It
 shows a plug's recorded power, from the last hour to the last two weeks, with
 the levels the plug dwells at as green markers on the right, the phases set up
 so far each in its colour, and a bar below for each phase showing when it was
-on. Pointing at the chart shows the time and the reading there. Click a
+on. It keeps itself up to date while it is open: every 5 seconds, or every
+30 seconds when it shows more than a day. Pointing at the chart shows the
+time and the reading there. Click a
 marker to make that level a phase. (Dragging across the chart marks a cycle
 to learn from; see [Learning](#learning).)
 
