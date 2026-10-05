@@ -130,6 +130,24 @@ test('a year the plug joined partway through is shown once it is over, marked as
   assert.deepEqual(after.total.values[3], 500);
 });
 
+test('a week or a month the plug joined partway through is shown from then, marked as part', () => {
+  const ledger: Record<string, DeviceEnergy> = {
+    Washer: { since: local('2026-09-30T20:00:00'), days: { '2026-09-30': 100, '2026-10-01': 500, '2026-10-05': 7 } },
+    Socket: { since: local('2026-10-02T08:00:00'), days: { '2026-10-02': 30 } },
+  };
+  const table = statistics(ledger, ['Washer', 'Socket'], new Date(local('2026-10-05T09:00:00')));
+
+  assert.deepEqual(table.rows, [
+    { name: 'Washer', values: [7, 600, 100, null], partial: [false, true, true, false] },
+    { name: 'Socket', values: [0, 30, null, null], partial: [false, true, false, false] },
+  ]);
+  assert.deepEqual(table.total, {
+    values: [7, 630, 100, null],
+    missing: [false, false, true, true],
+    partial: [false, true, true, false],
+  });
+});
+
 test('old days are dropped, recent ones kept', () => {
   const meter = new EnergyMeter({ since: 1, days: { '2024-01-01': 5, '2026-01-01': 7 } });
   meter.prune(local('2026-10-01T00:00:00'));

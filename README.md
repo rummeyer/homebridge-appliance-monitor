@@ -246,10 +246,10 @@ and **Last Year**, one row per plug and the total below.
 </picture>
 
 Today counts from a plug's first reading of the day, so a plug added at noon
-shows its afternoon. A week or a month is shown only if a plug has been
-counted for all of it, and left empty until then. A year is shown once it is
-over even if the plug joined partway through, marked ¹ as part of a year: a plug added in September 2026 shows its
-2026 from the 1st of January 2027. Where some plugs have a value and others do
+shows its afternoon. A week, a month or a year a plug joined partway through
+is shown from the day it was added, marked ¹ as only part of the period: a plug
+added on Wednesday 30 September 2026 shows the 30th as last month and
+Wednesday to Sunday as last week, and its 2026 from the 1st of January 2027. Where some plugs have a value and others do
 not yet, the total adds up those that have, and is marked with an asterisk.
 
 The **Last Cycle** column shows what each appliance used in its last

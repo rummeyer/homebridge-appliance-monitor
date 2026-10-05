@@ -9,11 +9,10 @@
  *
  * Days are local calendar days, as on an electricity bill. Today is shown
  * from the plug's first reading of the day, so one added at noon shows its
- * afternoon. A week or a month is only shown if it has been counted from its
- * first moment. A year is shown once it is over even if the plug joined
- * partway through — waiting for a whole one would leave the column empty for
- * up to two years — and marked as part of a year. Time Homebridge was not running is not counted, and does
- * not make a period incomplete.
+ * afternoon. A week, a month or a year the plug joined partway through is
+ * shown from then on, marked as only part of it — waiting for a whole one
+ * would leave the column empty for up to two years. Time Homebridge was not
+ * running is not counted, and does not make a period incomplete.
  */
 
 export interface DeviceEnergy {
@@ -180,14 +179,14 @@ function partTotal(energy: DeviceEnergy, period: Period): number | undefined {
 export interface Statistics {
   periods: { kind: PeriodKind; label: string; dates: string }[];
   /**
-   * Watt-hours per plug and period; null where the period is not complete.
-   * `partial` marks a year the plug was only counted for part of.
+   * Watt-hours per plug and period; null where the plug has none of it.
+   * `partial` marks a week, month or year it was only counted for part of.
    */
   rows: { name: string; values: (number | null)[]; partial: boolean[] }[];
   /**
    * The sum of each column over the plugs that have a value in it. `missing`
    * says some plug has none — one added later, say — so the sum leaves it
-   * out; `partial` that it includes a part of a year.
+   * out; `partial` that it includes a part of a period.
    */
   total: { values: (number | null)[]; missing: boolean[]; partial: boolean[] };
 }
@@ -205,13 +204,12 @@ export function statistics(ledger: Record<string, DeviceEnergy>, names: string[]
       if (whole !== undefined) {
         return { value: whole, partial: false };
       }
-      // Today from the first reading, unmarked: today is a part anyway. A
-      // year once it is over, marked. A week or a month only whole.
-      const part = period.kind === 'day' || period.kind === 'year' ? partTotal(energy, period) : undefined;
+      // From the first reading on; marked, except today, which is a part anyway.
+      const part = partTotal(energy, period);
       if (part === undefined) {
         return { value: null, partial: false };
       }
-      return { value: part, partial: period.kind === 'year' };
+      return { value: part, partial: period.kind !== 'day' };
     });
     return { name, values: cells.map(({ value }) => value), partial: cells.map(({ partial }) => partial) };
   });

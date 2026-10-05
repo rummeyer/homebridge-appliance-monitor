@@ -194,7 +194,7 @@
 
       const shown = (flags) => total.values.some((value, column) => value !== null && flags[column]);
       for (const [flags, text] of [
-        [total.partial, '¹ Part of the year, from the day the plug was added.'],
+        [total.partial, '¹ Only part of the period, from the day the plug was added.'],
         [total.missing, '* Without plugs not counted for the whole period.'],
       ]) {
         if (shown(flags)) {
