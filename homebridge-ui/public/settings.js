@@ -37,9 +37,13 @@
   .om-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem 1rem; }
   .om-set-help { font-size: .78rem; opacity: .65; margin-top: .2rem; }
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
-  .om-set-phase { display: grid; grid-template-columns: 2fr repeat(5, 1fr) 5.5rem 4.5rem 2rem; gap: .5rem; align-items: center;
-                  padding: .3rem 0; }
-  .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; }
+  /* Fixed widths for the checkboxes, as each row is a grid of its own and the
+     heading row has none; narrow padding, so that "Milchschaum" fits in the
+     768 pixels the Homebridge UI gives the page. */
+  .om-set-phase { display: grid; grid-template-columns: minmax(6rem, 1.5fr) repeat(5, minmax(0, 1fr)) 4.25rem 4rem 2rem;
+                  gap: .5rem; align-items: center; padding: .3rem 0; }
+  .om-set-phase .form-control { padding-left: .5rem; padding-right: .5rem; }
+  .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
   .om-set-phase .form-check { margin: 0; white-space: nowrap; }
   /* As high as the fields beside it, square, the cross in the middle of it. A
      drawn cross rather than "×", which each font puts somewhere else; and
@@ -430,7 +434,7 @@
         el('tbody', {}, phases.map((phase) => el('tr', {},
           el('td', {}, phase.name || '(no name)'),
           el('td', {}, phase.minWatts ?? '–'),
-          el('td', {}, phase.maxWatts ?? 'no limit'),
+          el('td', {}, phase.maxWatts ?? 'none'),
           el('td', {}, seconds(phase.minSeconds, 5)),
           el('td', {}, seconds(phase.holdSeconds, 30)),
           el('td', {}, phase.maxSeconds ?? 'any'),
@@ -472,7 +476,7 @@
         return el('div', { class: 'om-set-phase' },
           labelled(text(phase.name, 'Heating', (value) => update((p) => { p.name = value; })), 'Name'),
           labelled(number(phase.minWatts, '', (value) => update((p) => setOrDrop(p, 'minWatts', numberOrUndefined(value)))), 'From (W)'),
-          labelled(number(phase.maxWatts, 'no limit', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'Below (W)'),
+          labelled(number(phase.maxWatts, 'none', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'Below (W)'),
           labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
           labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),

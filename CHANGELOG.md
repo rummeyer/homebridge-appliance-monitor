@@ -6,6 +6,22 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.4] — 2026-10-05
+
+### Fixed
+
+- The phases under the chart on the Power tab fit the width the Homebridge UI
+  gives them: the headings line up with their fields, names like
+  "Milchschaum" and the empty **Below** are no longer cut off, and **Switch**
+  and **Count** sit side by side. An empty **Below** reads "none", on the
+  Settings tab too.
+
+### Changed
+
+- README: the plugin also listens to the On/Off cluster of a plug with a
+  relay; where learned values and the **Count** checkbox are; how the finish
+  time follows from the longest pause. New screenshots of all three tabs.
+
 ## [0.18.3] — 2026-10-05
 
 ### Changed
@@ -383,7 +399,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.4...HEAD
+[0.18.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.3...v0.18.4
 [0.18.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.2...v0.18.3
 [0.18.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.1...v0.18.2
 [0.18.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.0...v0.18.1

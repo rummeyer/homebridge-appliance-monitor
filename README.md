@@ -42,10 +42,12 @@ them as a second controller (Matter multi-admin) and subscribes to their power
 readings: over Wi-Fi directly, or over Thread through the HomePod or Apple TV
 that is already the border router. It only reads; it never switches anything.
 
-It reads one thing: **ActivePower** (in milliwatts) from the standard
+What it needs is **ActivePower** (in milliwatts) from the standard
 **Electrical Power Measurement** cluster (`0x0090`). That is where the Home app
 reads its watts from, so a device that shows watts in the Home app without
-Homebridge has it. There is nothing vendor-specific.
+Homebridge has it. On a plug with a relay it also listens to the standard
+**On/Off** cluster (`0x0006`), to see the plug being switched off. There is
+nothing vendor-specific.
 
 ## Running and finished
 
@@ -85,7 +87,7 @@ Ten minutes after that first cycle, the plugin works out from its curve:
   clearly above;
 - the **longest pause** inside the programme, a soak or a cool-down, and from
   it how long a quiet spell has to last before it is the end (the pause and
-  half again, at least two minutes).
+  half again, and at least two minutes longer than the pause).
 
 From then on Finished comes minutes after the end. Every further cycle
 refines this, and a longer pause only ever lengthens the wait. If a cycle
@@ -93,8 +95,8 @@ does turn out to have ended too early (the machine runs again within ten
 minutes), the plugin logs it, treats it as one cycle and learns the pause.
 
 What was learned is logged, kept in `appliance-monitor/devices.json`, and
-shown under **More** in the settings, in the empty threshold fields: `38.4
-learned`, `20.6 standby` or `60 default`. Any threshold can be fixed there
+shown under **More** → Thresholds in the settings, in the empty fields: `38.4
+learned`, `20.6 standby` or `60 default`. Any threshold can be set there
 instead, each on its own; the rest are still learned.
 
 An appliance whose standby is above 5 W, a computer at 9 W say, would never
@@ -154,10 +156,9 @@ learn from; see [Learning](#learning).)
 
 Name the phase, adjust the range if you like, and save; the chart shows a
 change to a phase a moment later. The Settings tab only lists the phases,
-under **More**.
-Each phase
-can have a switch in HomeKit, on while it lasts, and its start and end are
-logged.
+under **More**. Each phase can have a switch in HomeKit, on while it lasts
+(**Switch**), and can be what the Statistics tab counts (**Count**); its start
+and end are logged.
 
 Some things differ not by power but by how long they last. Rinsing a coffee
 machine runs the same pump as a coffee, for a few seconds rather than twenty.
@@ -249,15 +250,15 @@ Today counts from a plug's first reading of the day, so a plug added at noon
 shows its afternoon. A week, a month or a year a plug joined partway through
 is shown from the day it was added, marked ¹ as only part of the period: a plug
 added on Wednesday 30 September 2026 shows the 30th as last month and
-Wednesday to Sunday as last week, and its 2026 from the 1st of January 2027. Where some plugs have a value and others do
-not yet, the total adds up those that have, and is marked with an asterisk.
+Wednesday to Sunday as last week, and its 2026 from the 1st of January 2027.
+Where some plugs have a value and others do not yet, the total adds up those that have, and is marked with an asterisk.
 
 The **Last Cycle** column shows what each appliance used in its last
 cycle, from the moment it counted as running to the moment it finished.
 Point at it for when it finished and how long it ran.
 
 The **Count** column shows how often each appliance finished a cycle — or, if
-one of its phases is ticked **Count in statistics**, how often that phase
+one of its phases is ticked **Count** on the Power tab, how often that phase
 happened: coffees drawn rather than mornings the machine was on. If several
 are ticked, the first counts. Every finished cycle and every phase is counted
 all along, so ticking another phase shows its count from when the phase was
@@ -324,7 +325,7 @@ so they do not depend on how many days of recordings are kept.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its phases and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its polling interval, its phases and the thresholds it learned under More" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -419,8 +420,8 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 On each start, one line per plug: what it is, what it draws, its state, and
 whether it has learned yet. Everything a plug offers is listed once, when it
 is paired. After that the log has the changes: Running, Finished, each
-phase starting and ending (or, for a phase with "shorter than", having happened), what was learned, and a plug that became
-unreachable or came back. The single readings are in the recordings, not in
+phase starting and ending (or, for a phase with "shorter than", having
+happened), what was learned, and a plug that became unreachable or came back. The single readings are in the recordings, not in
 the log.
 
 matter.js warns on every start about the test vendor ID `0xFFF1` (see above),
