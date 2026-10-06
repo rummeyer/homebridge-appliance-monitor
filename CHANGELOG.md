@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-10-06
+
+### Fixed
+
+- A **Polling interval** under 2 seconds no longer stops the plug from being
+  watched at all: the plugin asks every 2 seconds instead and says so in the
+  log. The Settings tab shows under the field that 2 is the least.
+
 ## [1.0.0] — 2026-10-06
 
 The first stable release. Nothing changes in how the plugin works or in its
@@ -423,7 +431,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.4...v1.0.0
 [0.18.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.3...v0.18.4
 [0.18.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.2...v0.18.3

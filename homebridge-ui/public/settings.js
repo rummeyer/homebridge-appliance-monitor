@@ -20,6 +20,10 @@
 
   const PLATFORM = 'ApplianceMonitor';
   const NEW_NAME = 'New appliance';
+  /** As MIN_POLL_SECONDS in config.ts. */
+  const MIN_POLL_SECONDS = 2;
+  const pollError = (seconds) =>
+    (seconds !== undefined && seconds < MIN_POLL_SECONDS ? `At least ${MIN_POLL_SECONDS} s; shorter asks every ${MIN_POLL_SECONDS} s.` : '');
   const PAIRING_CODE = /^\s*((\d[\s-]*){11}|(\d[\s-]*){21}|MT:[0-9A-Z.\-]+)\s*$/i;
   const LOG_LEVELS = [
     ['error', 'Errors only'],
@@ -221,6 +225,13 @@
         el('div', { class: 'om-set-error', hidden: !error }, error ?? ''));
     }
 
+    /** Shows `error` under the field of `input`, or hides it when there is none. */
+    function showError(input, error) {
+      const line = input.parentElement.querySelector('.om-set-error');
+      line.textContent = error;
+      line.hidden = !error;
+    }
+
     function text(value, placeholder, onInput) {
       return el('input', { class: 'form-control form-control-sm', value: value ?? '', placeholder, oninput: (e) => onInput(e.target.value, e.target) });
     }
@@ -228,7 +239,7 @@
     function number(value, placeholder, onInput, min = 0) {
       return el('input', {
         class: 'form-control form-control-sm', type: 'number', min, step: 'any', inputmode: 'decimal',
-        value: value ?? '', placeholder, oninput: (e) => onInput(e.target.value),
+        value: value ?? '', placeholder, oninput: (e) => onInput(e.target.value, e.target),
       });
     }
 
@@ -292,8 +303,7 @@
 
       const nameInput = text(device.name, NEW_NAME, (value, input) => {
         device.name = value;
-        input.parentElement.querySelector('.om-set-error').textContent = nameError(value);
-        input.parentElement.querySelector('.om-set-error').hidden = !nameError(value);
+        showError(input, nameError(value));
         // Keep the list in step without rebuilding the field being typed in.
         const option = container.querySelector(`.om-set-bar option[value="${selected}"]`);
         if (option) {
@@ -305,9 +315,7 @@
 
       const codeInput = text(device.pairingCode, pairedNames.has(device.name) ? '' : '3497-011-2332', (value, input) => {
         setOrDrop(device, 'pairingCode', value.trim());
-        const error = codeError(value);
-        input.parentElement.querySelector('.om-set-error').textContent = error;
-        input.parentElement.querySelector('.om-set-error').hidden = !error;
+        showError(input, codeError(value));
         changed();
       });
 
@@ -340,10 +348,11 @@
           el('div', { class: 'om-set-section' },
             el('h6', {}, 'Polling'),
             el('div', { class: 'om-set-poll' },
-              field('Polling interval (s)', number(device.pollSeconds, 'off, only listen', (value) => {
+              field('Polling interval (s)', number(device.pollSeconds, 'off, only listen', (value, input) => {
                 setOrDrop(device, 'pollSeconds', numberOrUndefined(value));
+                showError(input, pollError(device.pollSeconds));
                 changed();
-              }, 2), 'For plugs that report seldom, like the Eve Energy.'))),
+              }, MIN_POLL_SECONDS), 'For plugs that report seldom, like the Eve Energy.', pollError(device.pollSeconds)))),
           phasesTable(device),
           el('div', { class: 'om-set-section' },
             el('h6', {}, 'Thresholds'),

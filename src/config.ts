@@ -137,7 +137,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, thresholds, pollSeconds, runningAs } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, thresholds, runningAs } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -152,13 +152,6 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (runningAs !== undefined && runningAs !== null && !RUNNING_AS.includes(runningAs)) {
     problems.push(`${label} has an unknown runningAs "${String(runningAs)}"`);
   }
-  if (
-    pollSeconds !== undefined &&
-    pollSeconds !== null &&
-    (typeof pollSeconds !== 'number' || !(pollSeconds >= MIN_POLL_SECONDS))
-  ) {
-    problems.push(`${label} needs pollSeconds of ${MIN_POLL_SECONDS} or more, or none`);
-  }
   if (thresholds !== undefined && thresholds !== null) {
     for (const [key, value] of Object.entries(thresholds)) {
       if (value !== undefined && value !== null && (typeof value !== 'number' || !(value >= 0))) {
@@ -167,6 +160,30 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
     }
   }
   return problems;
+}
+
+/**
+ * How often to ask the plug, and why that differs from the config if it
+ * does. Too short an interval is lengthened to the shortest allowed rather
+ * than costing the whole plug, as a typo in the settings would otherwise
+ * stop it being watched at all; one that is not a number means only
+ * listening.
+ */
+export function usablePollSeconds(device: DeviceConfig): { pollSeconds: number | undefined; problem?: string } {
+  const { name, pollSeconds } = device;
+  if (pollSeconds === undefined || pollSeconds === null) {
+    return { pollSeconds: undefined };
+  }
+  if (typeof pollSeconds !== 'number' || !Number.isFinite(pollSeconds)) {
+    return { pollSeconds: undefined, problem: `"${name}" has a pollSeconds that is not a number; only listening` };
+  }
+  if (pollSeconds < MIN_POLL_SECONDS) {
+    return {
+      pollSeconds: MIN_POLL_SECONDS,
+      problem: `"${name}" has pollSeconds ${pollSeconds}; asking every ${MIN_POLL_SECONDS} s, the shortest allowed`,
+    };
+  }
+  return { pollSeconds };
 }
 
 /**

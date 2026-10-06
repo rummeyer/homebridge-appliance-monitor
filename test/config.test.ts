@@ -7,6 +7,7 @@ import {
   showsInHomeKit,
   parsePairingCode,
   usablePhases,
+  usablePollSeconds,
   validateDeviceConfig,
 } from '../src/config.ts';
 import type { PhaseConfig } from '../src/phases.ts';
@@ -132,11 +133,16 @@ test('a phase may leave out its upper end, not its lower one', () => {
   assert.match(check({ name: 'Heating', maxWatts: 1400 }).problems[0]!, /needs a "from"/);
 });
 
-test('asking for power needs a sensible interval, or none', () => {
-  assert.deepEqual(validateDeviceConfig({ name: 'Coffee', pollSeconds: 5 }, 0), []);
-  assert.deepEqual(validateDeviceConfig({ name: 'Coffee', pollSeconds: null as unknown as number }, 0), []);
-  assert.match(validateDeviceConfig({ name: 'Coffee', pollSeconds: 1 }, 0)[0]!, /pollSeconds of 2 or more/);
-  assert.match(validateDeviceConfig({ name: 'Coffee', pollSeconds: 'often' as unknown as number }, 0)[0]!, /pollSeconds/);
+test('too short an interval for asking is lengthened, and does not cost the plug', () => {
+  assert.deepEqual(usablePollSeconds({ name: 'Coffee', pollSeconds: 5 }), { pollSeconds: 5 });
+  assert.deepEqual(usablePollSeconds({ name: 'Coffee', pollSeconds: null as unknown as number }), { pollSeconds: undefined });
+  const short = usablePollSeconds({ name: 'Coffee', pollSeconds: 1 });
+  assert.equal(short.pollSeconds, 2);
+  assert.match(short.problem!, /asking every 2 s/);
+  const odd = usablePollSeconds({ name: 'Coffee', pollSeconds: 'often' as unknown as number });
+  assert.equal(odd.pollSeconds, undefined);
+  assert.match(odd.problem!, /only listening/);
+  assert.deepEqual(validateDeviceConfig({ name: 'Coffee', pollSeconds: 1 }, 0), []);
 });
 
 test('a phase marked to be counted keeps the mark; a mark that is not on or off is refused', () => {

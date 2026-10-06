@@ -414,7 +414,7 @@ config it writes looks like this:
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see [Phases](#phases)) and `sensor` (its switch in HomeKit; `true`). |
-| `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See [Plugs that report seldom](#plugs-that-report-seldom). |
+| `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep, for the Power tab. The statistics do not need them. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |

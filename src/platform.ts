@@ -9,6 +9,7 @@ import {
   showsInHomeKit,
   MATTER_LOG_LEVELS,
   usablePhases,
+  usablePollSeconds,
   parsePairingCode,
   validateDeviceConfig,
 } from './config.ts';
@@ -201,7 +202,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         for (const problem of phaseProblems) {
           this.log.warn(`Ignoring phase: ${problem}`);
         }
-        valid.push({ ...named, phases });
+        const { pollSeconds, problem } = usablePollSeconds(named);
+        if (problem) {
+          this.log.warn(problem);
+        }
+        valid.push({ ...named, phases, pollSeconds });
       }
     }
     for (const name of duplicateNames(valid)) {
