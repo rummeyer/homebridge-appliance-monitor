@@ -37,6 +37,10 @@ const MAX_SAMPLES = 50_000;
 /** How far above standby a machine has to have been seen for the low level to be standby. */
 const STANDBY_RATIO = 3;
 
+/** The running level before a cycle has been learned: the default, or above the standby found. */
+export const unlearnedRunWatts = (standbyWatts: number | undefined): number =>
+  Math.max(LEARNING_DEFAULTS.runWatts, standbyWatts === undefined ? 0 : runLevelAbove(standbyWatts));
+
 export interface MonitorOptions {
   /** Values from the config, which win over learned ones. */
   overrides?: Partial<CycleParams>;
@@ -97,15 +101,11 @@ export class DeviceMonitor {
     return this.#machine.state;
   }
 
-  get since(): number {
-    return this.#machine.since;
-  }
-
   get params(): CycleParams {
     return this.#machine.params;
   }
 
-  /** Whether the params come from a learned cycle (or the config) rather than the defaults. */
+  /** Whether a cycle has been learned, rather than running on the defaults. */
   get isLearned(): boolean {
     return this.#learned !== undefined;
   }
@@ -250,10 +250,7 @@ export class DeviceMonitor {
   }
 
   #params(): CycleParams {
-    const base = this.#learned?.params ?? {
-      ...LEARNING_DEFAULTS,
-      runWatts: Math.max(LEARNING_DEFAULTS.runWatts, this.#standby === undefined ? 0 : runLevelAbove(this.#standby)),
-    };
+    const base = this.#learned?.params ?? { ...LEARNING_DEFAULTS, runWatts: unlearnedRunWatts(this.#standby) };
     const { runWatts, startSeconds, finishSeconds } = { ...base, ...this.#overrides };
     return { runWatts, startSeconds, finishSeconds };
   }

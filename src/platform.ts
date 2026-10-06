@@ -23,7 +23,7 @@ import { activePowerValues, describeNode, MatterController, readActivePower } fr
 import type { AttributeReport } from './matter.ts';
 import type { PairedNode } from '@project-chip/matter.js/device';
 import { FINISHED, phaseKey } from './counts.ts';
-import { takeDataDir } from './data-dir.ts';
+import { dataDir } from './data-dir.ts';
 import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
@@ -89,7 +89,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.log = log;
     this.config = config;
     this.api = api;
-    this.#dataPath = takeDataDir(api.user.storagePath());
+    this.#dataPath = dataDir(api.user.storagePath());
     this.api.on('didFinishLaunching', () => {
       this.#start().catch((error: unknown) => {
         this.log.error(`Could not start the Matter controller: ${message(error)}`);

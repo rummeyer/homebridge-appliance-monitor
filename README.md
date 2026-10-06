@@ -49,6 +49,93 @@ Homebridge has it. On a plug with a relay it also listens to the standard
 **On/Off** cluster (`0x0006`), to see the plug being switched off. There is
 nothing vendor-specific.
 
+## Requirements
+
+- Homebridge 2 on Node.js 22, 24 or 26.
+- **Run it as a child bridge.** matter.js keeps process-wide state, and
+  Homebridge 2 can load matter.js itself. In the Homebridge UI, open the
+  plugin's menu (⋮) → **Bridge Settings**, turn the child bridge on, and
+  restart Homebridge.
+- **The plugs set up in the Apple Home app**, which shows their watts. The
+  plugin joins them as a second controller; they stay in Apple Home.
+- **For devices on Thread, the Homebridge machine (a Raspberry Pi, say) needs
+  a route to the Thread network.** The
+  border routers (HomePod, Apple TV) announce it in their IPv6 router
+  advertisements, as a /64 route via themselves. Without it, pairing finds the
+  device and then times out.
+
+  On Raspberry Pi OS Bookworm, NetworkManager handles router advertisements
+  itself and takes the route without any setup. Check that it is there, and
+  that a Thread device answers:
+
+  ```sh
+  ip -6 route | grep "proto ra"   # a …/64 via fe80::… of a HomePod or Apple TV
+  avahi-browse -rt _matter._tcp   # Matter devices and their addresses
+  ping -6 -c 3 <address of a Thread device>
+  ```
+
+  Without NetworkManager (dhcpcd, systemd-networkd), the kernel handles router
+  advertisements and ignores these routes by default:
+
+  ```sh
+  # eth0 or wlan0, whichever faces the HomePod
+  printf 'net.ipv6.conf.eth0.accept_ra=1\nnet.ipv6.conf.eth0.accept_ra_rt_info_max_plen=64\n' \
+    | sudo tee /etc/sysctl.d/60-thread.conf
+  sudo sysctl --system
+  ```
+
+## Installation
+
+In the Homebridge UI, search the **Plugins** tab for **Appliance Monitor** and
+install it. Or from a shell, in the Homebridge storage folder:
+
+```sh
+npm install homebridge-appliance-monitor
+```
+
+Then set it up as a child bridge (see [Requirements](#requirements)) and pair
+the first plug.
+
+## Pairing a plug
+
+1. In the Home app, open the plug's settings and choose **Turn On Pairing
+   Mode**. Copy the eleven-digit code. This works the same for every
+   device.
+2. In the plugin settings, click **+ Add**, give the appliance a name, paste
+   the code, and save. The settings show one appliance at a time, picked from
+   the list at the top; paired ones are ticked.
+3. Restart the child bridge. The code is valid for 15 minutes; pairing
+   takes up to a minute.
+4. The log shows `paired as node …`, then the plug's endpoints and clusters,
+   and that it is learning. After that you can remove the code from the
+   config.
+5. Run the appliance once. When the log shows `learned from 1 cycle`, it is
+   set up. To skip the wait, mark a cycle on the Power tab; see
+   [Learning](#learning).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its polling interval, its phases and the thresholds it learned under More" width="760">
+</picture>
+
+A paired plug is remembered by its name, so renaming it means pairing it
+again. Remove the old pairing from the Home app first, under the plug's
+connected services.
+
+### Why the Home app calls it "Matter Test"
+
+Under the plug's connected services, the Home app lists this plugin as
+**Matter Test**, not as Homebridge Appliance Monitor. The plugin does give the
+plug that name (the fabric label, set again on every connection), but the Home
+app appears to name other controllers by their vendor ID instead. This plugin
+uses `0xFFF1`, the ID the Matter specification sets aside for testing and
+self-built controllers, and the Home app shows that ID as "Matter Test".
+
+A vendor ID of its own needs a membership of the Connectivity Standards
+Alliance, and using another vendor's ID would pass the plugin off as someone
+else's product. So the name stays. It changes nothing about how the plugin
+works.
+
 ## Running and finished
 
 An appliance is running or it is not:
@@ -162,7 +249,8 @@ and end are logged.
 
 Some things differ not by power but by how long they last. Rinsing a coffee
 machine runs the same pump as a coffee, for a few seconds rather than twenty.
-Two phases in the same range tell them apart:
+Two phases in the same range tell them apart, here *Bezug* (a coffee drawn)
+and *Spülen* (a rinse):
 
 | Phase | Range | On after | Shorter than |
 |---|---|---|---|
@@ -249,9 +337,10 @@ and **Last Year**, one row per plug and the total below.
 Today counts from a plug's first reading of the day, so a plug added at noon
 shows its afternoon. A week, a month or a year a plug joined partway through
 is shown from the day it was added, marked ¹ as only part of the period: a plug
-added on Wednesday 30 September 2026 shows the 30th as last month and
-Wednesday to Sunday as last week, and its 2026 from the 1st of January 2027.
-Where some plugs have a value and others do not yet, the total adds up those that have, and is marked with an asterisk.
+added on Wednesday 30 September 2026 shows the 30th as last month,
+Wednesday to Sunday as last week, and, from 1 January 2027, 30 September to
+31 December as last year. Where some plugs have a value and others do not
+yet, the total adds up those that have, and is marked with an asterisk.
 
 The **Last Cycle** column shows what each appliance used in its last
 cycle, from the moment it counted as running to the moment it finished.
@@ -278,74 +367,6 @@ running is not counted. The
 statistics keep only the total per plug and day, for a little over two years,
 so they do not depend on how many days of recordings are kept.
 
-## Requirements
-
-- Homebridge 2 on Node.js 22, 24 or 26.
-- **Run it as a child bridge.** matter.js keeps process-wide state, and
-  Homebridge 2 can load matter.js itself.
-- **For devices on Thread, the Pi needs a route to the Thread network.** The
-  border routers (HomePod, Apple TV) announce it in their IPv6 router
-  advertisements, as a /64 route via themselves. Without it, pairing finds the
-  device and then times out.
-
-  On Raspberry Pi OS Bookworm, NetworkManager handles router advertisements
-  itself and takes the route without any setup. Check that it is there, and
-  that a Thread device answers:
-
-  ```sh
-  ip -6 route | grep "proto ra"   # a …/64 via fe80::… of a HomePod or Apple TV
-  avahi-browse -rt _matter._tcp   # Matter devices and their addresses
-  ping -6 -c 3 <address of a Thread device>
-  ```
-
-  Without NetworkManager (dhcpcd, systemd-networkd), the kernel handles router
-  advertisements and ignores these routes by default:
-
-  ```sh
-  # eth0 or wlan0, whichever faces the HomePod
-  printf 'net.ipv6.conf.eth0.accept_ra=1\nnet.ipv6.conf.eth0.accept_ra_rt_info_max_plen=64\n' \
-    | sudo tee /etc/sysctl.d/60-thread.conf
-  sudo sysctl --system
-  ```
-
-## Pairing a plug
-
-1. In the Home app, open the plug's settings and choose **Turn On Pairing
-   Mode**. Copy the eleven-digit code. This works the same for every
-   device.
-2. In the plugin settings, click **+ Add**, give the appliance a name, paste
-   the code, and save. The settings show one appliance at a time, picked from
-   the list at the top; paired ones are ticked.
-3. Restart the child bridge. The code is valid for 15 minutes.
-4. The log shows `paired as node …`, then the plug's endpoints and clusters,
-   and that it is learning. After that you can remove the code from the
-   config.
-5. Run the appliance once. When the log shows `learned from 1 cycle`, it is
-   set up.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its polling interval, its phases and the thresholds it learned under More" width="760">
-</picture>
-
-A paired plug is remembered by its name, so renaming it means pairing it
-again. Remove the old pairing from the Home app first, under the plug's
-connected services.
-
-### Why the Home app calls it "Matter Test"
-
-Under the plug's connected services, the Home app lists this plugin as
-**Matter Test**, not as Homebridge Appliance Monitor. The plugin does give the
-plug that name (the fabric label, set again on every connection), but the Home
-app appears to name other controllers by their vendor ID instead. This plugin
-uses `0xFFF1`, the ID the Matter specification sets aside for testing and
-self-built controllers, and the Home app shows that ID as "Matter Test".
-
-A vendor ID of its own needs a membership of the Connectivity Standards
-Alliance, and using another vendor's ID would pass the plugin off as someone
-else's product. So the name stays. It changes nothing about how the plugin
-works.
-
 ## Plugs that report seldom
 
 A plug decides itself how often it reports its power. The Shelly Plug PM
@@ -363,6 +384,9 @@ reports it being switched on by itself. The asking is left to the hours the
 appliance is on.
 
 ## Configuration
+
+Everything can be set on the plugin's settings page in the Homebridge UI; the
+config it writes looks like this:
 
 ```json
 {
@@ -389,8 +413,8 @@ appliance is on.
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see above) and `sensor` (its switch in HomeKit; `true`). |
-| `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See below. |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see [Phases](#phases)) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports. See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep, for the Power tab. The statistics do not need them. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
@@ -404,8 +428,8 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 - `nodes.json`: which configured name is which Matter node.
 - `devices.json`: what each appliance has learned, the state it is in, so that
   a running appliance is still running after a restart, and its counts.
-  Remove an appliance's `learned` entry (with the child bridge stopped) to
-  have it learn afresh.
+  To have an appliance learn afresh, use **Forget** in the settings (see
+  [Learning](#learning)).
 - `energy.json`: watt-hours per plug and day, for the Statistics tab, kept for
   a little over two years. Written every five minutes. Plugs removed from the
   config keep their history here.
@@ -421,13 +445,32 @@ On each start, one line per plug: what it is, what it draws, its state, and
 whether it has learned yet. Everything a plug offers is listed once, when it
 is paired. After that the log has the changes: Running, Finished, each
 phase starting and ending (or, for a phase with "shorter than", having
-happened), what was learned, and a plug that became unreachable or came back. The single readings are in the recordings, not in
-the log.
+happened), what was learned, and a plug that became unreachable or came back.
+The single readings are in the recordings, not in the log.
 
-matter.js warns on every start about the test vendor ID `0xFFF1` (see above),
+matter.js warns on every start about the test vendor ID `0xFFF1` (see [Why the Home app calls it "Matter Test"](#why-the-home-app-calls-it-matter-test)),
 about Bluetooth not being enabled, and, when pairing, about not checking the
 plug's certificates against the Matter ledger. All of it is expected for a
 controller like this one, so it only shows with Homebridge's debug logging.
+
+## Troubleshooting
+
+- **Pairing times out.** The code is valid for 15 minutes from **Turn On
+  Pairing Mode**; get a fresh one and restart the child bridge. For a plug on
+  Thread, check the route to the Thread network (see
+  [Requirements](#requirements)).
+- **`not paired yet` in the log.** There is no pairing code in the settings,
+  or the plug was renamed: a paired plug is remembered by its name.
+- **`Paired but not configured: node …`.** A plug was renamed or removed from
+  the settings. Remove the plugin's pairing from the plug in the Home app,
+  under its connected services.
+- **Finished comes half an hour late.** Nothing has been learned yet: run the
+  appliance once, or mark a cycle on the Power tab.
+- **Finished never comes.** The appliance rests above the running level.
+  Put the **Running** level under **More** → Thresholds between its standby
+  and what it draws in use.
+- **A setting changed in the config has no effect.** Restart the child
+  bridge from the Homebridge UI; the plugin reads its config only on start.
 
 ## Licence
 

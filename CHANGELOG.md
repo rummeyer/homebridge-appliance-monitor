@@ -6,6 +6,30 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-10-06
+
+The first stable release. Nothing changes in how the plugin works or in its
+config, so an update from 0.18 needs no steps.
+
+### Removed
+
+- Moving the data folder from `outlet-monitor/`, the plugin's name while it
+  was being tried out, to `appliance-monitor/`. Every setup since 0.6 has
+  been moved already. (matter.js still keeps the fabric under the earlier
+  name, so that plugs paired then stay paired.)
+
+### Changed
+
+- README for people setting the plugin up: requirements, a new
+  **Installation** section and pairing come first, before how it works in
+  detail; how to turn on the child bridge; that the plugs need to be in Apple
+  Home first; a **Troubleshooting** section; the part-year example on the
+  Statistics tab put right; **Forget** instead of editing `devices.json` by
+  hand.
+- Tidied the settings page and its backend: one helper for the buttons that
+  ask SURE?, one for reading the plugin's files, one for waiting on the
+  plugin; the running level before learning is worked out in one place.
+
 ## [0.18.4] — 2026-10-05
 
 ### Fixed
@@ -399,7 +423,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.4...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.4...v1.0.0
 [0.18.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.3...v0.18.4
 [0.18.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.2...v0.18.3
 [0.18.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.1...v0.18.2

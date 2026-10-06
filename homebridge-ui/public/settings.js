@@ -117,6 +117,41 @@
     return template.content.firstChild;
   }
 
+  /**
+   * Makes `button` ask "SURE?" on the first click and run `onSure` on a second
+   * one within five seconds — asked on the button rather than with confirm(),
+   * which the settings window's frame may not be allowed to show. `reset`
+   * puts the button back, for an `onSure` that failed.
+   */
+  function askTwice(button, onSure) {
+    const label = button.textContent;
+    let armed = null;
+    const reset = () => {
+      clearTimeout(armed);
+      armed = null;
+      button.textContent = label;
+      button.classList.replace('btn-danger', 'btn-outline-danger');
+    };
+    button.addEventListener('click', () => {
+      if (!armed) {
+        button.textContent = 'SURE?';
+        button.classList.replace('btn-outline-danger', 'btn-danger');
+        armed = setTimeout(reset, 5000);
+        return;
+      }
+      clearTimeout(armed);
+      armed = null;
+      void onSure(reset);
+    });
+    return button;
+  }
+
+  /** The plugin's config as Homebridge has it, or a new one. */
+  async function loadConfigs(homebridge) {
+    const configs = await homebridge.getPluginConfig();
+    return configs.length ? configs : [{ platform: PLATFORM, name: 'Appliance Monitor', devices: [] }];
+  }
+
   const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
 
   /**
@@ -124,10 +159,7 @@
    * the names of the plugs that are paired, for a mark in the list.
    */
   async function mount(container, { homebridge, paired = [] }) {
-    let configs = await homebridge.getPluginConfig();
-    if (!configs.length) {
-      configs = [{ platform: PLATFORM, name: 'Appliance Monitor', devices: [] }];
-    }
+    let configs = await loadConfigs(homebridge);
     const config = configs[0];
     config.devices = Array.isArray(config.devices) ? config.devices.filter((d) => d && typeof d === 'object') : [];
     const pairedNames = new Set(paired);
@@ -237,32 +269,15 @@
           name?.select();
         },
       }, '+ Add');
-      // Asked twice on the button itself rather than with confirm(), which
-      // the settings window's frame may not be allowed to show.
-      let armed = null;
-      const remove = el('button', {
+      const remove = askTwice(el('button', {
         type: 'button', class: 'btn btn-outline-danger', disabled: selected < 0,
         title: selected < 0 ? '' : `Delete ${config.devices[selected]?.name}`,
-        onclick: (event) => {
-          const button = event.currentTarget;
-          if (!armed) {
-            button.textContent = 'SURE?';
-            button.classList.replace('btn-outline-danger', 'btn-danger');
-            armed = setTimeout(() => {
-              armed = null;
-              button.textContent = 'Delete';
-              button.classList.replace('btn-danger', 'btn-outline-danger');
-            }, 5000);
-            return;
-          }
-          clearTimeout(armed);
-          armed = null;
-          config.devices.splice(selected, 1);
-          selected = config.devices.length ? sortedIndices()[0] : -1;
-          changed();
-          render();
-        },
-      }, 'Delete');
+      }, 'Delete'), () => {
+        config.devices.splice(selected, 1);
+        selected = config.devices.length ? sortedIndices()[0] : -1;
+        changed();
+        render();
+      });
       return el('div', { class: 'om-set-bar' }, config.devices.length ? list : null, add, remove);
     }
 
@@ -373,44 +388,22 @@
         used && (used.cycles > 0 || used.standbyWatts != null) ? forgetButton(device) : null);
     }
 
-    /**
-     * Forgets what the appliance has learned, after a second click — asked on
-     * the button rather than with confirm(), which the frame may not allow.
-     */
+    /** Forgets what the appliance has learned, after a second click. */
     function forgetButton(device) {
-      const label = 'Forget';
-      let armed = null;
-      const button = el('button', {
-        type: 'button', class: 'btn btn-outline-danger om-set-small mt-2',
-        onclick: async () => {
-          if (!armed) {
-            button.textContent = 'SURE?';
-            button.classList.replace('btn-outline-danger', 'btn-danger');
-            armed = setTimeout(() => {
-              armed = null;
-              button.textContent = label;
-              button.classList.replace('btn-danger', 'btn-outline-danger');
-            }, 5000);
-            return;
-          }
-          clearTimeout(armed);
-          armed = null;
-          button.disabled = true;
-          try {
-            const result = await homebridge.request('/forget', { name: String(device.name ?? '').trim() });
-            homebridge.toast.success(result.message, `${device.name}: forgotten`);
-            inUse = (await homebridge.request('/learned').catch(() => null)) ?? inUse;
-            render();
-            return;
-          } catch (error) {
-            homebridge.toast.error(error?.message ?? String(error), 'Not forgotten');
-          }
+      const button = el('button', { type: 'button', class: 'btn btn-outline-danger om-set-small mt-2' }, 'Forget');
+      return askTwice(button, async (reset) => {
+        button.disabled = true;
+        try {
+          const result = await homebridge.request('/forget', { name: String(device.name ?? '').trim() });
+          homebridge.toast.success(result.message, `${device.name}: forgotten`);
+          inUse = (await homebridge.request('/learned').catch(() => null)) ?? inUse;
+          render();
+        } catch (error) {
+          homebridge.toast.error(error?.message ?? String(error), 'Not forgotten');
           button.disabled = false;
-          button.textContent = label;
-          button.classList.replace('btn-danger', 'btn-outline-danger');
-        },
-      }, label);
-      return button;
+          reset();
+        }
+      });
     }
 
     /** Whether a switch is shown, reading the earlier sensor setting too. */
@@ -426,7 +419,6 @@
     /** The phases, to read: they are edited on the Power tab. */
     function phasesTable(device) {
       const phases = Array.isArray(device.phases) ? device.phases : [];
-      const seconds = (value, fallback) => (value ?? fallback);
       const table = el('table', { class: 'om-table' },
         el('thead', {}, el('tr', {},
           ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'Switch', 'Count']
@@ -435,8 +427,8 @@
           el('td', {}, phase.name || '(no name)'),
           el('td', {}, phase.minWatts ?? '–'),
           el('td', {}, phase.maxWatts ?? 'none'),
-          el('td', {}, seconds(phase.minSeconds, 5)),
-          el('td', {}, seconds(phase.holdSeconds, 30)),
+          el('td', {}, phase.minSeconds ?? 5),
+          el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
@@ -548,10 +540,7 @@
         }
         inUse = (await homebridge.request('/learned').catch(() => null)) ?? inUse;
         const name = config.devices[selected]?.name;
-        configs = await homebridge.getPluginConfig();
-        if (!configs.length) {
-          configs = [{ platform: PLATFORM, name: 'Appliance Monitor', devices: [] }];
-        }
+        configs = await loadConfigs(homebridge);
         Object.assign(config, configs[0]);
         configs[0] = config;
         config.devices = Array.isArray(config.devices) ? config.devices : [];

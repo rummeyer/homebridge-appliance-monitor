@@ -17,11 +17,10 @@ import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-ut
 import { phaseSpans, thin } from '../dist/curve.js';
 import { usablePhases } from '../dist/config.js';
 import { shownCount } from '../dist/counts.js';
-import { findDataDir } from '../dist/data-dir.js';
+import { dataDir } from '../dist/data-dir.js';
 import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
-import { runLevelAbove } from '../dist/learn.js';
-import { LEARNING_DEFAULTS } from '../dist/monitor.js';
+import { LEARNING_DEFAULTS, unlearnedRunWatts } from '../dist/monitor.js';
 import { findLevels } from '../dist/phases.js';
 import { readSamples } from '../dist/recorder.js';
 import { applyResets, pendingResets, requestReset } from '../dist/resets.js';
@@ -48,8 +47,22 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     this.ready();
   }
 
+  /** The plugin's folder in the Homebridge storage, if Homebridge said where that is. */
+  get dataDir() {
+    return this.homebridgeStoragePath ? dataDir(this.homebridgeStoragePath) : undefined;
+  }
+
   get powerDir() {
-    return this.homebridgeStoragePath ? join(findDataDir(this.homebridgeStoragePath), 'power') : undefined;
+    return this.dataDir && join(this.dataDir, 'power');
+  }
+
+  /** One of the plugin's JSON files; a missing, half-written or damaged one reads as empty. */
+  readData(file, empty = {}) {
+    try {
+      return (this.dataDir && readJson(join(this.dataDir, file))) || empty;
+    } catch {
+      return empty;
+    }
   }
 
   /** A plug's last hours, thinned for drawing, the levels found in them, and when its phases were on. */
@@ -77,17 +90,8 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
    * for the Settings tab to show in its empty fields.
    */
   async learned() {
-    if (!this.homebridgeStoragePath) {
-      return {};
-    }
-    let records;
-    try {
-      records = readJson(join(findDataDir(this.homebridgeStoragePath), 'devices.json')) ?? {};
-    } catch {
-      return {};
-    }
     const result = {};
-    for (const [name, record] of Object.entries(records)) {
+    for (const [name, record] of Object.entries(this.readData('devices.json'))) {
       const learned = record?.learned?.params;
       if (learned) {
         result[name] = {
@@ -103,7 +107,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
         cycles: 0,
         standbyWatts: standby ?? null,
         runWatts: typeof standby === 'number'
-          ? { value: Math.max(LEARNING_DEFAULTS.runWatts, runLevelAbove(standby)), from: 'standby' }
+          ? { value: unlearnedRunWatts(standby), from: 'standby' }
           : { value: LEARNING_DEFAULTS.runWatts, from: 'default' },
         startSeconds: { value: LEARNING_DEFAULTS.startSeconds, from: 'default' },
         finishSeconds: { value: LEARNING_DEFAULTS.finishSeconds, from: 'default' },
@@ -114,14 +118,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
 
   /** The names of the plugs that are paired, for a mark in the Settings tab's list. */
   async paired() {
-    if (!this.homebridgeStoragePath) {
-      return [];
-    }
-    try {
-      return Object.keys(readJson(join(findDataDir(this.homebridgeStoragePath), 'nodes.json')) ?? {});
-    } catch {
-      return [];
-    }
+    return Object.keys(this.readData('nodes.json'));
   }
 
   /**
@@ -132,20 +129,16 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
   async reset(request) {
     const asked = Array.isArray(request?.names) ? request.names : [request?.name];
     const names = asked.map((name) => String(name ?? '').trim()).filter(Boolean);
-    if (names.length === 0 || !this.homebridgeStoragePath) {
+    const dir = this.dataDir;
+    if (names.length === 0 || !dir) {
       throw new RequestError('No such appliance', { status: 400 });
     }
-    const dir = findDataDir(this.homebridgeStoragePath);
     for (const name of names) {
       requestReset(dir, name);
     }
-    for (const until = Date.now() + RESET_WAIT_MS; Date.now() < until; ) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      if (pendingResets(dir).length === 0) {
-        return { ok: true };
-      }
+    if (!(await waitFor(RESET_WAIT_MS, () => pendingResets(dir).length === 0))) {
+      applyResets(dir);
     }
-    applyResets(dir);
     return { ok: true };
   }
 
@@ -174,24 +167,21 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
    * it can do these, as it holds what was learned in memory.
    */
   async ask(request) {
-    if (!this.homebridgeStoragePath) {
+    const dir = this.dataDir;
+    if (!dir) {
       throw new RequestError('No Homebridge storage folder', { status: 500 });
     }
-    const dir = findDataDir(this.homebridgeStoragePath);
     const id = randomUUID();
     addRequest(dir, { id, ...request });
-    for (const until = Date.now() + ANSWER_WAIT_MS; Date.now() < until; ) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      const result = takeAnswer(dir, id);
-      if (result) {
-        if (!result.ok) {
-          throw new RequestError(result.message, { status: 409 });
-        }
-        return result;
-      }
+    const result = await waitFor(ANSWER_WAIT_MS, () => takeAnswer(dir, id));
+    if (!result) {
+      dropRequest(dir, id);
+      throw new RequestError('The plugin did not answer. Is its child bridge running?', { status: 504 });
     }
-    dropRequest(dir, id);
-    throw new RequestError('The plugin did not answer. Is its child bridge running?', { status: 504 });
+    if (!result.ok) {
+      throw new RequestError(result.message, { status: 409 });
+    }
+    return result;
   }
 
   /** The table for the plugs named, in the order the page lists them, with what each has counted. */
@@ -200,17 +190,8 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
       ? request.devices.filter((device) => typeof device?.name === 'string')
       : [];
     const names = devices.map(({ name }) => name);
-    const dir = this.homebridgeStoragePath ? findDataDir(this.homebridgeStoragePath) : undefined;
-    // A missing, half-written or damaged file shows as nothing counted yet.
-    const read = (file) => {
-      try {
-        return (dir && readJson(join(dir, file))) || {};
-      } catch {
-        return {};
-      }
-    };
-    const ledger = read('energy.json');
-    const records = read('devices.json');
+    const ledger = this.readData('energy.json');
+    const records = this.readData('devices.json');
     // What each appliance counts follows the settings as they are being
     // edited, which the page sends along.
     const counts = devices.map((device) => {
@@ -221,6 +202,21 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
     return { ...statistics(ledger, names, new Date()), counts, lastCycles };
   }
+}
+
+/**
+ * Looks every quarter second until `check` gives something, for at most `ms`;
+ * what it gave, or undefined.
+ */
+async function waitFor(ms, check) {
+  for (const until = Date.now() + ms; Date.now() < until; ) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const result = check();
+    if (result) {
+      return result;
+    }
+  }
+  return undefined;
 }
 
 void new ApplianceMonitorUiServer();
