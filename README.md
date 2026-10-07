@@ -238,7 +238,7 @@ learn from; see [Learning](#learning).)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over an hour, with its phases Aufheizen, Bezug, Spülen and Milchschaum, and a bar for each showing when it was on" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over six hours, with its phases Aufheizen, Bezug, Spülen and Milchschaum, and a bar for each showing when it was on" width="760">
 </picture>
 
 Name the phase, adjust the range if you like, and save; the chart shows a

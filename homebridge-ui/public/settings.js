@@ -46,9 +46,9 @@
      Homebridge UI, and a few pixels, so that the gaps between them look the
      same. Narrow padding, so that "Milchschaum" fits in the 768 pixels the
      Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(6rem, 1.5fr) repeat(5, minmax(0, 1fr)) 5.25rem 4.4rem 4.1rem 1.4rem;
+  .om-set-phase { display: grid; grid-template-columns: minmax(7.125rem, 1.5fr) repeat(5, minmax(0, 1fr)) 5.25rem 4.4rem 4.1rem 1.4rem;
                   gap: .4rem; align-items: center; padding: .3rem 0; }
-  .om-set-phase .form-control { padding-left: .5rem; padding-right: .5rem; }
+  .om-set-phase .form-control { padding-left: .4rem; padding-right: .4rem; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
   .om-set-phase .form-check { margin: 0; white-space: nowrap; }
   /* Small and square, the cross in the middle of it. A
