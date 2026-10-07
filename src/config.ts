@@ -206,7 +206,11 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
   }
   const seen = new Set<string>();
   for (const [index, entry] of list.entries()) {
-    const phase = (entry ?? {}) as Partial<PhaseConfig>;
+    const { fromAbove, ...rest } = (entry ?? {}) as Partial<PhaseConfig> & { fromAbove?: unknown };
+    // 1.1.0 called rampDown fromAbove.
+    const phase: Partial<PhaseConfig> = rest.rampDown === undefined && fromAbove !== undefined
+      ? { ...rest, rampDown: fromAbove as boolean }
+      : rest;
     const name = typeof phase.name === 'string' ? phase.name.trim() : '';
     const { minWatts, maxWatts } = phase;
     const hasRange = (minWatts !== undefined && minWatts !== null) || (maxWatts !== undefined && maxWatts !== null);
@@ -240,7 +244,7 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
         wrong.push('needs its "shorter than" to be more than its "on after", or it never happens');
       }
     }
-    for (const key of ['count', 'fromAbove'] as const) {
+    for (const key of ['count', 'rampDown'] as const) {
       const value = phase[key];
       if (value !== undefined && value !== null && typeof value !== 'boolean') {
         wrong.push(`has a ${key} that is not on or off`);

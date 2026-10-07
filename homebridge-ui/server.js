@@ -76,7 +76,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     // edited, unsaved ones included.
     const { phases } = usablePhases({ name, phases: Array.isArray(request?.phases) ? request.phases : [] });
     // Where the draw came from before the chart begins, for a phase only from above.
-    const earlier = this.powerDir && phases.some(({ fromAbove }) => fromAbove)
+    const earlier = this.powerDir && phases.some(({ rampDown }) => rampDown)
       ? readSamples(this.powerDir, name, from - RECALL_MS, from - 1)
       : [];
     return {

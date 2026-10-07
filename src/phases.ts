@@ -52,7 +52,7 @@ export interface PhaseConfig {
    * recording (see recall); if that tells nothing, it counts as from above —
    * a false alarm is better than none.
    */
-  fromAbove?: boolean;
+  rampDown?: boolean;
 }
 
 export const DEFAULT_MIN_SECONDS = 5;
@@ -159,7 +159,7 @@ export class PhaseTracker {
    * the band, so neither does this.
    */
   #counts(watts: number): boolean {
-    return this.#inBand(watts) && !(this.#phase.fromAbove && this.#side === 'below');
+    return this.#inBand(watts) && !(this.#phase.rampDown && this.#side === 'below');
   }
 
   #advance(at: number): void {

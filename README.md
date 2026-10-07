@@ -267,9 +267,9 @@ see the same draws.
 Some differ by the direction the draw came from. A washing machine that has
 finished rests at a few watts, and so does one just switched on to be
 loaded: one came down from the wash, the other up from nothing. Tick
-**From above** for a phase that should only count the first:
+**Ramp down** for a phase that should only count the first:
 
-| Phase | Range | On after | From above |
+| Phase | Range | On after | Ramp down |
 |---|---|---|---|
 | Gewaschen | 2–4.5 W | 25 s | ✓ |
 
@@ -433,7 +433,7 @@ config it writes looks like this:
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see [Phases](#phases)), `fromAbove` (only when the draw falls into the range, not when it rises into it; `false`) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see [Phases](#phases)), `rampDown` (only when the draw falls into the range, not when it rises into it; `false`) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep, for the Power tab. The statistics do not need them. |
