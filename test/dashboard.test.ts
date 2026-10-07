@@ -2,7 +2,7 @@
  * The dashboard: shows what the plugin knows, and changes nothing.
  */
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -44,9 +44,11 @@ test('the page and what it loads are served', async () => {
   }
 });
 
-test('what an appliance does now', async () => {
+test('what an appliance does now, and which version says so', async () => {
   const body = await (await fetch(`${base}/api/live`)).json();
   assert.deepEqual(body.appliances, live);
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(body.version, pkg.version);
 });
 
 test('its power, without the levels the settings page makes phases from', async () => {

@@ -43,6 +43,7 @@
     header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
     h1 { font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 14px; }
     h1 img { width: 88px; height: 88px; border-radius: 18px; }
+    h1 .version { display: block; font-size: .8rem; font-weight: 400; color: var(--muted); margin-top: 2px; }
     h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 28px 0 10px; }
     .muted { color: var(--muted); font-size: .85rem; }
     .card { background: var(--card); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
@@ -106,7 +107,7 @@
 <body>
   <main>
     <header>
-      <h1><img src="icon.png" alt="">Appliance Monitor</h1>
+      <h1><img src="icon.png" alt=""><span>Appliance Monitor<small class="version" id="version"></small></span></h1>
       <div class="side">
         <span class="muted" id="updated"></span>
         <button type="button" class="theme-switch" data-theme-switch>

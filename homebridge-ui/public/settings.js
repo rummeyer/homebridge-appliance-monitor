@@ -174,6 +174,8 @@
     const pairedNames = new Set(paired);
     /** What each appliance uses where its thresholds are empty; see the server's /learned. */
     let inUse = (await homebridge.request('/learned').catch(() => null)) ?? {};
+    /** Where this machine can be reached, for the link to the dashboard. */
+    const address = await homebridge.request('/address').catch(() => null);
 
     let selected = config.devices.length ? sortedIndices()[0] : -1;
     let pending;
@@ -528,6 +530,7 @@
     }
 
     function general() {
+      showDashboardLinks(); // the config may have been read again
       return el('details', { class: 'om-set-more om-set-section mt-4' },
         el('summary', {}, 'General'),
         el('div', { class: 'om-set-grid' },
@@ -547,12 +550,30 @@
               // Written either way: with only a port, as 1.2.0 wrote it, it would count as on.
               config.dashboard = on;
               changed();
+              showDashboardLinks();
             }),
-            el('div', { class: 'om-set-help' }, 'A page with power and statistics, read only and without login.')),
+            el('div', { class: 'om-set-help' }, 'A page with power and statistics, read only and without login.'),
+            dashboardLinks),
           field('Dashboard port', number(config.dashboardPort, String(DEFAULT_DASHBOARD_PORT), (value) => {
             setOrDrop(config, 'dashboardPort', numberOrUndefined(value), DEFAULT_DASHBOARD_PORT);
             changed();
+            showDashboardLinks();
           }, 1))));
+    }
+
+    /**
+     * Where the dashboard is, while it is switched on: this machine's address,
+     * or the name the Homebridge UI was opened with if it has none. As the
+     * settings say, which the plugin follows once restarted.
+     */
+    const dashboardLinks = el('div', { class: 'om-set-help' });
+    function showDashboardLinks() {
+      const port = Number.isInteger(config.dashboardPort) && config.dashboardPort >= 1 && config.dashboardPort <= 65535
+        ? config.dashboardPort
+        : DEFAULT_DASHBOARD_PORT;
+      const host = address || window.location.hostname;
+      const url = host && `http://${host}:${port}/`;
+      dashboardLinks.replaceChildren(...(dashboardOn(config) && url ? [el('a', { href: url, target: '_blank', rel: 'noopener' }, url)] : []));
     }
 
     render();

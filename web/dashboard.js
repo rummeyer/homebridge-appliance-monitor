@@ -130,6 +130,7 @@
     }
     $('updated').classList.remove('error');
     $('updated').textContent = `Updated ${new Date(live.at).toLocaleTimeString()}`;
+    $('version').textContent = live.version ? `Version ${live.version}` : '';
     const { appliances } = live;
     $('tiles').replaceChildren(
       totalTile(appliances),

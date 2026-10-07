@@ -10,6 +10,8 @@
  * written every five minutes, readings as they come.
  */
 import { randomUUID } from 'node:crypto';
+import { createSocket } from 'node:dgram';
+import { networkInterfaces } from 'node:os';
 
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils';
 
@@ -31,6 +33,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     this.onRequest('/statistics', (request) => this.statistics(request));
     this.onRequest('/curve', (request) => this.curve(request));
     this.onRequest('/paired', () => this.paired());
+    this.onRequest('/address', () => this.address());
     this.onRequest('/learned', () => this.learned());
     this.onRequest('/reset', (request) => this.reset(request));
     this.onRequest('/learn', (request) => this.learn(request));
@@ -87,6 +90,32 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
       };
     }
     return result;
+  }
+
+  /**
+   * This machine's address on the network, for the link to the dashboard,
+   * which the plugin serves here, as this backend runs beside it.
+   *
+   * The one its default route leaves from, which a UDP socket "connected"
+   * outwards tells without sending anything — not the first of all of them,
+   * which may be a Docker bridge. Without a route, the first IPv4 address.
+   */
+  async address() {
+    const routed = await new Promise((resolve) => {
+      const socket = createSocket('udp4');
+      const done = (address) => {
+        socket.close();
+        resolve(address);
+      };
+      socket.on('error', () => done(undefined));
+      socket.connect(53, '192.0.2.1', () => done(socket.address().address));
+    });
+    if (routed && routed !== '0.0.0.0') {
+      return routed;
+    }
+    return Object.values(networkInterfaces())
+      .flat()
+      .find((entry) => entry && entry.family === 'IPv4' && !entry.internal)?.address ?? null;
   }
 
   /** The names of the plugs that are paired, for a mark in the Settings tab's list. */

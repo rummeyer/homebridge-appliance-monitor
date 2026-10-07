@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.2] — 2026-10-07
+
+### Added
+
+- The dashboard shows the version of the plugin running.
+- The settings page links to the dashboard while it is switched on, under
+  **General**: `http://` with this machine's address on the network and the
+  port.
+
 ## [1.2.1] — 2026-10-07
 
 ### Added

@@ -45,6 +45,12 @@ export interface DashboardSource {
 
 const read = (path: string): Buffer => readFileSync(new URL(`../${path}`, import.meta.url));
 
+/**
+ * The version of the plugin running, read when it starts: an update installed
+ * since shows only once the child bridge is restarted, and so does this.
+ */
+const VERSION = String((JSON.parse(read('package.json').toString('utf8')) as { version?: unknown }).version ?? '');
+
 /** The page's files, read when asked for: a few kilobytes, and seldom. */
 const FILES: Record<string, { type: string; path: string }> = {
   '/': { type: 'text/html; charset=utf-8', path: 'web/index.html' },
@@ -122,7 +128,7 @@ export class Dashboard {
     const devices = this.#source.devices();
     switch (url.pathname) {
       case '/api/live':
-        return { at: Date.now(), appliances: this.#source.live() };
+        return { at: Date.now(), version: VERSION, appliances: this.#source.live() };
       case '/api/statistics':
         return statisticsTable(this.#source.dataPath, devices);
       case '/api/curve': {
