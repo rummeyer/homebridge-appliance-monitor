@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-10-07
+
+### Fixed
+
+- A restart while the plugin was still connecting to its plugs no longer
+  makes it forget the plugs it had not reached yet. They stayed paired but
+  got no readings until they were paired again.
+
 ## [1.0.1] — 2026-10-06
 
 ### Fixed
@@ -431,7 +439,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.4...v1.0.0
 [0.18.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v0.18.3...v0.18.4

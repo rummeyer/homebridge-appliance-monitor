@@ -180,13 +180,18 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     // One after the other: commissioning several plugs at once would open
     // several PASE sessions over the same border router for no gain.
     for (const device of devices) {
+      if (this.#stopping) {
+        return;
+      }
       try {
         await this.#setUp(controller, registry, device);
       } catch (error) {
         this.log.error(`${device.name}: ${message(error)}`);
       }
     }
-    this.#reportStrays(controller, registry, devices);
+    if (!this.#stopping) {
+      this.#reportStrays(controller, registry, devices);
+    }
   }
 
   #validDevices(): DeviceConfig[] {
@@ -217,6 +222,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   async #setUp(controller: MatterController, registry: NodeRegistry, device: DeviceConfig): Promise<void> {
     let nodeId = registry.get(device.name);
+    // While shutting down, the closing controller reports every node as
+    // unknown; forgetting the pairings then would orphan the plugs.
+    if (this.#stopping) {
+      return;
+    }
     if (nodeId !== undefined && !controller.isCommissioned(nodeId)) {
       this.log.warn(`${device.name}: was paired as node ${nodeId}, but the controller no longer knows it.`);
       registry.delete(device.name);
