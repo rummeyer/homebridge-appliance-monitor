@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.3] — 2026-10-07
+
+### Changed
+
+- New dashboard screenshots in the README, with the version and the round
+  theme icon.
+
 ## [1.2.2] — 2026-10-07
 
 ### Added
