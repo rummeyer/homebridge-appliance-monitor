@@ -6,6 +6,22 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-10-07
+
+### Added
+
+- **Dashboard**: with **Dashboard port** (`dashboardPort`) set, the plugin
+  serves a read-only web page — no Homebridge login — with a tile per
+  appliance (its power now, running for how long, the cycle so far, its
+  phases), a Total tile, the power chart and the statistics. It updates
+  itself, and has a light, dark and system switch. Nothing can be changed
+  there. See [Dashboard](README.md#dashboard).
+
+### Changed
+
+- The Power and Statistics tabs and the dashboard share one implementation
+  of the chart data, the statistics table and the chart's pointer.
+
 ## [1.1.3] — 2026-10-07
 
 ### Fixed

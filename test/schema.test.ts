@@ -91,7 +91,7 @@ test('the shortest poll the settings page allows is the one the plugin accepts',
 
 test("the settings page's scripts are where the page loads them from", () => {
   const page = readFileSync(new URL('../homebridge-ui/public/index.html', import.meta.url), 'utf8');
-  for (const script of ['chart.js', 'settings.js']) {
+  for (const script of ['chart.js', 'shared.js', 'settings.js']) {
     assert.ok(page.includes(`<script src="${script}"></script>`), `the page loads ${script}`);
     assert.ok(readFileSync(new URL(`../homebridge-ui/public/${script}`, import.meta.url), 'utf8').length > 0, `${script} is there`);
   }

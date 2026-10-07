@@ -10,25 +10,16 @@
  * written every five minutes, readings as they come.
  */
 import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
 
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils';
 
-import { phaseSpans, thin } from '../dist/curve.js';
 import { usablePhases } from '../dist/config.js';
-import { shownCount } from '../dist/counts.js';
 import { dataDir } from '../dist/data-dir.js';
-import { statistics } from '../dist/energy.js';
-import { readJson } from '../dist/json-file.js';
 import { LEARNING_DEFAULTS, unlearnedRunWatts } from '../dist/monitor.js';
-import { findLevels, RECALL_MS } from '../dist/phases.js';
-import { readSamples } from '../dist/recorder.js';
 import { applyResets, pendingResets, requestReset } from '../dist/resets.js';
 import { addRequest, dropRequest, takeAnswer } from '../dist/requests.js';
+import { chartHours, curve, readData, statisticsTable } from '../dist/views.js';
 
-/** Points drawn across the chart: about two per pixel of a wide settings page. */
-const CHART_BUCKETS = 600;
-const MAX_HOURS = 24 * 14;
 /** How long to wait for the plugin to do a reset, which it looks for every five seconds. */
 const RESET_WAIT_MS = 8000;
 /** How long to wait for it to answer a request, which it also looks for every five seconds. */
@@ -52,40 +43,18 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     return this.homebridgeStoragePath ? dataDir(this.homebridgeStoragePath) : undefined;
   }
 
-  get powerDir() {
-    return this.dataDir && join(this.dataDir, 'power');
-  }
-
-  /** One of the plugin's JSON files; a missing, half-written or damaged one reads as empty. */
+  /** One of the plugin's JSON files; a missing or damaged one reads as empty. */
   readData(file, empty = {}) {
-    try {
-      return (this.dataDir && readJson(join(this.dataDir, file))) || empty;
-    } catch {
-      return empty;
-    }
+    return readData(this.dataDir, file, empty);
   }
 
   /** A plug's last hours, thinned for drawing, the levels found in them, and when its phases were on. */
   async curve(request) {
-    const name = String(request?.name ?? '');
-    const hours = Math.min(Math.max(Number(request?.hours) || 24, 1), MAX_HOURS);
-    const to = Date.now();
-    const from = to - hours * 3_600_000;
-    const samples = this.powerDir ? readSamples(this.powerDir, name, from, to) : [];
     // The phases come from the page, which has the settings as they are being
     // edited, unsaved ones included.
+    const name = String(request?.name ?? '');
     const { phases } = usablePhases({ name, phases: Array.isArray(request?.phases) ? request.phases : [] });
-    // Where the draw came from before the chart begins, for a phase only from above.
-    const earlier = this.powerDir && phases.some(({ onDown }) => onDown)
-      ? readSamples(this.powerDir, name, from - RECALL_MS, from - 1)
-      : [];
-    return {
-      from,
-      to,
-      points: thin(samples, from, to, CHART_BUCKETS),
-      levels: findLevels(samples, to),
-      spans: phaseSpans(samples, from, to, phases, earlier),
-    };
+    return curve(this.dataDir, name, chartHours(request?.hours), phases);
   }
 
   /**
@@ -188,23 +157,16 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     return result;
   }
 
-  /** The table for the plugs named, in the order the page lists them, with what each has counted. */
+  /**
+   * The table for the plugs named, in the order the page lists them, with
+   * what each has counted. What each counts follows the settings as they are
+   * being edited, which the page sends along.
+   */
   async statistics(request) {
     const devices = Array.isArray(request?.devices)
       ? request.devices.filter((device) => typeof device?.name === 'string')
       : [];
-    const names = devices.map(({ name }) => name);
-    const ledger = this.readData('energy.json');
-    const records = this.readData('devices.json');
-    // What each appliance counts follows the settings as they are being
-    // edited, which the page sends along.
-    const counts = devices.map((device) => {
-      const { key, label } = shownCount(usablePhases(device).phases);
-      const counted = records[device.name]?.counts?.[key];
-      return { label, count: counted?.count ?? 0, since: counted?.since ?? null };
-    });
-    const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
-    return { ...statistics(ledger, names, new Date()), counts, lastCycles };
+    return statisticsTable(this.dataDir, devices);
   }
 }
 

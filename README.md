@@ -387,6 +387,50 @@ running is not counted. The
 statistics keep only the total per plug and day, for a little over two years,
 so they do not depend on how many days of recordings are kept.
 
+## Dashboard
+
+A web page with every appliance at a glance, for a tablet on the wall or a
+phone on the sofa, without logging in to Homebridge:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-dark.png">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-light.png" alt="The dashboard: a tile per appliance with its power now, a Total tile, the power chart of one appliance, and the statistics table" width="760">
+</picture>
+
+- a tile per appliance with what it draws **now**, whether it is running and
+  for how long, what the cycle has used so far, and the phases it is in;
+- a **Total** tile with what all plugs draw together;
+- the **power chart** of the appliance picked — click its tile, or pick it
+  from the list — as on the Power tab;
+- the **statistics**, as on the Statistics tab.
+
+It updates itself every few seconds, and follows the system's light or dark
+mode unless switched with the button at the top right.
+
+### Turning it on
+
+The plugin serves the page itself, on a port of your choice. It is off until
+you set one:
+
+1. On the plugin's settings page, open **General** and enter a **Dashboard
+   port**, such as `8582` (any free port; the Homebridge UI itself is usually
+   on 8581). In config.json this is `"dashboardPort": 8582`.
+2. Save, and restart the child bridge.
+3. Open `http://<your Homebridge machine>:8582/`, for example
+   `http://raspberrypi.local:8582/`.
+
+The log says `Dashboard on port 8582` when it is up. If the port is taken,
+the log says so, and the plugin runs on without the dashboard. Empty the
+field to turn it off again.
+
+### Read only, and no login
+
+Nothing can be changed on the page: it has no settings, no learning and no
+resetting, and the plugin answers nothing but reading there. It also has no
+login, so anyone who can reach the port can see your appliances and what
+they use. Keep it on your home network, and do not forward the port to the
+internet.
+
 ## Plugs that report seldom
 
 A plug decides itself how often it reports its power. The Shelly Plug PM
@@ -438,6 +482,7 @@ config it writes looks like this:
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep, for the Power tab. The statistics do not need them. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
+| `dashboardPort` | none | Serve a read-only page with the power and statistics on this port, without login. See [Dashboard](#dashboard). |
 
 ## Files
 

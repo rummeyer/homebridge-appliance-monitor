@@ -8,6 +8,7 @@ import {
   isChildBridgeProcess,
   showsInHomeKit,
   MATTER_LOG_LEVELS,
+  usableDashboardPort,
   usablePhases,
   usablePollSeconds,
   parsePairingCode,
@@ -15,6 +16,8 @@ import {
 } from './config.ts';
 import type { DeviceConfig, MatterLogLevel, ApplianceMonitorPlatformConfig } from './config.ts';
 import { cycleState } from './cycle.ts';
+import { Dashboard } from './dashboard.ts';
+import type { LiveAppliance } from './dashboard.ts';
 import type { CycleState, Transition } from './cycle.ts';
 import { EnergyMeter } from './energy.ts';
 import type { DeviceEnergy } from './energy.ts';
@@ -56,6 +59,8 @@ interface Appliance {
   last?: { endpointId: number; value: unknown; at: number };
   /** The last power in watts, to know whether the plug is drawing anything. */
   watts?: number;
+  /** Whether the plug is connected; unknown until it first is, or is not. */
+  reachable?: boolean;
 }
 
 /** At or below this a plug draws nothing, and is not asked; see #poll. */
@@ -78,6 +83,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   #store: DeviceStore | undefined;
   #ticker: NodeJS.Timeout | undefined;
   #energySaver: NodeJS.Timeout | undefined;
+  #dashboard: Dashboard | undefined;
+  /** The plugs configured and usable, in the order of the settings. */
+  #devices: DeviceConfig[] = [];
   /** Set on shutdown, when every plug disconnecting is expected and not worth a line. */
   #stopping = false;
   readonly #pollers: NodeJS.Timeout[] = [];
@@ -103,6 +111,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         clearInterval(poller);
       }
       clearInterval(this.#energySaver);
+      this.#dashboard?.close();
       this.#saveEnergy();
       this.#controller?.stop().catch((error: unknown) => {
         this.log.debug(`Could not stop the Matter controller cleanly: ${message(error)}`);
@@ -130,6 +139,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   async #start(): Promise<void> {
     const devices = this.#validDevices();
+    this.#devices = devices;
     this.#prune(devices);
     if (devices.length === 0) {
       this.log.warn('No plugs configured — nothing to do. Add one under "devices".');
@@ -175,6 +185,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
     }, TICK_MS);
     this.#energySaver = setInterval(() => this.#saveEnergy(), SAVE_ENERGY_MS);
+    await this.#startDashboard();
 
     const registry = new NodeRegistry(join(this.#dataPath, 'nodes.json'));
     // One after the other: commissioning several plugs at once would open
@@ -274,6 +285,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         }
         if (connected || state === 'Disconnected') {
           reachable = connected;
+          appliance.reachable = connected;
         }
       }),
       onReady: (node) => this.#safely(device.name, () => {
@@ -352,6 +364,53 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         });
     }, seconds * 1000);
     this.#pollers.push(timer);
+  }
+
+  /** The read-only page, if a port is set for it; see dashboard.ts. Without it the plugin runs on. */
+  async #startDashboard(): Promise<void> {
+    const { port, problem } = usableDashboardPort(this.config);
+    if (problem) {
+      this.log.warn(problem);
+    }
+    if (port === undefined || this.#stopping) {
+      return;
+    }
+    const dashboard = new Dashboard({
+      dataPath: this.#dataPath,
+      devices: () => this.#devices,
+      live: () => this.#live(),
+    });
+    try {
+      await dashboard.listen(port);
+    } catch (error) {
+      this.log.error(`Could not open the dashboard on port ${port}: ${message(error)}`);
+      return;
+    }
+    this.#dashboard = dashboard;
+    this.log.info(`Dashboard on port ${port}, read only: http://<this machine>:${port}/`);
+  }
+
+  /** What each appliance is doing now, for the dashboard. */
+  #live(): LiveAppliance[] {
+    const now = Date.now();
+    return this.#devices.map(({ name }) => {
+      const appliance = this.#appliances.get(name);
+      if (!appliance) {
+        return { name, paired: false, phases: [] };
+      }
+      const { monitor } = appliance;
+      return {
+        name,
+        paired: true,
+        reachable: appliance.reachable,
+        watts: appliance.watts,
+        at: appliance.last?.at,
+        state: monitor.state,
+        since: this.#store?.get(name).since,
+        phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
+        cycle: monitor.progress(now),
+      };
+    });
   }
 
   /** "learning", or "learned from 3 cycles". */

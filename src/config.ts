@@ -90,6 +90,26 @@ export interface ApplianceMonitorPlatformConfig extends PlatformConfig {
   recordDays?: number;
   /** How much of matter.js's own logging reaches the Homebridge log. */
   matterLogLevel?: MatterLogLevel;
+  /**
+   * The port of a read-only page with each appliance's power and statistics,
+   * to be opened in a browser without logging in to Homebridge. Off unless set.
+   */
+  dashboardPort?: number;
+}
+
+/**
+ * The dashboard's port, and why there is none if one was asked for. A port
+ * that is no port turns the dashboard off rather than costing the plugin.
+ */
+export function usableDashboardPort(config: ApplianceMonitorPlatformConfig): { port: number | undefined; problem?: string } {
+  const { dashboardPort } = config;
+  if (dashboardPort === undefined || dashboardPort === null) {
+    return { port: undefined };
+  }
+  if (!Number.isInteger(dashboardPort) || dashboardPort < 1 || dashboardPort > 65535) {
+    return { port: undefined, problem: `dashboardPort ${String(dashboardPort)} is not a port from 1 to 65535; no dashboard` };
+  }
+  return { port: dashboardPort };
 }
 
 export const MATTER_LOG_LEVELS: readonly MatterLogLevel[] = ['debug', 'info', 'notice', 'warn', 'error'];

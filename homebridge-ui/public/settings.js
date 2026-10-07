@@ -538,7 +538,11 @@
           field('matter.js log level', choice(config.matterLogLevel ?? 'warn', LOG_LEVELS, (value) => {
             setOrDrop(config, 'matterLogLevel', value, 'warn');
             changed();
-          }))));
+          })),
+          field('Dashboard port', number(config.dashboardPort, 'off', (value) => {
+            setOrDrop(config, 'dashboardPort', numberOrUndefined(value));
+            changed();
+          }, 1), 'Empty for off. A page with power and statistics, read only and without login.')));
     }
 
     render();

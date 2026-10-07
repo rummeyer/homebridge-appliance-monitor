@@ -1,0 +1,149 @@
+<!doctype html>
+<!--
+  The dashboard: a read-only page the plugin serves itself, see dashboard.ts.
+  What each appliance draws now, its power over the last hours, and the
+  statistics, as on the settings page's Power and Statistics tabs.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Appliance Monitor</title>
+  <script src="theme.js"></script>
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <style>
+    /* Light, and the dark palette beside it, used where the system asks for
+       it unless the viewer chose light, and where the viewer chose dark; see theme.js. */
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f5f7; --card: #fff; --text: #1d2229; --muted: #6b7380; --line: rgba(128,128,128,.2);
+      --run: #2e9e5b; --run-bg: rgba(46,158,91,.12); --off: #b0b6bf; --warn: #c9822a; --accent: #2f80ed;
+      --total-bg: #eaf2fd;
+      --dark-bg: #15181c; --dark-card: #1f2329; --dark-text: #e6e8eb; --dark-muted: #949ba6; --dark-line: rgba(160,160,160,.18);
+      --dark-run: #4cc27e; --dark-run-bg: rgba(76,194,126,.14); --dark-off: #5b626c; --dark-total-bg: #1d2a3b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: var(--dark-bg); --card: var(--dark-card); --text: var(--dark-text); --muted: var(--dark-muted); --line: var(--dark-line);
+        --run: var(--dark-run); --run-bg: var(--dark-run-bg); --off: var(--dark-off); --total-bg: var(--dark-total-bg);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: var(--dark-bg); --card: var(--dark-card); --text: var(--dark-text); --muted: var(--dark-muted); --line: var(--dark-line);
+      --run: var(--dark-run); --run-bg: var(--dark-run-bg); --off: var(--dark-off); --total-bg: var(--dark-total-bg);
+    }
+    :root[data-theme="light"] { color-scheme: light; }
+    :root[data-theme="dark"] { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    h1 { font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 14px; }
+    h1 img { width: 88px; height: 88px; border-radius: 18px; }
+    h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 28px 0 10px; }
+    .muted { color: var(--muted); font-size: .85rem; }
+    .card { background: var(--card); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    /* A column from the top: a button would centre its content in a taller row. */
+    .tile { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
+            padding: 14px 16px; cursor: pointer; border: 2px solid transparent; text-align: left;
+            color: inherit; font: inherit; width: 100%; }
+    .tile .state { align-self: flex-start; }
+    button.tile:hover { border-color: var(--line); }
+    .tile.total { cursor: default; background: var(--total-bg); }
+    .tile.chosen { border-color: var(--accent); }
+    .tile .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tile .watts { font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; margin: 4px 0 6px; }
+    .tile.idle .watts, .tile.gone .watts { color: var(--muted); }
+    .state { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
+    .state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--off); }
+    .running .state { color: var(--run); font-weight: 600; }
+    .running .state::before { background: var(--run); }
+    .gone .state::before { background: var(--warn); }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; min-height: 0; }
+    .chip { font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--run-bg); color: var(--run); }
+    .detail { font-size: .78rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+    .panel { padding: 14px 16px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    select { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+    #chart { min-height: 120px; }
+    #chart .empty { padding: 40px 0; text-align: center; }
+
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .9rem; }
+    th, td { padding: 8px 10px; white-space: nowrap; }
+    th:not(:first-child), td:not(:first-child) { text-align: right; }
+    thead th { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600;
+               border-bottom: 1px solid var(--line); }
+    thead th small { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    tbody td:first-child { font-weight: 500; }
+    tbody tr + tr td { border-top: 1px solid var(--line); }
+    tfoot td { border-top: 1px solid var(--muted); font-weight: 600; }
+    .notes p { margin: 6px 0 0; }
+    .error { color: var(--warn); }
+
+    .side { display: flex; align-items: center; gap: 14px; }
+    /* Without script there is no switch, rather than one that does nothing. */
+    .theme-switch { display: none; }
+    [data-theme-pref] .theme-switch { display: inline-flex; background: none; border: 0; padding: 4px; margin: -4px;
+                                      cursor: pointer; color: var(--muted); line-height: 0; }
+    .theme-switch:hover { color: var(--text); }
+    .theme-switch:focus-visible { outline: 1px dotted var(--accent); outline-offset: 2px; }
+    .theme-icon { display: none; }
+    [data-theme-pref="light"] .theme-icon-light,
+    [data-theme-pref="dark"] .theme-icon-dark,
+    [data-theme-pref="auto"] .theme-icon-auto { display: block; }
+  </style>
+  <script src="chart.js"></script>
+  <script src="shared.js"></script>
+  <script src="dashboard.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1><img src="icon.png" alt="">Appliance Monitor</h1>
+      <div class="side">
+        <span class="muted" id="updated"></span>
+        <button type="button" class="theme-switch" data-theme-switch>
+          <!-- sun -->
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.55 1.55M17.15 17.15l1.55 1.55M5.3 18.7l1.55-1.55M17.15 6.85l1.55-1.55"/></svg>
+          <!-- moon -->
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></svg>
+          <!-- half lit: as the system says -->
+          <svg class="theme-icon theme-icon-auto" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="tiles" id="tiles"></div>
+
+    <h2>Power</h2>
+    <div class="card panel">
+      <div class="controls">
+        <select id="plug" aria-label="Appliance"></select>
+        <select id="hours" aria-label="Time">
+          <option value="1">Last hour</option>
+          <option value="6">Last 6 hours</option>
+          <option value="12" selected>Last 12 hours</option>
+          <option value="24">Last 24 hours</option>
+          <option value="72">Last 3 days</option>
+          <option value="168">Last 7 days</option>
+          <option value="336">Last 14 days</option>
+        </select>
+      </div>
+      <div id="chart"></div>
+    </div>
+
+    <h2>Energy and counts</h2>
+    <div class="card panel">
+      <div class="scroll" id="stats"></div>
+      <div class="muted notes" id="notes"></div>
+    </div>
+  </main>
+</body>
+</html>
