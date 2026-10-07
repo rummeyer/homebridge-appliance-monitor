@@ -366,7 +366,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#pollers.push(timer);
   }
 
-  /** The read-only page, if a port is set for it; see dashboard.ts. Without it the plugin runs on. */
+  /** The read-only page, if it is switched on; see dashboard.ts. Without it the plugin runs on. */
   async #startDashboard(): Promise<void> {
     const { port, problem } = usableDashboardPort(this.config);
     if (problem) {

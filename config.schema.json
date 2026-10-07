@@ -203,13 +203,19 @@
         ],
         "description": "How much of the Matter library's own logging to show. Info and debug appear only with Homebridge debug logging on."
       },
+      "dashboard": {
+        "title": "Dashboard",
+        "type": "boolean",
+        "default": false,
+        "description": "A read-only web page with each appliance's power now, its chart and the statistics, at http://<this machine>:<port>/. No login: anyone on the network can see it, nobody can change anything."
+      },
       "dashboardPort": {
         "title": "Dashboard port",
         "type": "integer",
         "minimum": 1,
         "maximum": 65535,
-        "placeholder": "off",
-        "description": "A read-only web page with each appliance's power now, its chart and the statistics, at http://<this machine>:<port>/ (8582, say). No login: anyone on the network can see it, nobody can change anything. Off when empty."
+        "placeholder": "8582",
+        "description": "The port of the dashboard; 8582 if empty."
       }
     }
   },

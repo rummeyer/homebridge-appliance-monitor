@@ -91,20 +91,30 @@ export interface ApplianceMonitorPlatformConfig extends PlatformConfig {
   /** How much of matter.js's own logging reaches the Homebridge log. */
   matterLogLevel?: MatterLogLevel;
   /**
-   * The port of a read-only page with each appliance's power and statistics,
-   * to be opened in a browser without logging in to Homebridge. Off unless set.
+   * A read-only page with each appliance's power and statistics, to be
+   * opened in a browser without logging in to Homebridge. Off by default.
    */
+  dashboard?: boolean;
+  /** Its port; DEFAULT_DASHBOARD_PORT if not set. */
   dashboardPort?: number;
 }
 
+export const DEFAULT_DASHBOARD_PORT = 8582;
+
 /**
- * The dashboard's port, and why there is none if one was asked for. A port
- * that is no port turns the dashboard off rather than costing the plugin.
+ * The dashboard's port, or none when it is off, and why there is none if one
+ * was asked for. On when switched on — or, as 1.2.0 had no switch, when only
+ * a port is set. A port that is no port turns it off rather than costing the
+ * plugin.
  */
 export function usableDashboardPort(config: ApplianceMonitorPlatformConfig): { port: number | undefined; problem?: string } {
-  const { dashboardPort } = config;
-  if (dashboardPort === undefined || dashboardPort === null) {
+  const { dashboard, dashboardPort } = config;
+  const portSet = dashboardPort !== undefined && dashboardPort !== null;
+  if (!(dashboard ?? portSet)) {
     return { port: undefined };
+  }
+  if (!portSet) {
+    return { port: DEFAULT_DASHBOARD_PORT };
   }
   if (!Number.isInteger(dashboardPort) || dashboardPort < 1 || dashboardPort > 65535) {
     return { port: undefined, problem: `dashboardPort ${String(dashboardPort)} is not a port from 1 to 65535; no dashboard` };

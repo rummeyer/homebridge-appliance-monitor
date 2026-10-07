@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 
-import { usableDashboardPort } from '../src/config.ts';
+import { DEFAULT_DASHBOARD_PORT, usableDashboardPort } from '../src/config.ts';
 import { Dashboard } from '../src/dashboard.ts';
 import type { LiveAppliance } from '../src/dashboard.ts';
 import { PowerRecorder } from '../src/recorder.ts';
@@ -74,11 +74,20 @@ test('nothing can be changed', async () => {
   assert.equal((await fetch(`${base}/config.json`)).status, 404);
 });
 
-test('a port that is no port means no dashboard, and says so', () => {
+test('the dashboard is off unless switched on, on its own port or 8582', () => {
   assert.deepEqual(usableDashboardPort({ platform: 'x' }), { port: undefined });
+  assert.deepEqual(usableDashboardPort({ platform: 'x', dashboard: true }), { port: DEFAULT_DASHBOARD_PORT });
+  assert.deepEqual(usableDashboardPort({ platform: 'x', dashboard: true, dashboardPort: 9000 }), { port: 9000 });
+  assert.deepEqual(usableDashboardPort({ platform: 'x', dashboard: false, dashboardPort: 9000 }), { port: undefined });
+});
+
+test('a port alone, as 1.2.0 wrote it, means on', () => {
   assert.deepEqual(usableDashboardPort({ platform: 'x', dashboardPort: 8582 }), { port: 8582 });
+});
+
+test('a port that is no port means no dashboard, and says so', () => {
   for (const wrong of [0, 70000, 80.5, '8582']) {
-    const { port, problem } = usableDashboardPort({ platform: 'x', dashboardPort: wrong as number });
+    const { port, problem } = usableDashboardPort({ platform: 'x', dashboard: true, dashboardPort: wrong as number });
     assert.equal(port, undefined);
     assert.ok(problem);
   }

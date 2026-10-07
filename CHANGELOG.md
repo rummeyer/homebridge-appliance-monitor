@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-10-07
+
+### Added
+
+- **Dashboard** is now switched on and off with a checkbox of its own
+  (`dashboard`), on port 8582 unless **Dashboard port** says otherwise. A
+  config from 1.2.0 with only a port keeps its dashboard on.
+
 ## [1.2.0] — 2026-10-07
 
 ### Added

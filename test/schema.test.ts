@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { MATTER_LOG_LEVELS, MIN_POLL_SECONDS, parsePairingCode } from '../src/config.ts';
+import { DEFAULT_DASHBOARD_PORT, MATTER_LOG_LEVELS, MIN_POLL_SECONDS, parsePairingCode } from '../src/config.ts';
 import { LEARNING_DEFAULTS } from '../src/monitor.ts';
 import { DEFAULT_HOLD_SECONDS, DEFAULT_MIN_SECONDS } from '../src/phases.ts';
 import { DEFAULT_RECORD_DAYS } from '../src/recorder.ts';
@@ -82,6 +82,13 @@ test('a plug starts with no phases on the settings page, only the button to add 
   // The Homebridge UI's form offers one empty entry in every list unless told
   // otherwise, and it would show under every plug.
   assert.equal(device.phases.listItems, 0);
+});
+
+test('the dashboard is off by default, on the port the plugin falls back to', () => {
+  const { dashboard, dashboardPort } = schema.schema.properties;
+  assert.equal(dashboard.default, false);
+  assert.equal(Number(dashboardPort.placeholder), DEFAULT_DASHBOARD_PORT);
+  assert.equal(dashboardPort.default, undefined, 'a placeholder, or the port would be written into every config');
 });
 
 test('the shortest poll the settings page allows is the one the plugin accepts', () => {

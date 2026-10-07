@@ -24,6 +24,9 @@
   const MIN_POLL_SECONDS = 2;
   const pollError = (seconds) =>
     (seconds !== undefined && seconds < MIN_POLL_SECONDS ? `At least ${MIN_POLL_SECONDS} s; shorter asks every ${MIN_POLL_SECONDS} s.` : '');
+  /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */
+  const DEFAULT_DASHBOARD_PORT = 8582;
+  const dashboardOn = (config) => config.dashboard ?? (config.dashboardPort !== undefined && config.dashboardPort !== null);
   const PAIRING_CODE = /^\s*((\d[\s-]*){11}|(\d[\s-]*){21}|MT:[0-9A-Z.\-]+)\s*$/i;
   const LOG_LEVELS = [
     ['error', 'Errors only'],
@@ -539,10 +542,17 @@
             setOrDrop(config, 'matterLogLevel', value, 'warn');
             changed();
           })),
-          field('Dashboard port', number(config.dashboardPort, 'off', (value) => {
-            setOrDrop(config, 'dashboardPort', numberOrUndefined(value));
+          el('div', {},
+            check('om-set-dashboard', 'Dashboard', dashboardOn(config), (on) => {
+              // Written either way: with only a port, as 1.2.0 wrote it, it would count as on.
+              config.dashboard = on;
+              changed();
+            }),
+            el('div', { class: 'om-set-help' }, 'A page with power and statistics, read only and without login.')),
+          field('Dashboard port', number(config.dashboardPort, String(DEFAULT_DASHBOARD_PORT), (value) => {
+            setOrDrop(config, 'dashboardPort', numberOrUndefined(value), DEFAULT_DASHBOARD_PORT);
             changed();
-          }, 1), 'Empty for off. A page with power and statistics, read only and without login.')));
+          }, 1))));
     }
 
     render();

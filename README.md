@@ -409,19 +409,20 @@ mode unless switched with the button at the top right.
 
 ### Turning it on
 
-The plugin serves the page itself, on a port of your choice. It is off until
-you set one:
+The plugin serves the page itself. It is off until switched on:
 
-1. On the plugin's settings page, open **General** and enter a **Dashboard
-   port**, such as `8582` (any free port; the Homebridge UI itself is usually
-   on 8581). In config.json this is `"dashboardPort": 8582`.
-2. Save, and restart the child bridge.
+1. On the plugin's settings page, open **General** and tick **Dashboard**.
+   It is on port 8582 unless **Dashboard port** says otherwise (any free
+   port; the Homebridge UI itself is usually on 8581). In config.json this is
+   `"dashboard": true`, and `"dashboardPort": 8582` for another port.
+2. Save, and **restart the child bridge** in the Homebridge UI — the plugin
+   only reads its settings when it starts.
 3. Open `http://<your Homebridge machine>:8582/`, for example
    `http://raspberrypi.local:8582/`.
 
 The log says `Dashboard on port 8582` when it is up. If the port is taken,
-the log says so, and the plugin runs on without the dashboard. Empty the
-field to turn it off again.
+the log says so, and the plugin runs on without the dashboard. Untick
+**Dashboard** and restart to turn it off again.
 
 ### Read only, and no login
 
@@ -482,7 +483,8 @@ config it writes looks like this:
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep, for the Power tab. The statistics do not need them. |
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
-| `dashboardPort` | none | Serve a read-only page with the power and statistics on this port, without login. See [Dashboard](#dashboard). |
+| `dashboard` | `false` | Serve a read-only page with the power and statistics, without login. See [Dashboard](#dashboard). |
+| `dashboardPort` | `8582` | Its port. |
 
 ## Files
 
