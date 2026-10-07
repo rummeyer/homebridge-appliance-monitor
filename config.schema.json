@@ -130,6 +130,11 @@
                     "placeholder": "any",
                     "description": "Only draws shorter than this are the phase. Since that is known only once the draw is over, the switch then goes on for a moment, like Finished. A rinse beside a coffee: the same range, the coffee on after 10 s, the rinse shorter than 10 s."
                   },
+                  "fromAbove": {
+                    "title": "Only from above",
+                    "type": "boolean",
+                    "description": "Only when the draw falls into the range from above, not when it rises into it. A washing machine that has finished rests at the same few watts as one just switched on to be loaded."
+                  },
                   "sensor": {
                     "title": "Switch in HomeKit",
                     "type": "boolean",

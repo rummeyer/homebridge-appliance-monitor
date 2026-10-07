@@ -6,6 +6,18 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-10-07
+
+### Added
+
+- **From above** per phase (`fromAbove`): the phase counts only when the
+  draw falls into its range, not when it rises into it. A washing machine
+  that has finished rests at the same few watts as one just switched on to
+  be loaded; now only the first turns the phase on. After a restart the
+  plugin reads the last 12 hours of the recording to know where the draw
+  came from; with nothing there, the phase counts. The chart on the Power
+  tab shows the phase the same way.
+
 ## [1.0.3] — 2026-10-07
 
 ### Changed
@@ -446,7 +458,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.0...v1.0.1

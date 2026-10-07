@@ -26,7 +26,7 @@ import type { PairedNode } from '@project-chip/matter.js/device';
 import { FINISHED, phaseKey } from './counts.ts';
 import { dataDir } from './data-dir.ts';
 import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
-import { PhaseTracker } from './phases.ts';
+import { PhaseTracker, RECALL_MS } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff } from './power.ts';
 import { PowerRecorder, readSamples } from './recorder.ts';
@@ -427,10 +427,27 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       monitor,
       accessory: handle,
       energy: new EnergyMeter(this.#ledger[device.name]),
-      phases: (device.phases ?? []).map((phase) => new PhaseTracker(phase)),
+      phases: this.#phaseTrackers(device),
     };
     this.#appliances.set(device.name, appliance);
     return appliance;
+  }
+
+  /**
+   * A phase only from above has to know where the draw came from, which the
+   * recording tells across a restart: a washing machine resting at 3 W is
+   * not told again that it is being loaded.
+   */
+  #phaseTrackers(device: DeviceConfig): PhaseTracker[] {
+    const trackers = (device.phases ?? []).map((phase) => new PhaseTracker(phase));
+    if (this.#recorder && device.phases?.some(({ fromAbove }) => fromAbove)) {
+      const now = Date.now();
+      const samples = readSamples(this.#recorder.dir, device.name, now - RECALL_MS, now);
+      for (const tracker of trackers) {
+        tracker.recall(samples);
+      }
+    }
+    return trackers;
   }
 
   #onAttribute(appliance: Appliance, report: AttributeReport): void {

@@ -21,7 +21,7 @@ import { dataDir } from '../dist/data-dir.js';
 import { statistics } from '../dist/energy.js';
 import { readJson } from '../dist/json-file.js';
 import { LEARNING_DEFAULTS, unlearnedRunWatts } from '../dist/monitor.js';
-import { findLevels } from '../dist/phases.js';
+import { findLevels, RECALL_MS } from '../dist/phases.js';
 import { readSamples } from '../dist/recorder.js';
 import { applyResets, pendingResets, requestReset } from '../dist/resets.js';
 import { addRequest, dropRequest, takeAnswer } from '../dist/requests.js';
@@ -75,12 +75,16 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     // The phases come from the page, which has the settings as they are being
     // edited, unsaved ones included.
     const { phases } = usablePhases({ name, phases: Array.isArray(request?.phases) ? request.phases : [] });
+    // Where the draw came from before the chart begins, for a phase only from above.
+    const earlier = this.powerDir && phases.some(({ fromAbove }) => fromAbove)
+      ? readSamples(this.powerDir, name, from - RECALL_MS, from - 1)
+      : [];
     return {
       from,
       to,
       points: thin(samples, from, to, CHART_BUCKETS),
       levels: findLevels(samples, to),
-      spans: phaseSpans(samples, from, to, phases),
+      spans: phaseSpans(samples, from, to, phases, earlier),
     };
   }
 

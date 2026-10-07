@@ -240,8 +240,11 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
         wrong.push('needs its "shorter than" to be more than its "on after", or it never happens');
       }
     }
-    if (phase.count !== undefined && phase.count !== null && typeof phase.count !== 'boolean') {
-      wrong.push('has a count that is not on or off');
+    for (const key of ['count', 'fromAbove'] as const) {
+      const value = phase[key];
+      if (value !== undefined && value !== null && typeof value !== 'boolean') {
+        wrong.push(`has a ${key} that is not on or off`);
+      }
     }
     if (wrong.length > 0) {
       problems.push(`${what} ${wrong.join(', and ')}`);

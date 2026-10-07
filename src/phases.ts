@@ -42,10 +42,28 @@ export interface PhaseConfig {
    * for a moment then, not while it lasts.
    */
   maxSeconds?: number;
+  /**
+   * Only when the draw falls into the band from above. A washing machine
+   * finished rests at 3 W, and so does one just switched on to be loaded:
+   * one came down from the wash, the other up from nothing. A draw that
+   * rises into the band is not the phase, until it has left the band again.
+   *
+   * Where the draw came from before a restart is read back from the
+   * recording (see recall); if that tells nothing, it counts as from above —
+   * a false alarm is better than none.
+   */
+  fromAbove?: boolean;
 }
 
 export const DEFAULT_MIN_SECONDS = 5;
 export const DEFAULT_HOLD_SECONDS = 30;
+
+/**
+ * How far back the recording is read for where the draw came from. A plug
+ * reports changes only, so a machine resting since the morning has its last
+ * reading there; before that, it counts as having come from above.
+ */
+export const RECALL_MS = 12 * 3_600_000;
 
 export interface PhaseChange {
   active: boolean;
@@ -77,6 +95,8 @@ export class PhaseTracker {
   #outSince: number | undefined;
   /** When the draw first entered the band, for a phase on or in the making. */
   #firstIn: number | undefined;
+  /** Where the last reading out of the band was, if any. */
+  #side: 'above' | 'below' | undefined;
 
   constructor(phase: PhaseConfig) {
     this.#phase = phase;
@@ -90,6 +110,17 @@ export class PhaseTracker {
     return this.#active;
   }
 
+  /**
+   * Readings from before a restart, oldest first, only to know where the draw
+   * came from: what they turned on or off was dealt with back then.
+   */
+  recall(samples: { watts: number }[]): void {
+    for (const { watts } of samples) {
+      if (!this.#inBand(watts)) {
+        this.#side = this.#sideOf(watts);
+      }
+    }
+  }
 
   reading(at: number, watts: number | undefined): PhaseChange | undefined {
     this.#advance(at);
@@ -97,7 +128,10 @@ export class PhaseTracker {
       return this.#check(at);
     }
     this.#watts = watts;
-    if (this.#inBand(watts)) {
+    if (!this.#inBand(watts)) {
+      this.#side = this.#sideOf(watts);
+    }
+    if (this.#counts(watts)) {
       this.#outSince = undefined;
       this.#firstIn ??= at;
     } else {
@@ -115,8 +149,21 @@ export class PhaseTracker {
     return watts >= this.#phase.minWatts && watts < (this.#phase.maxWatts ?? Infinity);
   }
 
+  #sideOf(watts: number): 'above' | 'below' {
+    return watts < this.#phase.minWatts ? 'below' : 'above';
+  }
+
+  /**
+   * In the band, and as far as the phase goes: for one only from above, not
+   * having risen into it. The side does not change while the draw stays in
+   * the band, so neither does this.
+   */
+  #counts(watts: number): boolean {
+    return this.#inBand(watts) && !(this.#phase.fromAbove && this.#side === 'below');
+  }
+
   #advance(at: number): void {
-    if (this.#watts !== undefined && this.#inBand(this.#watts) && this.#accountedAt !== undefined) {
+    if (this.#watts !== undefined && this.#counts(this.#watts) && this.#accountedAt !== undefined) {
       this.#inMs += Math.max(0, at - this.#accountedAt);
     }
     this.#accountedAt = at;

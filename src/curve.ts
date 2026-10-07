@@ -54,12 +54,15 @@ export function phaseSpans(
   from: number,
   to: number,
   phases: PhaseConfig[],
+  /** Readings before `from`, for where the draw came from; see PhaseTracker.recall. */
+  earlier: Sample[] = [],
 ): { name: string; spans: [number, number][] }[] {
   // Ticks a second apart over an hour, coarser over days: what moves a phase
   // on or off is time passing, and a few seconds are lost in a week's width.
   const step = Math.max(1000, Math.round((to - from) / 50_000 / 1000) * 1000);
   return phases.map((phase) => {
     const tracker = new PhaseTracker(phase);
+    tracker.recall(earlier);
     const spans: [number, number][] = [];
     let on: number | undefined;
     const take = (change: PhaseChange | undefined) => {

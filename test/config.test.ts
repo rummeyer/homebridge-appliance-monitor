@@ -151,6 +151,12 @@ test('a phase marked to be counted keeps the mark; a mark that is not on or off 
   assert.match(check({ name: 'Bezug', minWatts: 30, maxWatts: 100, count: 'yes' }).problems[0]!, /count/);
 });
 
+test('a phase may be only from above; a mark that is not on or off is refused', () => {
+  const check = (phase: object) => usablePhases({ name: 'Waschmaschine', phases: [phase as PhaseConfig] });
+  assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, fromAbove: true }).phases[0]!.fromAbove, true);
+  assert.match(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, fromAbove: 'yes' }).problems[0]!, /fromAbove/);
+});
+
 test('a phase may be only the short draws, if it can still come on before its limit', () => {
   const check = (phase: object) => usablePhases({ name: 'Coffee', phases: [phase as PhaseConfig] });
   assert.equal(check({ name: 'Spülen', minWatts: 30, minSeconds: 2, maxSeconds: 10 }).phases[0]!.maxSeconds, 10);

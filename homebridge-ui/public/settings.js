@@ -44,7 +44,7 @@
   /* Fixed widths for the checkboxes, as each row is a grid of its own and the
      heading row has none; narrow padding, so that "Milchschaum" fits in the
      768 pixels the Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(6rem, 1.5fr) repeat(5, minmax(0, 1fr)) 4.25rem 4rem 2rem;
+  .om-set-phase { display: grid; grid-template-columns: minmax(6rem, 1.5fr) repeat(5, minmax(0, 1fr)) 5.25rem 4.25rem 4rem 2rem;
                   gap: .5rem; align-items: center; padding: .3rem 0; }
   .om-set-phase .form-control { padding-left: .5rem; padding-right: .5rem; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
@@ -430,7 +430,7 @@
       const phases = Array.isArray(device.phases) ? device.phases : [];
       const table = el('table', { class: 'om-table' },
         el('thead', {}, el('tr', {},
-          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'Switch', 'Count']
+          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'From above', 'Switch', 'Count']
             .map((label) => el('th', {}, label)))),
         el('tbody', {}, phases.map((phase) => el('tr', {},
           el('td', {}, phase.name || '(no name)'),
@@ -439,6 +439,7 @@
           el('td', {}, phase.minSeconds ?? 5),
           el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
+          el('td', {}, phase.fromAbove === true ? 'yes' : 'no'),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
       return el('div', { class: 'om-set-section' },
@@ -481,6 +482,8 @@
           labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
           labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
+          labelled(check(`${id}-above`, 'From above', phase.fromAbove === true, (on) => update((p) => setOrDrop(p, 'fromAbove', on, false))),
+            'Only when the draw falls into the range, not when it rises into it'),
           check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
           labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
             'Count on the Statistics tab instead of finished cycles'),
@@ -501,7 +504,7 @@
             el('div', { class: 'om-set-phase om-set-head' },
               el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'Below (W)'),
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
-              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {})),
+              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {}), el('span', {})),
             rows)
           : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
         el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));
