@@ -42,9 +42,11 @@
   .om-set-help { font-size: .78rem; opacity: .65; margin-top: .2rem; }
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
   /* Fixed widths for the checkboxes, as each row is a grid of its own and the
-     heading row has none; narrow padding, so that "Milchschaum" fits in the
-     768 pixels the Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(6rem, 1.5fr) repeat(5, minmax(0, 1fr)) 6rem 4.25rem 4rem 1.4rem;
+     heading row has none: each as wide as its label measured in the
+     Homebridge UI, and a few pixels, so that the gaps between them look the
+     same. Narrow padding, so that "Milchschaum" fits in the 768 pixels the
+     Homebridge UI gives the page. */
+  .om-set-phase { display: grid; grid-template-columns: minmax(6rem, 1.5fr) repeat(5, minmax(0, 1fr)) 5.25rem 4.4rem 4.1rem 1.4rem;
                   gap: .4rem; align-items: center; padding: .3rem 0; }
   .om-set-phase .form-control { padding-left: .5rem; padding-right: .5rem; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
@@ -430,7 +432,7 @@
       const phases = Array.isArray(device.phases) ? device.phases : [];
       const table = el('table', { class: 'om-table' },
         el('thead', {}, el('tr', {},
-          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'Ramp down', 'Switch', 'Count']
+          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Switch', 'Count']
             .map((label) => el('th', {}, label)))),
         el('tbody', {}, phases.map((phase) => el('tr', {},
           el('td', {}, phase.name || '(no name)'),
@@ -439,7 +441,7 @@
           el('td', {}, phase.minSeconds ?? 5),
           el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
-          el('td', {}, (phase.rampDown ?? phase.fromAbove) === true ? 'yes' : 'no'),
+          el('td', {}, (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true ? 'yes' : 'no'),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
       return el('div', { class: 'om-set-section' },
@@ -482,7 +484,7 @@
           labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
           labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
-          labelled(check(`${id}-ramp`, 'Ramp down', (phase.rampDown ?? phase.fromAbove) === true, (on) => update((p) => { delete p.fromAbove; setOrDrop(p, 'rampDown', on, false); })),
+          labelled(check(`${id}-down`, 'On down', (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true, (on) => update((p) => { delete p.fromAbove; delete p.rampDown; setOrDrop(p, 'onDown', on, false); })),
             'Only when the draw falls into the range, not when it rises into it'),
           check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
           labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),

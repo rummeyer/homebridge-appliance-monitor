@@ -440,7 +440,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
    */
   #phaseTrackers(device: DeviceConfig): PhaseTracker[] {
     const trackers = (device.phases ?? []).map((phase) => new PhaseTracker(phase));
-    if (this.#recorder && device.phases?.some(({ rampDown }) => rampDown)) {
+    if (this.#recorder && device.phases?.some(({ onDown }) => onDown)) {
       const now = Date.now();
       const samples = readSamples(this.#recorder.dir, device.name, now - RECALL_MS, now);
       for (const tracker of trackers) {

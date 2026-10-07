@@ -154,28 +154,28 @@ test('a phase only from above is the machine resting once done, not switched on 
     'without it, both',
   );
   assert.deepEqual(
-    track(new PhaseTracker({ ...gewaschen, rampDown: true }), washDay, 3100).map(({ active, at }) => [active, at / S]),
+    track(new PhaseTracker({ ...gewaschen, onDown: true }), washDay, 3100).map(({ active, at }) => [active, at / S]),
     [[true, 2025], [false, 3015]],
   );
 });
 
 test('a draw that rose into the band counts once it has come down into it from above', () => {
-  const phase = new PhaseTracker({ ...gewaschen, rampDown: true });
+  const phase = new PhaseTracker({ ...gewaschen, onDown: true });
   // Loaded at 3 W, the door opened again (10 W, above), back to 3 W.
   const changes = track(phase, [[0, 0], [10, 3], [100, 10], [105, 3]], 200);
   assert.deepEqual(changes.map(({ active, at }) => [active, at / S]), [[true, 130]]);
 });
 
 test('after a restart, the recording tells where the draw came from', () => {
-  const loading = new PhaseTracker({ ...gewaschen, rampDown: true });
+  const loading = new PhaseTracker({ ...gewaschen, onDown: true });
   loading.recall([{ watts: 0 }, { watts: 3.2 }]);
   assert.deepEqual(track(loading, [[0, 3.2]], 100), [], 'risen from nothing before the restart');
 
-  const done = new PhaseTracker({ ...gewaschen, rampDown: true });
+  const done = new PhaseTracker({ ...gewaschen, onDown: true });
   done.recall([{ watts: 30 }, { watts: 4.2 }, { watts: 3.2 }]);
   assert.deepEqual(track(done, [[0, 3.2]], 100).map(({ active, at }) => [active, at / S]), [[true, 25]]);
 
-  const unknown = new PhaseTracker({ ...gewaschen, rampDown: true });
+  const unknown = new PhaseTracker({ ...gewaschen, onDown: true });
   assert.deepEqual(track(unknown, [[0, 3.2]], 100).map(({ active, at }) => [active, at / S]), [[true, 25]],
     'nothing recorded: a false alarm rather than none');
 });

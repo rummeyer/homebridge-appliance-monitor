@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.2] — 2026-10-07
+
+### Changed
+
+- The phase option is called **On down** now, on the settings page and in
+  the config (`onDown`). A phase that still has `rampDown` (1.1.1) or
+  `fromAbove` (1.1.0) keeps working, and the settings page writes it as
+  `onDown` once the option is changed there.
+- The checkboxes of a phase are spaced evenly.
+
 ## [1.1.1] — 2026-10-07
 
 ### Changed
@@ -469,7 +479,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.0.2...v1.0.3
