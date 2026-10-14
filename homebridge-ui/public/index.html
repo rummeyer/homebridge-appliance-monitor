@@ -89,7 +89,6 @@
   <div class="card-body">
     <h5 class="card-title mb-4">Energy and counts</h5>
     <div id="om-stats"></div>
-    <p class="om-hint mb-0" id="om-stats-note">Saved every five minutes.</p>
     <p class="om-hint mb-0 om-hidden" id="om-stats-none">No plugs configured yet.</p>
   </div>
 </div>
@@ -112,7 +111,6 @@
         .filter((device) => typeof device?.name === 'string' && device.name.trim())
         .map((device) => ({ name: device.name.trim(), phases: device.phases ?? [] }));
       document.getElementById('om-stats-none').classList.toggle('om-hidden', devices.length > 0);
-      document.getElementById('om-stats-note').classList.toggle('om-hidden', devices.length === 0);
       box.innerHTML = '';
       if (devices.length === 0) {
         return;
@@ -126,7 +124,7 @@
         return;
       }
 
-      const { element, notes } = statisticsTable(table, {
+      const element = statisticsTable(table, {
         className: 'om-table',
         decorate: (first, name) => {
           const pick = document.createElement('span');
@@ -145,12 +143,6 @@
       reset.className = 'om-reset';
       reset.append(resetControl(element));
       box.append(reset);
-      for (const text of notes) {
-        const note = document.createElement('p');
-        note.className = 'om-hint mt-2 mb-1';
-        note.textContent = text;
-        box.append(note);
-      }
     }
 
     /**

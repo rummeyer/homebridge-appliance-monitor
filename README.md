@@ -361,11 +361,11 @@ and **Last Year**, one row per plug and the total below.
 
 Today counts from a plug's first reading of the day, so a plug added at noon
 shows its afternoon. A week, a month or a year a plug joined partway through
-is shown from the day it was added, marked ¹ as only part of the period: a plug
-added on Wednesday 30 September 2026 shows the 30th as last month,
-Wednesday to Sunday as last week, and, from 1 January 2027, 30 September to
-31 December as last year. Where some plugs have a value and others do not
-yet, the total adds up those that have, and is marked with an asterisk.
+is shown from the day it was added: a plug added on Wednesday 30 September
+2026 shows the 30th as last month, Wednesday to Sunday as last week, and,
+from 1 January 2027, 30 September to 31 December as last year. Where some
+plugs have a value and others do not yet, the total adds up those that have.
+The tables do not mark either; keep it in mind for a plug added recently.
 
 The **Last Cycle** column shows what each appliance used in its last
 cycle, from the moment it counted as running to the moment it finished.
@@ -407,8 +407,7 @@ look, after Apple's Home app:
 - the **power chart** of all plugs together, or of the appliance picked —
   click its tile, or pick it from the list. It opens on all plugs and the
   last 6 hours; the time picked is kept for the next visit;
-- the **statistics**, as on the Statistics tab, without its marks for
-  periods counted only in part; see [Statistics](#statistics).
+- the **statistics**, as on the Statistics tab.
 
 It updates itself every few seconds. On a phone, the tiles are two side by
 side:

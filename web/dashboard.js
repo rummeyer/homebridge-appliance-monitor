@@ -273,8 +273,7 @@
       $('stats').replaceChildren(el('p', 'muted', 'No plugs configured.'));
       return;
     }
-    // Without ¹ and * and their notes: the README explains them, and the page stays clean.
-    $('stats').replaceChildren(statisticsTable(table, { dates: true, marks: false }).element);
+    $('stats').replaceChildren(statisticsTable(table, { dates: true }));
   }
 
   // ---- Refresh ---------------------------------------------------------------

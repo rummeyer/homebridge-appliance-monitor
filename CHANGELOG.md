@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.3] — 2026-10-14
+
+### Changed
+
+- The Statistics tab of the settings page leaves out the marks ¹ and * and
+  their notes too, and "Saved every five minutes": the README says how a
+  period a plug joined partway through is counted.
+
 ## [1.4.2] — 2026-10-14
 
 ### Changed
@@ -587,7 +595,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.2...v1.4.0

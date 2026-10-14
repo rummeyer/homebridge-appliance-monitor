@@ -38,12 +38,12 @@
   }
 
   /**
-   * The statistics as a table, and the notes its marks need. `dates` puts
-   * each period's dates under its name; `decorate(cell, name)` adds to the
-   * first cell of a row, as the settings page does its reset checkbox;
-   * `marks: false` leaves out ¹ and *, for a page without the notes.
+   * The statistics as a table. `dates` puts each period's dates under its
+   * name; `decorate(cell, name)` adds to the first cell of a row, as the
+   * settings page does its reset checkbox. A period counted only in part is
+   * not marked: the README says how such a period is counted.
    */
-  function statisticsTable(table, { className = '', dates = false, decorate, marks = true } = {}) {
+  function statisticsTable(table, { className = '', dates = false, decorate } = {}) {
     const element = document.createElement('table');
     element.className = className;
     const head = element.createTHead().insertRow();
@@ -60,11 +60,11 @@
     cell(head, 'Count', 'th');
 
     const body = element.createTBody();
-    for (const [index, { name, values, partial }] of table.rows.entries()) {
+    for (const [index, { name, values }] of table.rows.entries()) {
       const row = body.insertRow();
       const first = cell(row, name);
       decorate?.(first, name);
-      values.forEach((value, column) => cell(row, `${kwh(value)}${marks && value !== null && partial[column] ? ' ¹' : ''}`));
+      values.forEach((value) => cell(row, kwh(value)));
       const last = table.lastCycles?.[index];
       const lastCell = cell(row, last ? kwh(last.wattHours) : '–');
       if (last) {
@@ -76,19 +76,10 @@
     const { total } = table;
     const foot = element.createTFoot().insertRow();
     cell(foot, 'Total');
-    total.values.forEach((value, column) => {
-      const marked = marks ? `${total.partial[column] ? ' ¹' : ''}${total.missing[column] ? ' *' : ''}` : '';
-      cell(foot, value === null ? '' : `${kwh(value)}${marked}`);
-    });
+    total.values.forEach((value) => cell(foot, kwh(value)));
     cell(foot, ''); // last cycles of different appliances are no total
     cell(foot, ''); // counts of different things do not add up
-
-    const shown = (flags) => total.values.some((value, column) => value !== null && flags[column]);
-    const notes = [
-      [total.partial, '¹ Only part of the period, from the day the plug was added.'],
-      [total.missing, '* Without plugs not counted for the whole period.'],
-    ].filter(([flags]) => shown(flags)).map(([, text]) => text);
-    return { element, notes };
+    return element;
   }
 
   /**
