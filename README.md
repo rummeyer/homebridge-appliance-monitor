@@ -160,8 +160,8 @@ log shows it — Homebridge makes up random ones — or `"endpoint"` the number:
 
 ```json
 "devices": [
-  { "name": "Waschmaschine", "pairingCode": "0511-113-1787", "deviceId": "48eUbkxXXLMxcjudr9JJbFjPg2pbAscV" },
-  { "name": "Trockner", "pairedWith": "Waschmaschine", "deviceId": "E1Vly63zwluCvT2JIXFIK4DIdoou2CpS" }
+  { "name": "Waschmaschine", "pairingCode": "3497-011-2332", "deviceId": "Qk2v8RfJpX0aLm3TzN7cYw5uHd1eGbSo" },
+  { "name": "Trockner", "pairedWith": "Waschmaschine", "deviceId": "Vt9hB4xMnK6pZq2RjL8wEy0sFa3cUdGi" }
 ]
 ```
 
