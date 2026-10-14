@@ -216,7 +216,7 @@
       parts.push(`<rect x="${PAD.left}" y="${y + 2}" width="${plotW}" height="${STRIP_H - 4}" rx="4" class="om-strip"/>`);
       for (const [start, end] of spansOf.get(phase.name) ?? stretches(points, to, phase.min, phase.max)) {
         parts.push(
-          `<rect x="${f(xOf(start))}" y="${y + 2}" width="${f(Math.max(3, xOf(end) - xOf(start)))}" height="${STRIP_H - 4}" rx="3" fill="${phase.colour}"><title>${escape(`${phase.name}: ${new Date(start).toLocaleTimeString()} – ${new Date(end).toLocaleTimeString()}`)}</title></rect>`,
+          `<rect x="${f(xOf(start))}" y="${y + 2}" width="${f(Math.max(3, xOf(end) - xOf(start)))}" height="${STRIP_H - 4}" rx="3" fill="${phase.colour}" class="om-span"><title>${escape(`${phase.name}: ${new Date(start).toLocaleTimeString()} – ${new Date(end).toLocaleTimeString()}`)}</title></rect>`,
         );
       }
       parts.push(`<text x="${PAD.left - 8}" y="${y + 13}" text-anchor="end" fill="${phase.colour}" class="om-strip-label">${escape(phase.name)}</text>`);

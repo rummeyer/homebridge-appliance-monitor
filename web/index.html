@@ -157,6 +157,11 @@
     /* The phases as one line of text, as the Home app has its status, rather than pills. */
     [data-theme="home"] .tile .chips { display: block; margin-top: 1px; }
     [data-theme="home"] .chip { background: none; padding: 0; border-radius: 0; font-size: .8rem; color: var(--home); }
+    /* Phases in one colour that reads on the wallpaper's browns, rather than
+       the light and dark looks' many: black, in the tiles and on the chart. */
+    [data-theme="home"] { --phase: #111; }
+    [data-theme="home"] .om-phase { fill: var(--phase); fill-opacity: .06; stroke: var(--phase); stroke-opacity: .45; }
+    [data-theme="home"] .om-phase-label, [data-theme="home"] .om-strip-label, [data-theme="home"] .om-span { fill: var(--phase); }
     [data-theme="home"] .chip + .chip::before { content: " · "; }
     [data-theme="home"] button.tile:hover { border-color: rgba(255,255,255,.35); }
     [data-theme="home"] .tile.chosen { border-color: rgba(255,255,255,.95); }
@@ -164,7 +169,7 @@
     [data-theme="home"] .tile.running { background: rgba(255,255,255,.95); color: #1c1c1e; }
     [data-theme="home"] .tile.running .icon { background: var(--home); color: rgba(255,255,255,.6); --hole: #d9a400; }
     [data-theme="home"] .tile.running .state, [data-theme="home"] .tile.running .detail { color: #6e6e73; }
-    [data-theme="home"] .tile.running .chip { background: none; color: #a67c00; }
+    [data-theme="home"] .tile.running .chip { background: none; color: var(--phase); font-weight: 700; }
     [data-theme="home"] .tile.running.chosen { border-color: var(--home); }
     [data-theme="home"] .panel { padding: 18px 20px; }
     [data-theme="home"] select { background: rgba(255,255,255,.16); border-color: transparent; border-radius: 12px; }

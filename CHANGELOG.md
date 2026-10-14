@@ -6,10 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.4] — 2026-10-14
+
 ### Changed
 
 - The Statistics tab of the settings page is headed **Energy**, as on the
   dashboard, instead of "Energy and counts".
+- In the dashboard's Home look the phases are black, in the tiles and on
+  the chart, rather than in colours that hardly read on its browns.
 
 ## [1.4.3] — 2026-10-14
 
@@ -600,7 +604,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.4...HEAD
+[1.4.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.0...v1.4.1
