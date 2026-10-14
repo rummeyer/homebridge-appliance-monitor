@@ -40,9 +40,10 @@
   /**
    * The statistics as a table, and the notes its marks need. `dates` puts
    * each period's dates under its name; `decorate(cell, name)` adds to the
-   * first cell of a row, as the settings page does its reset checkbox.
+   * first cell of a row, as the settings page does its reset checkbox;
+   * `marks: false` leaves out ¹ and *, for a page without the notes.
    */
-  function statisticsTable(table, { className = '', dates = false, decorate } = {}) {
+  function statisticsTable(table, { className = '', dates = false, decorate, marks = true } = {}) {
     const element = document.createElement('table');
     element.className = className;
     const head = element.createTHead().insertRow();
@@ -63,7 +64,7 @@
       const row = body.insertRow();
       const first = cell(row, name);
       decorate?.(first, name);
-      values.forEach((value, column) => cell(row, `${kwh(value)}${value !== null && partial[column] ? ' ¹' : ''}`));
+      values.forEach((value, column) => cell(row, `${kwh(value)}${marks && value !== null && partial[column] ? ' ¹' : ''}`));
       const last = table.lastCycles?.[index];
       const lastCell = cell(row, last ? kwh(last.wattHours) : '–');
       if (last) {
@@ -76,8 +77,8 @@
     const foot = element.createTFoot().insertRow();
     cell(foot, 'Total');
     total.values.forEach((value, column) => {
-      const marks = `${total.partial[column] ? ' ¹' : ''}${total.missing[column] ? ' *' : ''}`;
-      cell(foot, value === null ? '' : `${kwh(value)}${marks}`);
+      const marked = marks ? `${total.partial[column] ? ' ¹' : ''}${total.missing[column] ? ' *' : ''}` : '';
+      cell(foot, value === null ? '' : `${kwh(value)}${marked}`);
     });
     cell(foot, ''); // last cycles of different appliances are no total
     cell(foot, ''); // counts of different things do not add up

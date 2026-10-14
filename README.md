@@ -407,8 +407,8 @@ look, after Apple's Home app:
 - the **power chart** of all plugs together, or of the appliance picked —
   click its tile, or pick it from the list. It opens on all plugs and the
   last 6 hours; the time picked is kept for the next visit;
-- the **statistics**, as on the Statistics tab, without its notes: what ¹
-  and * mean is under [Statistics](#statistics).
+- the **statistics**, as on the Statistics tab, without its marks for
+  periods counted only in part; see [Statistics](#statistics).
 
 It updates itself every few seconds. On a phone, the tiles are two side by
 side:
