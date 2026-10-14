@@ -182,19 +182,29 @@ export interface Statistics {
    * Watt-hours per plug and period; null where the plug has none of it.
    * `partial` marks a week, month or year it was only counted for part of.
    */
-  rows: { name: string; values: (number | null)[]; partial: boolean[] }[];
+  rows: { name: string; values: (number | null)[]; partial: boolean[]; partOf?: string }[];
   /**
-   * The sum of each column over the plugs that have a value in it. `missing`
-   * says some plug has none — one added later, say — so the sum leaves it
-   * out; `partial` that it includes a part of a period.
+   * The sum of each column over the plugs that have a value in it and count
+   * in the total. `missing` says some such plug has none — one added later,
+   * say — so the sum leaves it out; `partial` that it includes a part of a
+   * period.
    */
   total: { values: (number | null)[]; missing: boolean[]; partial: boolean[] };
 }
 
-/** The table on the settings page, for the plugs named, in that order. */
-export function statistics(ledger: Record<string, DeviceEnergy>, names: string[], now: Date): Statistics {
+/**
+ * The table on the settings page, for the plugs named, in that order. A plug
+ * given a `partOf` is measured by that other one too, and so has its row but
+ * stays out of the total.
+ */
+export function statistics(
+  ledger: Record<string, DeviceEnergy>,
+  plugs: (string | { name: string; partOf?: string })[],
+  now: Date,
+): Statistics {
   const periods = lastPeriods(now);
-  const rows = names.map((name) => {
+  const rows = plugs.map((plug) => {
+    const { name, partOf } = typeof plug === 'string' ? { name: plug, partOf: undefined } : plug;
     const energy = ledger[name];
     const cells = periods.map((period) => {
       if (!energy) {
@@ -211,15 +221,18 @@ export function statistics(ledger: Record<string, DeviceEnergy>, names: string[]
       }
       return { value: part, partial: period.kind !== 'day' };
     });
-    return { name, values: cells.map(({ value }) => value), partial: cells.map(({ partial }) => partial) };
+    const values = cells.map(({ value }) => value);
+    const partial = cells.map(({ partial }) => partial);
+    return partOf ? { name, values, partial, partOf } : { name, values, partial };
   });
+  const counted = rows.filter(({ partOf }) => !partOf);
   const total = {
     values: periods.map((_, column) => {
-      const present = rows.map(({ values }) => values[column]).filter((value) => value !== null);
+      const present = counted.map(({ values }) => values[column]).filter((value) => value !== null);
       return present.length > 0 ? present.reduce((sum: number, value) => sum + value!, 0) : null;
     }),
-    missing: periods.map((_, column) => rows.some(({ values }) => values[column] === null)),
-    partial: periods.map((_, column) => rows.some(({ partial }) => partial[column])),
+    missing: periods.map((_, column) => counted.some(({ values }) => values[column] === null)),
+    partial: periods.map((_, column) => counted.some(({ partial }) => partial[column])),
   };
   return { periods: periods.map(({ kind, label, dates }) => ({ kind, label, dates })), rows, total };
 }

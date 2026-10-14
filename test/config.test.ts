@@ -9,6 +9,8 @@ import {
   usablePhases,
   usablePollSeconds,
   pairedWithProblem,
+  partOfProblem,
+  countsInTotal,
   validateDeviceConfig,
 } from '../src/config.ts';
 import type { PhaseConfig } from '../src/phases.ts';
@@ -197,4 +199,28 @@ test('only a pairing of its own can be shared, by an appliance that is there', (
   assert.match(pairedWithProblem({ name: 'Dryer', pairedWith: 'Dryer' }, [washer])!, /no other appliance/);
   const lamp = { name: 'Lamp', pairedWith: 'Dryer' };
   assert.match(pairedWithProblem(lamp, [washer, dryer, lamp])!, /itself paired with "Washer"/);
+});
+
+test('part of another appliance: named, not itself, and not round in a circle', () => {
+  const desk = { name: 'Desk' };
+  const lamp = { name: 'Lamp', partOf: 'Desk' };
+  assert.equal(partOfProblem(lamp, [desk, lamp]), undefined);
+  assert.equal(countsInTotal(lamp, [desk, lamp]), false);
+  assert.equal(countsInTotal(desk, [desk, lamp]), true);
+
+  assert.match(partOfProblem({ name: 'Lamp', partOf: 'Fridge' }, [desk])!, /no other appliance/);
+  assert.match(partOfProblem({ name: 'Lamp', partOf: 'Lamp' }, [desk])!, /no other appliance/);
+  assert.match(partOfProblem({ name: 'Lamp', partOf: 3 as unknown as string }, [desk])!, /no appliance name/);
+
+  const a = { name: 'A', partOf: 'B' };
+  const b = { name: 'B', partOf: 'A' };
+  assert.match(partOfProblem(a, [a, b])!, /leads back round/);
+  assert.equal(countsInTotal(a, [a, b]), true, 'a circle is counted rather than lost');
+
+  // A chain is fine: the lamp is in the strip, the strip in the room meter.
+  const room = { name: 'Room' };
+  const strip = { name: 'Strip', partOf: 'Room' };
+  const bulb = { name: 'Bulb', partOf: 'Strip' };
+  assert.equal(partOfProblem(bulb, [room, strip, bulb]), undefined);
+  assert.equal(countsInTotal(bulb, [room, strip, bulb]), false);
 });

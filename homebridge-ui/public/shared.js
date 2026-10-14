@@ -60,9 +60,15 @@
     cell(head, 'Count', 'th');
 
     const body = element.createTBody();
-    for (const [index, { name, values }] of table.rows.entries()) {
+    for (const [index, { name, values, partOf }] of table.rows.entries()) {
       const row = body.insertRow();
       const first = cell(row, name);
+      if (partOf) {
+        // Says why the total is less than the rows add up to.
+        const small = document.createElement('small');
+        small.textContent = `part of ${partOf}, not in the total`;
+        first.append(small);
+      }
       decorate?.(first, name);
       values.forEach((value) => cell(row, kwh(value)));
       const last = table.lastCycles?.[index];

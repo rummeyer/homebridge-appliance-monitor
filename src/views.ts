@@ -5,7 +5,7 @@
  */
 import { join } from 'node:path';
 
-import { usablePhases } from './config.ts';
+import { countsInTotal, usablePhases } from './config.ts';
 import type { DeviceConfig } from './config.ts';
 import { shownCount } from './counts.ts';
 import { phaseSpans, sumSamples, thin } from './curve.ts';
@@ -73,7 +73,7 @@ export interface StatisticsTable extends Statistics {
 }
 
 /** The table for the plugs given, in that order, with what each has counted. */
-export function statisticsTable(dir: string | undefined, devices: Pick<DeviceConfig, 'name' | 'phases'>[], now = new Date()): StatisticsTable {
+export function statisticsTable(dir: string | undefined, devices: Pick<DeviceConfig, 'name' | 'phases' | 'partOf'>[], now = new Date()): StatisticsTable {
   const ledger = readData<Record<string, DeviceEnergy>>(dir, 'energy.json', {});
   const records = readData<Record<string, DeviceRecord>>(dir, 'devices.json', {});
   const counts = devices.map((device) => {
@@ -82,5 +82,9 @@ export function statisticsTable(dir: string | undefined, devices: Pick<DeviceCon
     return { label, count: counted?.count ?? 0, since: counted?.since ?? null };
   });
   const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
-  return { ...statistics(ledger, devices.map(({ name }) => name), now), counts, lastCycles };
+  // Only a partOf that holds: one naming nothing, or going round, is counted.
+  const plugs = devices.map((device) =>
+    countsInTotal(device, devices) ? { name: device.name } : { name: device.name, partOf: device.partOf!.trim() },
+  );
+  return { ...statistics(ledger, plugs, now), counts, lastCycles };
 }

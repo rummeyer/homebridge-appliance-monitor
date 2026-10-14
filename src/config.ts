@@ -37,6 +37,13 @@ export interface DeviceConfig {
   deviceId?: string;
   /** The same by endpoint number, for a device that has no UniqueID. */
   endpoint?: number;
+  /**
+   * Another appliance whose plug measures this one too: a lamp with a power
+   * reading of its own, say, plugged into a metered socket strip. It keeps
+   * its own figures, but is left out of every total, where it would
+   * otherwise be counted twice.
+   */
+  partOf?: string;
   /** A Running switch in HomeKit, on while the appliance runs. On by default. */
   runningSwitch?: boolean;
   /**
@@ -342,6 +349,40 @@ export function pairedWithProblem(device: DeviceConfig, devices: DeviceConfig[])
     return `"${name}" is paired with "${pairedWith}", which is itself paired with "${owner.pairedWith}"; name that one instead`;
   }
   return undefined;
+}
+
+/**
+ * What is wrong with an appliance's partOf, if anything: it has to name
+ * another appliance here, and following it on must not lead back round.
+ */
+export function partOfProblem(device: DeviceConfig, devices: DeviceConfig[]): string | undefined {
+  const { name, partOf } = device;
+  if (partOf === undefined || partOf === null || partOf === '') {
+    return undefined;
+  }
+  if (typeof partOf !== 'string') {
+    return `"${name}" has a partOf that is no appliance name`;
+  }
+  const seen = new Set<DeviceConfig>([device]);
+  for (let current = device; typeof current.partOf === 'string' && current.partOf.trim(); ) {
+    const whole = devices.find((other) => other.name === current.partOf!.trim());
+    if (!whole || whole === current) {
+      return current === device
+        ? `"${name}" is part of "${partOf}", which is no other appliance here`
+        : undefined;
+    }
+    if (seen.has(whole)) {
+      return `"${name}" is part of "${partOf}", which leads back round to "${whole.name}"`;
+    }
+    seen.add(whole);
+    current = whole;
+  }
+  return undefined;
+}
+
+/** Whether an appliance counts in the totals: not when another plug measures it too. */
+export function countsInTotal(device: DeviceConfig, devices: DeviceConfig[]): boolean {
+  return typeof device.partOf !== 'string' || !device.partOf.trim() || partOfProblem(device, devices) !== undefined;
 }
 
 export function duplicateNames(devices: DeviceConfig[]): string[] {

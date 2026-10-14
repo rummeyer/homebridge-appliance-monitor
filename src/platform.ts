@@ -14,6 +14,8 @@ import {
   usablePhases,
   usablePollSeconds,
   pairedWithProblem,
+  partOfProblem,
+  countsInTotal,
   parsePairingCode,
   validateDeviceConfig,
 } from './config.ts';
@@ -241,13 +243,22 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       this.log.error(`More than one plug is called "${name}"; only the first is used.`);
     }
     const unique = valid.filter((device, index) => valid.findIndex(({ name }) => name === device.name) === index);
-    return unique.filter((device) => {
+    const usable = unique.filter((device) => {
       const problem = pairedWithProblem(device, unique);
       if (problem) {
         this.log.error(`Ignoring plug: ${problem}`);
       }
       return !problem;
     });
+    // Not a reason to drop the plug: it is then counted in the totals, as it
+    // was before the setting existed.
+    for (const device of usable) {
+      const problem = partOfProblem(device, usable);
+      if (problem) {
+        this.log.warn(`${problem}, so it is counted in the totals.`);
+      }
+    }
+    return usable;
   }
 
   async #setUp(controller: MatterController, registry: NodeRegistry, device: DeviceConfig, sharing: DeviceConfig[] = []): Promise<void> {
@@ -473,13 +484,16 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   /** What each appliance is doing now, for the dashboard. */
   #live(): LiveAppliance[] {
     const now = Date.now();
-    return this.#devices.map(({ name }) => {
+    return this.#devices.map((device) => {
+      const { name } = device;
+      const partOf = countsInTotal(device, this.#devices) ? {} : { partOf: device.partOf!.trim() };
       const appliance = this.#appliances.get(name);
       if (!appliance) {
-        return { name, paired: false, phases: [] };
+        return { name, paired: false, phases: [], ...partOf };
       }
       const { monitor } = appliance;
       return {
+        ...partOf,
         name,
         paired: true,
         reachable: appliance.reachable,

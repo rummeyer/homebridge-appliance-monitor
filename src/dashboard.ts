@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 
+import { countsInTotal } from './config.ts';
 import type { DeviceConfig } from './config.ts';
 import type { CycleProgress, CycleState } from './cycle.ts';
 import { chartHours, curve, statisticsTable, totalCurve } from './views.ts';
@@ -33,6 +34,8 @@ export interface LiveAppliance {
   phases: string[];
   /** What the running cycle has used so far. */
   cycle?: CycleProgress;
+  /** The appliance whose plug measures this one too, so the total leaves it out. */
+  partOf?: string;
 }
 
 export interface DashboardSource {
@@ -143,7 +146,14 @@ export class Dashboard {
         return { ...curve(this.#source.dataPath, device.name, chartHours(url.searchParams.get('hours')), phases), levels: [], phases };
       }
       case '/api/total':
-        return { ...totalCurve(this.#source.dataPath, devices.map(({ name }) => name), chartHours(url.searchParams.get('hours'))), phases: [] };
+        return {
+          ...totalCurve(
+            this.#source.dataPath,
+            devices.filter((device) => countsInTotal(device, devices)).map(({ name }) => name),
+            chartHours(url.searchParams.get('hours')),
+          ),
+          phases: [],
+        };
       default:
         return undefined;
     }

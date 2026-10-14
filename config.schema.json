@@ -45,6 +45,11 @@
               "type": "string",
               "description": "Which device of a bridge this appliance follows: the bridged device's UniqueID, which the log lists after connecting. Empty: every reading of the plug counts."
             },
+            "partOf": {
+              "title": "Part of",
+              "type": "string",
+              "description": "The name of another appliance whose plug also measures this one: a lamp that reports its own watts, plugged into a metered socket strip, say. It keeps its own figures but stays out of every total, so it is not counted twice."
+            },
             "endpoint": {
               "title": "Endpoint",
               "type": "integer",

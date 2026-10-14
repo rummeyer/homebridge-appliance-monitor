@@ -75,8 +75,9 @@
   /** Whether what a plug last said can be counted as what it draws now. */
   const current = (appliance) => appliance.paired && appliance.reachable !== false && typeof appliance.watts === 'number';
 
-  /** All plugs together, and how many appliances run. */
-  function totalTile(appliances) {
+  /** All plugs together, and how many appliances run. One measured by another plug too is in that one already. */
+  function totalTile(all) {
+    const appliances = all.filter((appliance) => !appliance.partOf);
     const counted = appliances.filter(current);
     const running = appliances.filter((appliance) => current(appliance) && appliance.state === 'running').length;
     const tile = el('button', 'card tile total');
@@ -140,6 +141,8 @@
       first.append(el('span', 'so-far', ' so far'));
       line.append(first, el('span', '', peak));
       button.append(line);
+    } else if (appliance.partOf) {
+      button.append(el('div', 'detail', `Part of ${appliance.partOf}`));
     }
     button.addEventListener('click', () => choose(appliance.name));
     return button;

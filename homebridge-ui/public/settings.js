@@ -313,6 +313,12 @@
       const codeError = (value) => (value.trim() && !PAIRING_CODE.test(value) ? 'Not a Matter setup code: eleven digits, or MT:…' : '');
 
       const nameInput = text(device.name, NEW_NAME, (value, input) => {
+        // Unlike a pairing, being part of it needs nothing redone, so it follows the rename.
+        for (const other of config.devices) {
+          if (other !== device && other.partOf && other.partOf === device.name) {
+            other.partOf = value;
+          }
+        }
         device.name = value;
         showError(input, nameError(value));
         // Keep the list in step without rebuilding the field being typed in.
@@ -368,6 +374,22 @@
           'Which device behind the bridge this appliance follows.')
         : null;
 
+      // For something measured twice: a lamp reporting its own watts, plugged
+      // into a metered socket that is an appliance here too.
+      const wholes = config.devices.filter((d) => d !== device && d.name).map((d) => d.name).sort(byName);
+      const partOfOptions = [['', 'Nothing else — counted in the total'], ...wholes.map((name) => [name, `Part of ${name}`])];
+      if (device.partOf && !wholes.includes(device.partOf)) {
+        partOfOptions.push([device.partOf, `Part of ${device.partOf} (not found)`]);
+      }
+      const partOfField = wholes.length || device.partOf
+        ? field('Part of',
+          choice(device.partOf ?? '', partOfOptions, (value) => {
+            setOrDrop(device, 'partOf', value);
+            changed();
+          }),
+          'Its plug is also measured by another appliance here, so the totals leave it out.')
+        : null;
+
       return el('div', {},
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
@@ -377,7 +399,8 @@
             device.pairedWith ? null : field('Pairing code', codeInput,
               isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
               codeError(device.pairingCode ?? '')),
-            deviceField)),
+            deviceField,
+            partOfField)),
 
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'In HomeKit'),

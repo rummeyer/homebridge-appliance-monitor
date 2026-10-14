@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-10-14
+
+### Added
+
+- **Part of**: an appliance whose plug is measured by another one too — a
+  lamp reporting its own watts, plugged into a metered socket strip — keeps
+  its own row and tile but stays out of the total in the statistics, the
+  Total tile and the Total chart, so it is not counted twice (`partOf`).
+
 ## [1.5.0] — 2026-10-14
 
 ### Added

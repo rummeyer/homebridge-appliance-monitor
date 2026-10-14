@@ -164,3 +164,20 @@ test('a reset empties the days, and counts on from then', () => {
   meter.tick(local('2026-10-01T13:00:00'));
   assert.deepEqual(meter.record.days, { '2026-10-01': 100 });
 });
+
+test('an appliance that is part of another keeps its row but stays out of the total', () => {
+  const ledger: Record<string, DeviceEnergy> = {
+    Desk: { since: local('2026-10-01T00:00:00'), days: { '2026-10-05': 40 } },
+    Lamp: { since: local('2026-10-05T08:00:00'), days: { '2026-10-05': 10 } },
+  };
+  const table = statistics(ledger, [{ name: 'Desk' }, { name: 'Lamp', partOf: 'Desk' }], new Date(local('2026-10-05T09:00:00')));
+
+  assert.deepEqual(table.rows[1], {
+    name: 'Lamp',
+    values: [10, null, null, null],
+    partial: [false, false, false, false],
+    partOf: 'Desk',
+  });
+  assert.equal(table.total.values[0], 40, 'the lamp is in the desk already');
+  assert.deepEqual(table.total.missing, [false, false, true, true], 'the lamp having no week is no gap in the total');
+});
