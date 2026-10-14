@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.5] — 2026-10-14
+
+### Changed
+
+- The Home look's phases are white on the chart, which reads better on its
+  browns than black; on a running tile, white itself, they are dark grey.
+
 ## [1.4.4] — 2026-10-14
 
 ### Changed
@@ -604,7 +611,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.4...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.5...HEAD
+[1.4.5]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.1...v1.4.2
