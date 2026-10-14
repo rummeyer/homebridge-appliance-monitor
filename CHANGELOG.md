@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-10-14
+
+### Changed
+
+- The dashboard is drawn a fifth smaller, as if zoomed out twice, except on
+  a phone.
+- Its statistics are headed **Energy** instead of "Energy and counts".
+
 ## [1.3.0] — 2026-10-14
 
 ### Added
@@ -549,7 +557,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.1...v1.2.2
