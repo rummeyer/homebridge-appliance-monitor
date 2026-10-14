@@ -127,26 +127,41 @@ connected services.
 A Matter bridge — homebridge-shelly-matter, say, with several metering
 Shellys behind it — is paired once and carries many devices. So is a plug
 with several channels, each measuring on its own endpoint. Without a choice,
-every reading of the node would count towards one appliance.
+every reading of the node would count towards one appliance; so each
+appliance chooses its device.
 
-1. Pair the bridge with one appliance, as above: in the Home app, **Turn On
-   Pairing Mode** on the bridge, and use that code.
-2. After the restart, the log lists what measures power behind it, by name,
-   endpoint and UniqueID, and warns that all of it counts as one appliance.
-3. On that appliance, choose its **Device** behind the bridge.
-4. For each further device, **+ Add** an appliance, set **Pairing** to
-   *Shared with* the first one — no code of its own — and choose its
-   **Device**. Restart once all are set.
+1. **Get the bridge's pairing code.** If the bridge is already in the Home
+   app, use **Turn On Pairing Mode** on it there, as for a plug. If it is
+   not, use its own setup code: for a Homebridge Matter bridge, in the
+   bridge's settings in the Homebridge UI, or in the log, under *Matter
+   commissioning information*. The log lists such a code for every Matter
+   bridge and accessory Homebridge runs, so take the one under the right
+   name. A bridge only for this plugin need not be in the Home app at all;
+   one that is shows its devices there as well, as tiles of their own.
+2. **Pair it with one appliance:** **+ Add**, a name, the code, save, and
+   restart the child bridge. The log shows `paired as node …`, then what
+   measures power behind the bridge, by name, endpoint and UniqueID, and a
+   warning that all of it counts as one appliance until a device is chosen.
+3. **Choose the devices.** Reopen the plugin settings: the appliance now
+   has a **Device** field listing them. Choose its own. For each further
+   device, **+ Add** an appliance, set **Pairing** to *Shared with* the
+   first one — no code of its own — and choose its **Device**. Save, and
+   restart the child bridge once more.
+4. The log now says, for each, `follows <device> (endpoint …, id …)`. An
+   appliance whose device is not found says so, with the list to choose
+   from, and counts nothing rather than everything.
 
 The choice is kept by the bridged device's UniqueID, which stays when the
 bridge renumbers its endpoints; a device without one is chosen by endpoint
-number. In config.json this is `"pairedWith"` (the appliance that paired the
-bridge), and `"deviceId"` or `"endpoint"`:
+number. The fields appear only where more than one device measures power,
+so a plain plug shows none of this. In config.json, `"pairedWith"` names the
+appliance that paired the bridge, and `"deviceId"` is the UniqueID as the
+log shows it — Homebridge makes up random ones — or `"endpoint"` the number:
 
 ```json
 "devices": [
-  { "name": "Waschmaschine", "pairingCode": "3497-011-2332", "deviceId": "shelly-plugs-a1b2c3" },
-  { "name": "Trockner", "pairedWith": "Waschmaschine", "deviceId": "shelly-plugs-d4e5f6" }
+  { "name": "Waschmaschine", "pairingCode": "0511-113-1787", "deviceId": "48eUbkxXXLMxcjudr9JJbFjPg2pbAscV" },
+  { "name": "Trockner", "pairedWith": "Waschmaschine", "deviceId": "E1Vly63zwluCvT2JIXFIK4DIdoou2CpS" }
 ]
 ```
 
