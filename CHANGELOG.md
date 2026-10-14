@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-10-14
+
+### Changed
+
+- Running is the accessory's primary service: shown as one tile in the Home
+  app, an appliance takes the icon of its Running switch, outlet or sensor,
+  not of a phase switch.
+
 ## [1.4.0] — 2026-10-14
 
 ### Added
@@ -572,7 +580,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.2...v1.4.0
 [1.3.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.0...v1.3.1

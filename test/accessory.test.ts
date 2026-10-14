@@ -164,6 +164,7 @@ test('Running can be an outlet, on and in use while it runs, put back when tappe
   assert.equal(switchOf(accessory, 'running'), undefined, 'the switch is gone');
   const outlet = accessory.getServiceById(Service.Outlet, 'running')!;
   assert.equal(outlet.getCharacteristic(Characteristic.ConfiguredName).value, 'Washer Running');
+  assert.equal(outlet.isPrimaryService, true, 'the icon of the accessory as one tile');
   assert.equal(outlet.getCharacteristic(Characteristic.On).value, true);
   assert.equal(outlet.getCharacteristic(Characteristic.OutletInUse).value, true);
 

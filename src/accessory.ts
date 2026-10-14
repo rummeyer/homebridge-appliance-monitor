@@ -81,6 +81,9 @@ export class ApplianceAccessory {
         this.#running = service;
       }
     }
+    // What the appliance is, for HomeKit: in the Home app, an accessory shown
+    // as one tile takes its icon from it, not from the phase switches around it.
+    this.#running?.setPrimaryService(true);
     // Earlier versions had a Finished switch too, on for a moment when the
     // appliance finished: the moment Running goes off, so it told nothing more.
     this.#service(Service.Switch, 'finished', false, '');
