@@ -1,7 +1,7 @@
 import type { API, CharacteristicValue, PlatformAccessory, Service, WithUUID } from 'homebridge';
 
-import { showsRunning } from './config.ts';
-import type { DeviceConfig } from './config.ts';
+import { RUNNING_AS, showsRunning } from './config.ts';
+import type { DeviceConfig, RunningAs } from './config.ts';
 import type { CycleState } from './cycle.ts';
 
 /** What Matter's BasicInformation tells about the plug, for the Home app's details page. */
@@ -66,13 +66,20 @@ export class ApplianceAccessory {
     // up to date here. The Home app keeps a name given there.
     accessory.getService(Service.AccessoryInformation)?.updateCharacteristic(api.hap.Characteristic.Name, accessoryName(device));
 
-    // Running as a switch, or as an occupancy sensor — a desk is taken or
-    // free. Whichever it is not is removed, so changing it replaces it.
-    const occupancy = device.runningAs === 'occupancy';
-    this.#running = this.#service(Service.Switch, 'running', showsRunning(device) && !occupancy, `${device.name} Running`)
-      ?? this.#service(Service.OccupancySensor, 'running', showsRunning(device) && occupancy, `${device.name} Occupancy`);
-    if (!occupancy) {
-      this.#service(Service.OccupancySensor, 'running', false, '');
+    // Running as a switch, as an occupancy sensor — a desk is taken or
+    // free — or as an outlet, for its icon. Whichever it is not is removed,
+    // so changing it replaces it.
+    const as = RUNNING_AS.includes(device.runningAs!) ? device.runningAs! : 'switch';
+    const kinds: [RunningAs, WithUUID<typeof Service>, string][] = [
+      ['switch', Service.Switch, `${device.name} Running`],
+      ['occupancy', Service.OccupancySensor, `${device.name} Occupancy`],
+      ['outlet', Service.Outlet, `${device.name} Running`],
+    ];
+    for (const [kind, type, name] of kinds) {
+      const service = this.#service(type, 'running', showsRunning(device) && as === kind, name);
+      if (service) {
+        this.#running = service;
+      }
     }
     // Earlier versions had a Finished switch too, on for a moment when the
     // appliance finished: the moment Running goes off, so it told nothing more.
@@ -161,6 +168,10 @@ export class ApplianceAccessory {
       );
     } else {
       service?.updateCharacteristic(Characteristic.On, on);
+      if (service?.UUID === Service.Outlet.UUID) {
+        // What is plugged in is in use exactly while it runs.
+        service.updateCharacteristic(Characteristic.OutletInUse, on);
+      }
     }
   }
 
@@ -191,7 +202,7 @@ export class ApplianceAccessory {
       service.setCharacteristic(Characteristic.ConfiguredName, name);
       service.setCharacteristic(Characteristic.Name, name);
     }
-    if (type.UUID !== Service.Switch.UUID) {
+    if (type.UUID !== Service.Switch.UUID && type.UUID !== Service.Outlet.UUID) {
       return service;
     }
     // Restored services come back without handlers, so this is set every time.

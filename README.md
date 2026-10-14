@@ -156,8 +156,8 @@ difference. To tell something apart that the machine does after it has
 finished, a display staying on or a door opened, set up a
 [phase](#phases) for its power range.
 
-In HomeKit, Running is a switch that is on while the appliance runs, or an
-occupancy sensor for a desk. It goes off only when the appliance finishes, so
+In HomeKit, Running is a switch that is on while the appliance runs, an
+outlet if you prefer its icon, or an occupancy sensor for a desk. It goes off only when the appliance finishes, so
 "when Running turns off" is "when it is done". See
 [In the Home app](#in-the-home-app).
 
@@ -294,7 +294,12 @@ tell, to hang automations on:
   never before. An automation "when Washing machine Running turns off" runs
   once per cycle, when it is done: a notification, a light, an announcement
   on the HomePod. For a desk, Running can be an **occupancy sensor**
-  instead: taken while it draws power, free when not.
+  instead: taken while it draws power, free when not. Or an **outlet**, on
+  and in use while the appliance runs, for the outlet's icon. Switch and
+  outlet only show: tapping one switches nothing, and it goes back.
+  Do not put the Running outlet into a group with the real plug in the Home
+  app: the group shows on whenever the plug is, which is always, and tapping
+  the group switches the real plug off, mid-cycle.
 - **One switch per phase**: on while the phase lasts, "Bezug"
   say, or for a moment once it is over, for a phase with "shorter than".
 
@@ -496,7 +501,7 @@ config it writes looks like this:
 | `devices[].name` | — | The appliance. Its accessory is called "<name> Monitor", and its Running switch "<name> Running"; also the name in the log and the recordings. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
 | `devices[].runningSwitch` | `true` | Running in HomeKit, on while the appliance runs. |
-| `devices[].runningAs` | `switch` | `switch`, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
+| `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |

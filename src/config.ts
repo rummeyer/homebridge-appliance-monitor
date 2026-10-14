@@ -26,8 +26,9 @@ export interface DeviceConfig {
   /** A Running switch in HomeKit, on while the appliance runs. On by default. */
   runningSwitch?: boolean;
   /**
-   * How Running is shown: a switch (the default), or an occupancy sensor,
-   * which reads better for a desk — taken while it draws power, free when not.
+   * How Running is shown: a switch (the default), an occupancy sensor, which
+   * reads better for a desk — taken while it draws power, free when not — or
+   * an outlet, for the outlet's icon. All three only show; tapping changes nothing.
    */
   runningAs?: RunningAs;
   /** What runningSwitch was called while it was a sensor. */
@@ -62,8 +63,8 @@ export interface DeviceConfig {
 
 export const MIN_POLL_SECONDS = 2;
 
-export type RunningAs = 'switch' | 'occupancy';
-export const RUNNING_AS: readonly RunningAs[] = ['switch', 'occupancy'];
+export type RunningAs = 'switch' | 'occupancy' | 'outlet';
+export const RUNNING_AS: readonly RunningAs[] = ['switch', 'occupancy', 'outlet'];
 
 /** Whether the appliance has a Running switch; the earlier sensor setting counts too. */
 export const showsRunning = (device: DeviceConfig): boolean => (device.runningSwitch ?? device.runningSensor) !== false;

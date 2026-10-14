@@ -47,9 +47,10 @@
               "default": "switch",
               "oneOf": [
                 { "title": "Switch", "enum": ["switch"] },
-                { "title": "Occupancy sensor", "enum": ["occupancy"] }
+                { "title": "Occupancy sensor", "enum": ["occupancy"] },
+                { "title": "Outlet", "enum": ["outlet"] }
               ],
-              "description": "An occupancy sensor reads better for a desk: taken while it draws power, free when not. Changing it replaces it in HomeKit, with any automation on it."
+              "description": "An occupancy sensor reads better for a desk: taken while it draws power, free when not. An outlet only looks like one: tapping it switches nothing. Changing it replaces it in HomeKit, with any automation on it."
             },
             "pollSeconds": {
               "title": "Polling interval (seconds)",

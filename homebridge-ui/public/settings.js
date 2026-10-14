@@ -341,11 +341,11 @@
           el('h6', {}, 'In HomeKit'),
           el('div', { class: 'om-set-grid' },
             field('Running',
-              choice(!showing(device, 'running') ? 'none' : device.runningAs === 'occupancy' ? 'occupancy' : 'switch',
-                [['switch', 'Switch — on while it runs'], ['occupancy', 'Occupancy sensor — taken while it draws'], ['none', 'Not shown']],
+              choice(!showing(device, 'running') ? 'none' : ['occupancy', 'outlet'].includes(device.runningAs) ? device.runningAs : 'switch',
+                [['switch', 'Switch — on while it runs'], ['outlet', 'Outlet — on while it runs'], ['occupancy', 'Occupancy sensor — taken while it draws'], ['none', 'Not shown']],
                 (value) => {
                   setSwitch(device, 'running', value !== 'none');
-                  setOrDrop(device, 'runningAs', value === 'occupancy' ? 'occupancy' : undefined);
+                  setOrDrop(device, 'runningAs', ['occupancy', 'outlet'].includes(value) ? value : undefined);
                   changed();
                 }),
               'Changing it replaces it in HomeKit, with its automations.'))),

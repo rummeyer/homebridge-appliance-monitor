@@ -156,6 +156,32 @@ test('Running can be an occupancy sensor, taken while it runs; changing it repla
   assert.equal(switchOf(accessory, 'running'), undefined);
 });
 
+test('Running can be an outlet, on and in use while it runs, put back when tapped', async () => {
+  const accessory = platformAccessory();
+  const washer: DeviceConfig = { name: 'Washer' };
+  new ApplianceAccessory(api, accessory, washer, 'idle');
+  const handle = new ApplianceAccessory(api, accessory, { ...washer, runningAs: 'outlet' }, 'running');
+  assert.equal(switchOf(accessory, 'running'), undefined, 'the switch is gone');
+  const outlet = accessory.getServiceById(Service.Outlet, 'running')!;
+  assert.equal(outlet.getCharacteristic(Characteristic.ConfiguredName).value, 'Washer Running');
+  assert.equal(outlet.getCharacteristic(Characteristic.On).value, true);
+  assert.equal(outlet.getCharacteristic(Characteristic.OutletInUse).value, true);
+
+  // Tapped off in the Home app while it runs: it shows the truth again, and
+  // nothing is switched, as the outlet only shows.
+  await outlet.getCharacteristic(Characteristic.On).handleSetRequest(false);
+  await wait(500);
+  assert.equal(outlet.getCharacteristic(Characteristic.On).value, true);
+
+  handle.update('idle');
+  assert.equal(outlet.getCharacteristic(Characteristic.On).value, false);
+  assert.equal(outlet.getCharacteristic(Characteristic.OutletInUse).value, false);
+
+  new ApplianceAccessory(api, accessory, { ...washer, runningAs: 'occupancy' }, 'idle');
+  assert.equal(accessory.getServiceById(Service.Outlet, 'running'), undefined, 'replaced');
+  assert.ok(accessory.getServiceById(Service.OccupancySensor, 'running'));
+});
+
 test('a phase switch still called by its former default name is shortened; one renamed is left alone', () => {
   const accessory = platformAccessory();
   const device: DeviceConfig = { name: 'Coffee', phases: [{ name: 'Bezug', minWatts: 30 }, { name: 'Spülen', minWatts: 30 }] };

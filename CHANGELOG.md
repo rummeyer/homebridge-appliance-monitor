@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-10-14
+
+### Added
+
+- Running can be shown as an **outlet** (`runningAs: "outlet"`), on and in
+  use while the appliance runs, for the outlet's icon in the Home app. Like
+  the switch it only shows: tapping it switches nothing.
+
 ## [1.3.2] — 2026-10-14
 
 ### Changed
@@ -564,7 +572,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.2...v1.4.0
 [1.3.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.3...v1.3.0
