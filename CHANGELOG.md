@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-10-14
+
 ### Added
 
 - Matter bridges, and plugs with several channels: an appliance follows one
@@ -628,7 +630,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.6...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.6...v1.5.0
 [1.4.6]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.3...v1.4.4
