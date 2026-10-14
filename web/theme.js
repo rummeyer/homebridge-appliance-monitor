@@ -23,9 +23,9 @@
     // No storage, as in a private window: Home.
   }
 
-  /** The tab's name and icon go with the look: Zuhause and a house for Home. */
+  /** The tab's name and icon go with the look: Home and a house for the Home look. */
   const TAB = {
-    home: { title: 'Zuhause', icon: 'home.svg', type: 'image/svg+xml' },
+    home: { title: 'Home', icon: 'home.svg', type: 'image/svg+xml' },
     other: { title: 'Appliance Monitor', icon: 'icon.png', type: 'image/png' },
   };
 

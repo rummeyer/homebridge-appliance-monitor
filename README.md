@@ -420,7 +420,7 @@ The button at the top right switches the look, round the three:
 
 | Button | Look |
 | --- | --- |
-| house | **Home**, as Apple's Home app: square glass tiles on a wallpaper, a white tile for what is running, titled *Zuhause*, with a house as the browser tab's icon |
+| house | **Home**, as Apple's Home app: square glass tiles on a wallpaper, a white tile for what is running, titled *Home*, with a house as the browser tab's icon |
 | sun | **Light** |
 | moon | **Dark** |
 

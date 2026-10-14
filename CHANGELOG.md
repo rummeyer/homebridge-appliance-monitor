@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.6] — 2026-10-14
+
+### Changed
+
+- The Home look is titled **Home**, in the page and the browser tab, rather
+  than "Zuhause": everything else on the page is English.
+- New dashboard screenshots in the README.
+
 ## [1.4.5] — 2026-10-14
 
 ### Changed
@@ -611,7 +619,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.5...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.6...HEAD
+[1.4.6]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.2...v1.4.3
