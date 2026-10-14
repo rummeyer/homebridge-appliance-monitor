@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.3] — 2026-10-14
+
+### Changed
+
+- **Part of** on the settings page offers *None* rather than a longer text
+  that its field cut off.
+
 ## [1.6.2] — 2026-10-14
 
 ### Changed
@@ -662,7 +669,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.3...HEAD
+[1.6.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.5.0...v1.6.0

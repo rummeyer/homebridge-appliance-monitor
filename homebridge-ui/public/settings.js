@@ -377,7 +377,7 @@
       // For something measured twice: a lamp reporting its own watts, plugged
       // into a metered socket that is an appliance here too.
       const wholes = config.devices.filter((d) => d !== device && d.name).map((d) => d.name).sort(byName);
-      const partOfOptions = [['', 'Nothing else — counted in the total'], ...wholes.map((name) => [name, `Part of ${name}`])];
+      const partOfOptions = [['', 'None'], ...wholes.map((name) => [name, `Part of ${name}`])];
       if (device.partOf && !wholes.includes(device.partOf)) {
         partOfOptions.push([device.partOf, `Part of ${device.partOf} (not found)`]);
       }
