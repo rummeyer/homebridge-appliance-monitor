@@ -16,6 +16,7 @@ import {
   pairedWithProblem,
   partOfProblem,
   countsInTotal,
+  wholeOf,
   parsePairingCode,
   validateDeviceConfig,
 } from './config.ts';
@@ -62,8 +63,15 @@ interface Appliance {
   phases: PhaseTracker[];
   /** The last reading taken in, to drop the same one arriving twice. */
   last?: { endpointId: number; value: unknown; at: number };
-  /** The last power in watts, to know whether the plug is drawing anything. */
+  /**
+   * The last power in watts, to know whether the plug is drawing anything.
+   * Nothing for a part while its whole draws nothing; see #unpowered.
+   */
   watts?: number;
+  /** The last reading as the plug gave it, to go back to once the whole is on again. */
+  measured?: { endpointId: number; watts: number | undefined };
+  /** Whether the plug's relay was last reported switched off. */
+  relayOff?: boolean;
   /** Whether the plug is connected; unknown until it first is, or is not. */
   reachable?: boolean;
   /**
@@ -611,17 +619,20 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return;
     }
     if (isOnOff(report.clusterId, report.attributeId)) {
+      if (typeof report.value === 'boolean') {
+        appliance.relayOff = !report.value;
+      }
       // A plug with a relay switched off: whatever ran there has finished.
       if (report.value === false && appliance.monitor.state === 'running') {
         this.log.debug(`${appliance.device.name}: plug switched off`);
         appliance.monitor.switchedOff(Date.now());
       }
+      this.#passOn(appliance, Date.now());
       return;
     }
     if (!isActivePower(report.clusterId, report.attributeId)) {
       return;
     }
-    const { device, monitor } = appliance;
     const now = Date.now();
     // A value read on purpose can also come back as a reported change; the
     // second one is not a new reading.
@@ -630,15 +641,55 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return;
     }
     appliance.last = { endpointId: report.endpointId, value: report.value, at: now };
-    const watts = activePowerWatts(report.value);
+    appliance.measured = { endpointId: report.endpointId, watts: activePowerWatts(report.value) };
+    this.#take(appliance, now);
+  }
+
+  /**
+   * Takes in the plug's last reading — as nothing while it is part of
+   * another appliance that draws nothing, as it cannot then draw anything
+   * itself: a lamp behind a socket strip switched off, whose own meter may
+   * still report its last few tenths of a watt.
+   */
+  #take(appliance: Appliance, now: number): void {
+    const { device, monitor, measured } = appliance;
+    if (!measured) {
+      return;
+    }
+    const watts = measured.watts !== undefined && this.#unpowered(appliance) ? 0 : measured.watts;
     if (watts !== undefined) {
       appliance.watts = watts;
     }
-    this.#recorder?.record(device.name, report.endpointId, watts);
+    this.#recorder?.record(device.name, measured.endpointId, watts);
     monitor.reading(now, watts);
     appliance.energy.reading(now, watts);
     for (const tracker of appliance.phases) {
       this.#onPhase(appliance, tracker, tracker.reading(now, watts));
+    }
+    this.#passOn(appliance, now);
+  }
+
+  /** Whether the appliance this one is part of is switched off or draws nothing. */
+  #unpowered(appliance: Appliance): boolean {
+    const whole = wholeOf(appliance.device, this.#devices);
+    const of = whole === undefined ? undefined : this.#appliances.get(whole);
+    return of !== undefined && (of.relayOff === true || (of.watts !== undefined && of.watts <= IDLE_WATTS));
+  }
+
+  /** Tells the parts of an appliance when it goes off or on again. */
+  #passOn(whole: Appliance, now: number): void {
+    for (const part of this.#appliances.values()) {
+      if (wholeOf(part.device, this.#devices) !== whole.device.name || part.measured?.watts === undefined) {
+        continue;
+      }
+      const unpowered = this.#unpowered(part);
+      if (part.watts === (unpowered ? 0 : part.measured.watts)) {
+        continue;
+      }
+      if (unpowered && part.monitor.state === 'running') {
+        part.monitor.switchedOff(now);
+      }
+      this.#safely(part.device.name, () => this.#take(part, now));
     }
   }
 

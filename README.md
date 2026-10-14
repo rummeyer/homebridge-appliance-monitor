@@ -417,9 +417,13 @@ watts over Matter, plugged into a metered socket strip that is an appliance
 here too, is in the strip's figures already. Set the lamp's **Part of** to
 the strip: it keeps its own row, marked *part of …, not in the total*, and its
 own tile, but the total in the table, the Total tile and the Total chart leave
-it out. Chains work too, a lamp in a strip in a room meter. A **Part of**
-naming no appliance, or leading back round to the one it is set on, is
-ignored with a warning in the log, and the appliance is counted.
+it out. While the strip is switched off or draws nothing, the lamp draws
+nothing either, whatever its own meter last said — some report their last
+few tenths of a watt on after losing power; once the strip draws again, the
+lamp's own reading counts again. Chains work too, a lamp in a strip in a
+room meter. A **Part of** naming no appliance, or leading back round to the
+one it is set on, is ignored with a warning in the log, and the appliance is
+counted.
 
 Two Dyson lamps, say, behind one Homebridge Matter bridge, both plugged into
 a metered desk socket that is an appliance of its own:
@@ -571,7 +575,7 @@ config it writes looks like this:
 | `devices[].pairedWith` | | Another appliance whose pairing this one shares: a device behind a Matter bridge. See [Behind a Matter bridge](#behind-a-matter-bridge). |
 | `devices[].deviceId` | | Which device behind the bridge it follows, by UniqueID. Without it, every reading of the node counts. |
 | `devices[].endpoint` | | The same by endpoint number, for a device without UniqueID. |
-| `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals. See [Statistics](#statistics). |
+| `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals, and draws nothing while that one is off. See [Statistics](#statistics). |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |

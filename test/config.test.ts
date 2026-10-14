@@ -10,6 +10,7 @@ import {
   usablePollSeconds,
   pairedWithProblem,
   partOfProblem,
+  wholeOf,
   countsInTotal,
   validateDeviceConfig,
 } from '../src/config.ts';
@@ -207,6 +208,8 @@ test('part of another appliance: named, not itself, and not round in a circle', 
   assert.equal(partOfProblem(lamp, [desk, lamp]), undefined);
   assert.equal(countsInTotal(lamp, [desk, lamp]), false);
   assert.equal(countsInTotal(desk, [desk, lamp]), true);
+  assert.equal(wholeOf({ name: 'Lamp', partOf: ' Desk ' }, [desk, lamp]), 'Desk');
+  assert.equal(wholeOf(desk, [desk, lamp]), undefined);
 
   assert.match(partOfProblem({ name: 'Lamp', partOf: 'Fridge' }, [desk])!, /no other appliance/);
   assert.match(partOfProblem({ name: 'Lamp', partOf: 'Lamp' }, [desk])!, /no other appliance/);
@@ -216,6 +219,7 @@ test('part of another appliance: named, not itself, and not round in a circle', 
   const b = { name: 'B', partOf: 'A' };
   assert.match(partOfProblem(a, [a, b])!, /leads back round/);
   assert.equal(countsInTotal(a, [a, b]), true, 'a circle is counted rather than lost');
+  assert.equal(wholeOf(a, [a, b]), undefined, 'nor is it switched off with the other');
 
   // A chain is fine: the lamp is in the strip, the strip in the room meter.
   const room = { name: 'Room' };

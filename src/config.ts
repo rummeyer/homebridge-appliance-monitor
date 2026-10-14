@@ -380,9 +380,17 @@ export function partOfProblem(device: DeviceConfig, devices: DeviceConfig[]): st
   return undefined;
 }
 
+/** The appliance whose plug measures this one too, if its partOf holds. */
+export function wholeOf(device: DeviceConfig, devices: DeviceConfig[]): string | undefined {
+  if (typeof device.partOf !== 'string' || !device.partOf.trim() || partOfProblem(device, devices) !== undefined) {
+    return undefined;
+  }
+  return device.partOf.trim();
+}
+
 /** Whether an appliance counts in the totals: not when another plug measures it too. */
 export function countsInTotal(device: DeviceConfig, devices: DeviceConfig[]): boolean {
-  return typeof device.partOf !== 'string' || !device.partOf.trim() || partOfProblem(device, devices) !== undefined;
+  return wholeOf(device, devices) === undefined;
 }
 
 export function duplicateNames(devices: DeviceConfig[]): string[] {

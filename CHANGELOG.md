@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-10-14
+
+### Changed
+
+- **Part of**: while the appliance it is part of is switched off or draws
+  nothing, the part draws nothing too — on its tile, in its curve, its
+  energy and its cycles — even if its own meter still reports a few tenths
+  of a watt. Once the whole draws again, the part's own reading counts.
+
 ## [1.6.0] — 2026-10-14
 
 ### Added
@@ -639,7 +648,9 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.0...v1.6.1
+[1.6.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.6...v1.5.0
 [1.4.6]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.4...v1.4.5
