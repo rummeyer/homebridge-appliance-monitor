@@ -18,7 +18,7 @@ const live: LiveAppliance[] = [
 ];
 const dashboard = new Dashboard({
   dataPath: dir,
-  devices: () => [{ name: 'Washer', phases: [{ name: 'Heating', minWatts: 1500 }] }],
+  devices: () => [{ name: 'Washer', phases: [{ name: 'Heating', minWatts: 1500 }] }, { name: 'Lamp' }],
   live: () => live,
 });
 let base = '';
@@ -27,6 +27,7 @@ before(async () => {
   const recorder = new PowerRecorder(join(dir, 'power'));
   recorder.record('Washer', 1, 2, new Date(Date.now() - 20 * 60_000));
   recorder.record('Washer', 1, 1980, new Date(Date.now() - 10 * 60_000));
+  recorder.record('Lamp', 1, 20, new Date(Date.now() - 5 * 60_000));
   writeFileSync(join(dir, 'devices.json'), JSON.stringify({ Washer: { counts: { finished: { count: 3, since: 0 } } } }));
   await dashboard.listen(0); // any free port
   base = `http://localhost:${dashboard.port}`;
@@ -37,7 +38,7 @@ after(() => {
 });
 
 test('the page and what it loads are served', async () => {
-  for (const [path, type] of [['/', 'text/html'], ['/dashboard.js', 'text/javascript'], ['/theme.js', 'text/javascript'], ['/chart.js', 'text/javascript'], ['/shared.js', 'text/javascript'], ['/icon.png', 'image/png']]) {
+  for (const [path, type] of [['/', 'text/html'], ['/dashboard.js', 'text/javascript'], ['/theme.js', 'text/javascript'], ['/chart.js', 'text/javascript'], ['/shared.js', 'text/javascript'], ['/icon.png', 'image/png'], ['/home.svg', 'image/svg\\+xml']]) {
     const response = await fetch(`${base}${path}`);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get('content-type') ?? '', new RegExp(`^${type}`), path);
@@ -56,6 +57,13 @@ test('its power, without the levels the settings page makes phases from', async 
   assert.ok(body.points.length >= 1);
   assert.deepEqual(body.levels, []);
   assert.equal(body.phases[0].name, 'Heating');
+});
+
+test('all plugs together, without phases', async () => {
+  const body = await (await fetch(`${base}/api/total?hours=1`)).json();
+  assert.deepEqual(body.points.map(([, watts]: [number, number]) => watts), [2, 1980, 2000]);
+  assert.deepEqual(body.phases, []);
+  assert.deepEqual(body.spans, []);
 });
 
 test('only the power of a configured appliance', async () => {

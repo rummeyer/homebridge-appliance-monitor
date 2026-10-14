@@ -6,6 +6,25 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-10-14
+
+### Added
+
+- The dashboard's power chart can show all plugs together: **Total** is the
+  first in the list, and its tile can be clicked like the others.
+- A third look for the dashboard, **Home**, after Apple's Home app: square
+  glass tiles on a warm wallpaper, an outlet's icon in yellow, a white tile
+  for what is running, the title *Zuhause* and a house as the tab's icon.
+  All plugs together are called **Electricity** there, as in the Home app.
+
+### Changed
+
+- The dashboard opens in the Home look, on all plugs together and the last
+  6 hours. Its button goes round Home, light and dark; following the system
+  is left to a page without JavaScript.
+- The Power tab of the settings page opens on "Last 6 hours".
+- The dashboard's tiles are all the same size.
+
 ## [1.2.3] — 2026-10-07
 
 ### Changed
@@ -530,7 +549,12 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.3...v1.3.0
+[1.2.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.2...v1.2.3
+[1.2.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.1.0...v1.1.1

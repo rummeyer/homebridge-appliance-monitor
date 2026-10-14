@@ -44,6 +44,29 @@ export function thin(samples: Sample[], from: number, to: number, buckets: numbe
 }
 
 /**
+ * What several plugs draw together, as one step curve: at each reading of
+ * any of them, the sum of what each last said. A plug counts as 0 W until
+ * its first reading.
+ */
+export function sumSamples(series: Sample[][]): Sample[] {
+  const readings = series.flatMap((samples, index) => samples.map(({ at, watts }) => ({ at, watts, index })));
+  readings.sort((a, b) => a.at - b.at);
+  const now = series.map(() => 0);
+  const sum: Sample[] = [];
+  for (const { at, watts, index } of readings) {
+    now[index] = watts;
+    // Added up afresh rather than carried along, so rounding cannot creep in.
+    const total = Math.round(now.reduce((all, value) => all + value, 0) * 1000) / 1000;
+    if (sum.length > 0 && sum[sum.length - 1]!.at === at) {
+      sum[sum.length - 1]!.watts = total;
+    } else {
+      sum.push({ at, watts: total });
+    }
+  }
+  return sum;
+}
+
+/**
  * When each phase would have been on, worked out the way the plugin does it
  * — with its minimum and its hold — rather than when the draw was merely in
  * range. A thermostat switching a heater for a few seconds every minute is

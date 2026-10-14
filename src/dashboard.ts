@@ -14,7 +14,7 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 
 import type { DeviceConfig } from './config.ts';
 import type { CycleProgress, CycleState } from './cycle.ts';
-import { chartHours, curve, statisticsTable } from './views.ts';
+import { chartHours, curve, statisticsTable, totalCurve } from './views.ts';
 
 /** What one appliance is doing right now. */
 export interface LiveAppliance {
@@ -60,6 +60,7 @@ const FILES: Record<string, { type: string; path: string }> = {
   '/chart.js': { type: 'text/javascript; charset=utf-8', path: 'homebridge-ui/public/chart.js' },
   '/shared.js': { type: 'text/javascript; charset=utf-8', path: 'homebridge-ui/public/shared.js' },
   '/icon.png': { type: 'image/png', path: 'web/icon.png' },
+  '/home.svg': { type: 'image/svg+xml', path: 'web/home.svg' },
 };
 
 const HEADERS = {
@@ -141,6 +142,8 @@ export class Dashboard {
         // No levels: they are for making phases, which is not done here.
         return { ...curve(this.#source.dataPath, device.name, chartHours(url.searchParams.get('hours')), phases), levels: [], phases };
       }
+      case '/api/total':
+        return { ...totalCurve(this.#source.dataPath, devices.map(({ name }) => name), chartHours(url.searchParams.get('hours'))), phases: [] };
       default:
         return undefined;
     }

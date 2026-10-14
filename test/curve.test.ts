@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { phaseSpans, thin } from '../src/curve.ts';
+import { phaseSpans, sumSamples, thin } from '../src/curve.ts';
 import type { Sample } from '../src/learn.ts';
 
 const S = 1000;
@@ -43,4 +43,18 @@ test('phase spans follow the phase rules, not every moment in range', () => {
   }
   const [heating] = phaseSpans(samples, 0, 1000 * S, [{ name: 'Heating', minWatts: 1000, minSeconds: 60, holdSeconds: 30 }]);
   assert.deepEqual(heating, { name: 'Heating', spans: [[70 * S, 430 * S]] }, 'the heat-up once; the pulses not at all');
+});
+
+test('plugs added up: each holds what it last said, 0 W before its first reading', () => {
+  const total = sumSamples([
+    [{ at: 1000, watts: 2 }, { at: 3000, watts: 2000 }],
+    [{ at: 2000, watts: 0.1 }, { at: 3000, watts: 5 }, { at: 4000, watts: 0.2 }],
+  ]);
+  assert.deepEqual(total, [
+    { at: 1000, watts: 2 },
+    { at: 2000, watts: 2.1 },
+    { at: 3000, watts: 2005 }, // two readings at once are one step
+    { at: 4000, watts: 2000.2 },
+  ]);
+  assert.deepEqual(sumSamples([]), []);
 });

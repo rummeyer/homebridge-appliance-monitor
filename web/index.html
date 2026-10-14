@@ -10,9 +10,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>Appliance Monitor</title>
-  <script src="theme.js"></script>
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
+  <!-- After the icon, which it changes for the Home look. -->
+  <script src="theme.js"></script>
   <style>
     /* Light, and the dark palette beside it, used where the system asks for
        it unless the viewer chose light, and where the viewer chose dark; see theme.js. */
@@ -40,7 +41,8 @@
     body { margin: 0; background: var(--bg); color: var(--text);
            font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    /* As tall as the icon in every look, so that the switch and the tiles stay put when the look changes. */
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; min-height: 88px; }
     h1 { font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 14px; }
     h1 img { width: 88px; height: 88px; border-radius: 18px; }
     h1 .version { display: block; font-size: .8rem; font-weight: 400; color: var(--muted); margin-top: 2px; }
@@ -48,14 +50,16 @@
     .muted { color: var(--muted); font-size: .85rem; }
     .card { background: var(--card); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
 
-    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    /* Every row as tall as the tallest, so all tiles are the same size. */
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); grid-auto-rows: 1fr; gap: 12px; }
     /* A column from the top: a button would centre its content in a taller row. */
     .tile { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
             padding: 14px 16px; cursor: pointer; border: 2px solid transparent; text-align: left;
             color: inherit; font: inherit; width: 100%; }
     .tile .state { align-self: flex-start; }
     button.tile:hover { border-color: var(--line); }
-    .tile.total { cursor: default; background: var(--total-bg); }
+    .tile.total { background: var(--total-bg); }
+    .tile .icon { display: none; }
     .tile.chosen { border-color: var(--accent); }
     .tile .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tile .watts { font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; margin: 4px 0 6px; }
@@ -68,6 +72,7 @@
     .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; min-height: 0; }
     .chip { font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--run-bg); color: var(--run); }
     .detail { font-size: .78rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .detail span + span::before { content: " · "; }
 
     .panel { padding: 14px 16px; }
     .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -98,7 +103,88 @@
     .theme-icon { display: none; }
     [data-theme-pref="light"] .theme-icon-light,
     [data-theme-pref="dark"] .theme-icon-dark,
-    [data-theme-pref="auto"] .theme-icon-auto { display: block; }
+    [data-theme-pref="home"] .theme-icon-home { display: block; }
+    .title-home { display: none; }
+
+    /* The Home look: as Apple's Home app, grey glass tiles on a warm, blurred
+       landscape, an outlet's icon yellow in a dark circle, and a white tile
+       with the circle lit where something runs. One look whatever the system
+       says; see theme.js. */
+    :root[data-theme="home"] {
+      color-scheme: dark;
+      --bg: #6b5338; --card: rgba(58,50,42,.46); --text: #fff; --muted: rgba(255,255,255,.62); --line: rgba(255,255,255,.16);
+      --run: #fff; --run-bg: rgba(255,255,255,.18); --off: rgba(255,255,255,.4); --warn: #ffb340; --accent: #fff;
+      --total-bg: var(--card); --home: #f9cf3d;
+    }
+    [data-theme="home"] body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(70% 45% at 75% 22%, rgba(226,223,215,.6) 0%, rgba(226,223,215,0) 70%),
+        radial-gradient(60% 40% at 20% 62%, rgba(190,140,70,.75) 0%, rgba(190,140,70,0) 70%),
+        radial-gradient(55% 40% at 80% 70%, rgba(205,150,80,.6) 0%, rgba(205,150,80,0) 70%),
+        linear-gradient(180deg, #a9a399 0%, #bdb5a4 24%, #a8885c 48%, #7a5a37 66%, #4f3b26 84%, #3a2c1d 100%);
+    }
+    [data-theme="home"] body { background: var(--bg); position: relative; z-index: 0; }
+    [data-theme="home"] h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: -.01em; text-shadow: 0 1px 8px rgba(0,0,0,.18); }
+    /* Only the title, as the Home app has it: no icon, no version. */
+    [data-theme="home"] h1 img, [data-theme="home"] h1 .version, [data-theme="home"] h1 .title { display: none; }
+    [data-theme="home"] h1 .title-home { display: inline; }
+    [data-theme="home"] #updated { color: rgba(255,255,255,.9); text-shadow: 0 1px 6px rgba(0,0,0,.35); }
+    [data-theme="home"] .theme-switch { color: #fff; filter: drop-shadow(0 1px 4px rgba(0,0,0,.35)); }
+    [data-theme="home"] h2 { text-transform: none; letter-spacing: 0; font-size: 1.3rem; font-weight: 700; color: var(--text);
+                             margin: 30px 0 10px 4px; text-shadow: 0 1px 8px rgba(0,0,0,.2); }
+    [data-theme="home"] .card { border-radius: 22px; box-shadow: none;
+                                -webkit-backdrop-filter: blur(28px) saturate(150%); backdrop-filter: blur(28px) saturate(150%); }
+    /* Square tiles, all the same size, wide enough for the lines under the name. */
+    [data-theme="home"] .tiles { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    [data-theme="home"] .tile { aspect-ratio: 1; justify-content: flex-start; padding: 14px; overflow: hidden; border-radius: 20px; }
+    [data-theme="home"] .tile > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    [data-theme="home"] .tile .icon { display: flex; align-items: center; justify-content: center; flex: none;
+                                      width: 42px; height: 42px; border-radius: 50%; margin-bottom: auto;
+                                      background: rgba(0,0,0,.28); color: var(--home); --hole: #3a3020; }
+    [data-theme="home"] .tile .name { font-size: 1rem; font-weight: 700; margin-top: 8px; }
+    [data-theme="home"] .tile .watts { font-size: 1.35rem; font-weight: 600; margin: 0; }
+    [data-theme="home"] .tile .state { font-size: .84rem; color: var(--muted); font-weight: 500; }
+    [data-theme="home"] .tile .state::before { display: none; }
+    [data-theme="home"] .tile.idle .watts, [data-theme="home"] .tile.gone .watts { color: var(--muted); }
+    [data-theme="home"] .tile .detail { font-size: .76rem; margin-top: 2px; }
+    [data-theme="home"] .tile .detail .so-far { display: none; }
+    /* The phases as one line of text, as the Home app has its status, rather than pills. */
+    [data-theme="home"] .tile .chips { display: block; margin-top: 1px; }
+    [data-theme="home"] .chip { background: none; padding: 0; border-radius: 0; font-size: .8rem; color: var(--home); }
+    [data-theme="home"] .chip + .chip::before { content: " · "; }
+    [data-theme="home"] button.tile:hover { border-color: rgba(255,255,255,.35); }
+    [data-theme="home"] .tile.chosen { border-color: rgba(255,255,255,.95); }
+    /* Running: a white tile, dark name, grey lines, the icon's circle lit. */
+    [data-theme="home"] .tile.running { background: rgba(255,255,255,.95); color: #1c1c1e; }
+    [data-theme="home"] .tile.running .icon { background: var(--home); color: rgba(255,255,255,.6); --hole: #d9a400; }
+    [data-theme="home"] .tile.running .state, [data-theme="home"] .tile.running .detail { color: #6e6e73; }
+    [data-theme="home"] .tile.running .chip { background: none; color: #a67c00; }
+    [data-theme="home"] .tile.running.chosen { border-color: var(--home); }
+    [data-theme="home"] .panel { padding: 18px 20px; }
+    [data-theme="home"] select { background: rgba(255,255,255,.16); border-color: transparent; border-radius: 12px; }
+    [data-theme="home"] .om-line { stroke: var(--home); }
+    [data-theme="home"] #om-fill stop { stop-color: var(--home); }
+    [data-theme="home"] .om-plot { fill: rgba(255,255,255,.04); }
+    [data-theme="home"] .om-grid { stroke: rgba(255,255,255,.14); }
+    [data-theme="home"] tfoot td { border-top-color: rgba(255,255,255,.4); }
+    /* Last, to win over the square tiles above. */
+    @media (max-width: 560px) {
+      [data-theme="home"] .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      /* Too narrow for a square to hold a running cycle: as tall as the tallest instead. */
+      [data-theme="home"] .tile { aspect-ratio: auto; padding: 12px; border-radius: 18px; }
+      [data-theme="home"] h1 { font-size: 1.8rem; }
+      [data-theme="home"] .tile .icon { width: 38px; height: 38px; }
+      [data-theme="home"] .tile .name { font-size: .95rem; margin-top: 14px; }
+      [data-theme="home"] .tile .watts { font-size: 1.2rem; margin: 0; }
+      [data-theme="home"] .tile .state { font-size: .8rem; }
+      [data-theme="home"] .tile .detail { font-size: .72rem; margin-top: 2px; }
+      /* The tile grows here, so a phase that does not fit goes to the next line. */
+      [data-theme="home"] .tile .chips { white-space: normal; }
+      [data-theme="home"] .chip { display: inline-block; white-space: nowrap; }
+      [data-theme="home"] .chip + .chip::before { content: "· "; }
+      [data-theme="home"] .chip:not(:last-child) { margin-right: .3em; }
+    }
   </style>
   <script src="chart.js"></script>
   <script src="shared.js"></script>
@@ -107,7 +193,7 @@
 <body>
   <main>
     <header>
-      <h1><img src="icon.png" alt=""><span>Appliance Monitor<small class="version" id="version"></small></span></h1>
+      <h1><img src="icon.png" alt=""><span><span class="title">Appliance Monitor</span><span class="title-home">Zuhause</span><small class="version" id="version"></small></span></h1>
       <div class="side">
         <span class="muted" id="updated"></span>
         <button type="button" class="theme-switch" data-theme-switch>
@@ -115,8 +201,8 @@
           <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.55 1.55M17.15 17.15l1.55 1.55M5.3 18.7l1.55-1.55M17.15 6.85l1.55-1.55"/></svg>
           <!-- moon -->
           <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></svg>
-          <!-- half lit: as the system says -->
-          <svg class="theme-icon theme-icon-auto" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>
+          <!-- houses in a house, as the Home app's icon: the Home look -->
+          <svg class="theme-icon theme-icon-home" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 10.6 12 4l8 6.6v8.2a1.2 1.2 0 0 1-1.2 1.2H5.2A1.2 1.2 0 0 1 4 18.8z"/><path d="M7.4 12.6 12 8.8l4.6 3.8V20H7.4z"/><path d="M10.2 14.6 12 13.1l1.8 1.5V20h-3.6z"/></svg>
         </button>
       </div>
     </header>
@@ -129,8 +215,8 @@
         <select id="plug" aria-label="Appliance"></select>
         <select id="hours" aria-label="Time">
           <option value="1">Last hour</option>
-          <option value="6">Last 6 hours</option>
-          <option value="12" selected>Last 12 hours</option>
+          <option value="6" selected>Last 6 hours</option>
+          <option value="12">Last 12 hours</option>
           <option value="24">Last 24 hours</option>
           <option value="72">Last 3 days</option>
           <option value="168">Last 7 days</option>

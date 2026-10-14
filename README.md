@@ -390,22 +390,43 @@ so they do not depend on how many days of recordings are kept.
 ## Dashboard
 
 A web page with every appliance at a glance, for a tablet on the wall or a
-phone on the sofa, without logging in to Homebridge:
+phone on the sofa, without logging in to Homebridge. It opens in the **Home**
+look, after Apple's Home app:
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-light.png" alt="The dashboard: a tile per appliance with its power now, a Total tile, the power chart of one appliance, and the statistics table" width="760">
-</picture>
+<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home.png" alt="The dashboard in the Home look: square glass tiles on a warm wallpaper, Electricity with what all plugs draw together, the running Schreibtisch as a white tile, the power chart of all plugs and the statistics" width="760">
 
 - a tile per appliance with what it draws **now**, whether it is running and
   for how long, what the cycle has used so far, and the phases it is in;
-- a **Total** tile with what all plugs draw together;
-- the **power chart** of the appliance picked — click its tile, or pick it
-  from the list — as on the Power tab;
+- a tile with what all plugs draw together — **Electricity** in the Home
+  look, as the Home app calls it, and **Total** in light and dark;
+- the **power chart** of all plugs together, or of the appliance picked —
+  click its tile, or pick it from the list. It opens on all plugs and the
+  last 6 hours; the time picked is kept for the next visit;
 - the **statistics**, as on the Statistics tab.
 
-It updates itself every few seconds, and follows the system's light or dark
-mode unless switched with the button at the top right.
+It updates itself every few seconds. On a phone, the tiles are two side by
+side:
+
+<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home-phone.png" alt="The Home look on a phone: two tiles side by side" width="300">
+
+### Home, light and dark
+
+The button at the top right switches the look, round the three:
+
+| Button | Look |
+| --- | --- |
+| house | **Home**, as Apple's Home app: square glass tiles on a wallpaper, a white tile for what is running, titled *Zuhause*, with a house as the browser tab's icon |
+| sun | **Light** |
+| moon | **Dark** |
+
+The page opens in Home. A browser that was switched to light or dark keeps
+it on the next visit, until it is switched back. Without JavaScript the page
+follows the system's light or dark mode.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-dark.png">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-light.png" alt="The dashboard in the light look, or the dark one where GitHub is dark: a tile per appliance with its power now, a Total tile, the power chart of all plugs, and the statistics table" width="760">
+</picture>
 
 ### Turning it on
 

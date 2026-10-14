@@ -7,6 +7,10 @@
   'use strict';
 
   const LIVE_MS = 5000;
+  /** The choice that is all plugs together; no plug name has a control character. */
+  const TOTAL = '\u0001total';
+  /** All plugs together, as the Home app calls it in the Home look. */
+  const totalName = () => (document.documentElement.dataset.theme === 'home' ? 'Electricity' : 'Total');
   const STATS_MS = 60_000;
   const $ = (id) => document.getElementById(id);
   const { ApplianceChart, ApplianceViews } = window;
@@ -34,6 +38,17 @@
       element.textContent = text;
     }
     return element;
+  }
+
+  /** A plug, as the Home app draws an outlet; shown only in the Home look. */
+  function icon(total) {
+    const box = el('span', 'icon');
+    box.setAttribute('aria-hidden', 'true');
+    // A filled outlet, its holes in --hole: two slots and the earth below.
+    box.innerHTML = total
+      ? '<svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M13.2 2.5 5.6 13.1c-.4.6 0 1.4.7 1.4h4.6l-1.2 7c-.1.6.7.9 1 .4l7.6-10.6c.4-.6 0-1.4-.7-1.4H13l1.2-7c.1-.6-.7-.9-1-.4z"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="26" height="26"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="currentColor"/><g style="fill: var(--hole)"><rect x="8.3" y="7.6" width="1.9" height="4.6" rx=".95"/><rect x="13.8" y="7.6" width="1.9" height="4.6" rx=".95"/><path d="M10.5 17v-1.1a1.5 1.5 0 0 1 3 0V17z"/></g></svg>';
+    return box;
   }
 
   // ---- Remembered choice -----------------------------------------------------
@@ -64,14 +79,19 @@
   function totalTile(appliances) {
     const counted = appliances.filter(current);
     const running = appliances.filter((appliance) => current(appliance) && appliance.state === 'running').length;
-    const tile = el('div', 'card tile total');
-    tile.append(el('div', 'name', 'Total'));
+    const tile = el('button', 'card tile total');
+    tile.type = 'button';
+    tile.dataset.name = TOTAL;
+    tile.classList.toggle('chosen', $('plug').value === TOTAL);
+    tile.classList.toggle('running', running > 0);
+    tile.append(icon(true), el('div', 'name total-name', totalName()));
     tile.append(el('div', 'watts', counted.length > 0 ? watts(counted.reduce((sum, appliance) => sum + appliance.watts, 0)) : '–'));
     tile.append(el('div', 'state', running === 0 ? 'Nothing running' : `${running} running`));
     const missing = appliances.length - counted.length;
     if (missing > 0) {
       tile.append(el('div', 'detail', `Without ${missing} not reachable`));
     }
+    tile.addEventListener('click', () => choose(TOTAL));
     return tile;
   }
 
@@ -80,10 +100,10 @@
     button.type = 'button';
     button.dataset.name = appliance.name;
     button.classList.toggle('chosen', appliance.name === $('plug').value);
-    button.append(el('div', 'name', appliance.name));
+    button.append(icon(false), el('div', 'name', appliance.name));
 
     let state;
-    let detail = '';
+    let detail;
     if (!appliance.paired) {
       button.classList.add('gone');
       state = 'Not connected yet';
@@ -94,7 +114,7 @@
       button.classList.add('running');
       state = appliance.since ? `Running for ${duration((now - appliance.since) / 1000)}` : 'Running';
       if (appliance.cycle) {
-        detail = `${kwh(appliance.cycle.wattHours)} so far · peak ${watts(appliance.cycle.peakWatts)}`;
+        detail = [kwh(appliance.cycle.wattHours), `peak ${watts(appliance.cycle.peakWatts)}`];
       }
     } else {
       button.classList.add('idle');
@@ -113,7 +133,13 @@
       button.title = `Last reading ${new Date(appliance.at).toLocaleTimeString()}`;
     }
     if (detail) {
-      button.append(el('div', 'detail', detail));
+      // "so far" apart, for the Home look to leave out where the tile is small.
+      const [used, peak] = detail;
+      const line = el('div', 'detail');
+      const first = el('span', '', used);
+      first.append(el('span', 'so-far', ' so far'));
+      line.append(first, el('span', '', peak));
+      button.append(line);
     }
     button.addEventListener('click', () => choose(appliance.name));
     return button;
@@ -132,28 +158,30 @@
     $('updated').textContent = `Updated ${new Date(live.at).toLocaleTimeString()}`;
     $('version').textContent = live.version ? `Version ${live.version}` : '';
     const { appliances } = live;
-    $('tiles').replaceChildren(
-      totalTile(appliances),
-      ...appliances.map((appliance) => tile(appliance, live.at)),
-    );
+    // The choice first, so the tiles mark it from the first time on.
     const fresh = appliances.map(({ name }) => name).sort(byName);
     if (fresh.join('\n') !== names.join('\n')) {
       names = fresh;
       fillPlugs();
     }
+    $('tiles').replaceChildren(
+      totalTile(appliances),
+      ...appliances.map((appliance) => tile(appliance, live.at)),
+    );
   }
 
   // ---- Power -----------------------------------------------------------------
 
   function fillPlugs() {
     const select = $('plug');
-    const chosen = select.value || remembered('plug', '');
-    select.replaceChildren(...names.map((name) => {
-      const option = el('option', '', name);
-      option.value = name;
+    // Every visit opens on all plugs together; only a change of plugs keeps the choice.
+    const chosen = select.value || TOTAL;
+    select.replaceChildren(...[[TOTAL, totalName()], ...names.map((name) => [name, name])].map(([value, text]) => {
+      const option = el('option', '', text);
+      option.value = value;
       return option;
     }));
-    if (names.includes(chosen)) {
+    if (chosen === TOTAL || names.includes(chosen)) {
       select.value = chosen;
     }
     void showCurve();
@@ -161,7 +189,6 @@
 
   function choose(name) {
     $('plug').value = name;
-    remember('plug', name);
     for (const button of document.querySelectorAll('.tile[data-name]')) {
       button.classList.toggle('chosen', button.dataset.name === name);
     }
@@ -183,7 +210,9 @@
     }
     let curve;
     try {
-      curve = await get(`api/curve?name=${encodeURIComponent(name)}&hours=${hours}`);
+      curve = await get(name === TOTAL
+        ? `api/total?hours=${hours}`
+        : `api/curve?name=${encodeURIComponent(name)}&hours=${hours}`);
     } catch (error) {
       if (!box.querySelector('svg')) {
         box.replaceChildren(el('div', 'muted empty', `Could not read the recording (${error.message}).`));
@@ -194,13 +223,13 @@
       return; // moved on meanwhile
     }
     if (curve.points.length === 0) {
-      box.replaceChildren(el('div', 'muted empty', 'Nothing recorded for this plug in that time.'));
+      box.replaceChildren(el('div', 'muted empty', name === TOTAL ? 'Nothing recorded in that time.' : 'Nothing recorded for this plug in that time.'));
       return;
     }
     const chart = ApplianceChart.render(curve);
     box.innerHTML = chart.svg;
     const svg = box.querySelector('svg');
-    svg.setAttribute('aria-label', `Power of ${name}`);
+    svg.setAttribute('aria-label', name === TOTAL ? 'Power of all plugs together' : `Power of ${name}`);
     const { toChart, hover } = chartPointer(svg, chart, curve);
     svg.addEventListener('pointermove', (event) => {
       pointer = toChart(event);
@@ -212,6 +241,13 @@
     });
     hover(pointer);
   }
+
+  // The name follows the look as soon as it is switched, not at the next update.
+  new MutationObserver(() => {
+    for (const element of document.querySelectorAll(`.total-name, option[value="${TOTAL}"]`)) {
+      element.textContent = totalName();
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   $('plug').addEventListener('change', () => choose($('plug').value));
   $('hours').addEventListener('change', () => {

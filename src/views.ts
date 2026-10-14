@@ -8,13 +8,13 @@ import { join } from 'node:path';
 import { usablePhases } from './config.ts';
 import type { DeviceConfig } from './config.ts';
 import { shownCount } from './counts.ts';
-import { phaseSpans, thin } from './curve.ts';
+import { phaseSpans, sumSamples, thin } from './curve.ts';
 import { statistics } from './energy.ts';
 import type { DeviceEnergy, Statistics } from './energy.ts';
 import { readJson } from './json-file.ts';
 import { findLevels, RECALL_MS } from './phases.ts';
 import type { Level, PhaseConfig } from './phases.ts';
-import { readSamples } from './recorder.ts';
+import { readSamples, readSeries } from './recorder.ts';
 import type { DeviceRecord, LastCycle } from './store.ts';
 
 /** Points drawn across the chart: about two per pixel of a wide page. */
@@ -57,6 +57,14 @@ export function curve(dir: string | undefined, name: string, hours: number, phas
     levels: findLevels(samples, to),
     spans: phaseSpans(samples, from, to, phases, earlier),
   };
+}
+
+/** All the plugs together over the last hours, thinned for drawing; no levels and no phases. */
+export function totalCurve(dir: string | undefined, names: string[], hours: number, to = Date.now()): Curve {
+  const from = to - hours * 3_600_000;
+  const series = dir ? readSeries(join(dir, 'power'), names, from, to) : new Map<string, never[]>();
+  const samples = sumSamples(names.map((name) => series.get(name) ?? []));
+  return { from, to, points: thin(samples, from, to, CHART_BUCKETS), levels: [], spans: [] };
 }
 
 export interface StatisticsTable extends Statistics {

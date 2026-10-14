@@ -82,9 +82,15 @@ function csvField(value: string): string {
  * left out.
  */
 export function readSamples(dir: string, device: string, from: number, to: number): Sample[] {
+  return readSeries(dir, [device], from, to).get(device) ?? [];
+}
+
+/** Several devices' readings, as readSamples has them, from one pass over the files. */
+export function readSeries(dir: string, devices: string[], from: number, to: number): Map<string, Sample[]> {
+  const series = new Map(devices.map((device) => [device, { before: undefined as Sample | undefined, samples: [] as Sample[] }]));
   const first = dayKey(new Date(from - 86_400_000));
   const last = dayKey(new Date(to));
-  let files: string[];
+  let files: string[] = [];
   try {
     files = readdirSync(dir)
       .filter((name) => {
@@ -93,11 +99,9 @@ export function readSamples(dir: string, device: string, from: number, to: numbe
       })
       .sort();
   } catch {
-    return [];
+    // No recordings yet.
   }
 
-  let before: Sample | undefined;
-  const samples: Sample[] = [];
   for (const name of files) {
     let text: string;
     try {
@@ -107,21 +111,24 @@ export function readSamples(dir: string, device: string, from: number, to: numbe
     }
     for (const line of text.split('\n')) {
       const row = parseLine(line);
-      if (!row || row.device !== device || row.watts === undefined) {
+      const found = row && series.get(row.device);
+      if (!row || !found || row.watts === undefined) {
         continue;
       }
       if (row.at < from) {
-        before = { at: row.at, watts: row.watts };
+        found.before = { at: row.at, watts: row.watts };
       } else if (row.at <= to) {
-        samples.push({ at: row.at, watts: row.watts });
+        found.samples.push({ at: row.at, watts: row.watts });
       }
     }
   }
-  samples.sort((a, b) => a.at - b.at);
-  if (before && (samples.length === 0 || samples[0]!.at > from)) {
-    samples.unshift({ at: from, watts: before.watts });
-  }
-  return samples;
+  return new Map([...series].map(([device, { before, samples }]) => {
+    samples.sort((a, b) => a.at - b.at);
+    if (before && (samples.length === 0 || samples[0]!.at > from)) {
+      samples.unshift({ at: from, watts: before.watts });
+    }
+    return [device, samples];
+  }));
 }
 
 /** A line as csvLine writes it, or undefined for the header or anything else. */
