@@ -35,6 +35,22 @@
               "pattern": "^\\s*((\\d[\\s-]*){11}|(\\d[\\s-]*){21}|MT:[0-9A-Z.\\-]+)\\s*$",
               "description": "In the Home app: the plug's settings → Turn On Pairing Mode. The code is valid for 15 minutes, so save and restart the child bridge straight away. Only needed once; it can be removed after pairing."
             },
+            "pairedWith": {
+              "title": "Shares the pairing of",
+              "type": "string",
+              "description": "For a device behind a Matter bridge: the name of the appliance that paired the bridge. A bridge is paired once; the devices behind it share that pairing, each choosing one device below."
+            },
+            "deviceId": {
+              "title": "Device behind the bridge",
+              "type": "string",
+              "description": "Which device of a bridge this appliance follows: the bridged device's UniqueID, which the log lists after connecting. Empty: every reading of the plug counts."
+            },
+            "endpoint": {
+              "title": "Endpoint",
+              "type": "integer",
+              "minimum": 0,
+              "description": "The same by endpoint number, for a device without UniqueID — a channel of a plug with several, say."
+            },
             "runningSwitch": {
               "title": "Running switch",
               "type": "boolean",

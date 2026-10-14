@@ -23,6 +23,20 @@ export interface DeviceConfig {
    * the code in place inside that time.
    */
   pairingCode?: string;
+  /**
+   * Another appliance whose pairing this one shares, instead of a pairing
+   * code of its own: for a device behind a Matter bridge, which is paired
+   * once and carries many devices. See bridged.ts.
+   */
+  pairedWith?: string;
+  /**
+   * Which device of a bridge — or channel of a plug with several — this
+   * appliance follows: the bridged device's UniqueID, which stays when the
+   * bridge renumbers its endpoints. Without it, every reading counts.
+   */
+  deviceId?: string;
+  /** The same by endpoint number, for a device that has no UniqueID. */
+  endpoint?: number;
   /** A Running switch in HomeKit, on while the appliance runs. On by default. */
   runningSwitch?: boolean;
   /**
@@ -168,7 +182,7 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, thresholds, runningAs } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, thresholds, runningAs, pairedWith, deviceId, endpoint } = device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -179,6 +193,15 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
     if (typeof pairingCode !== 'string' || parsePairingCode(pairingCode) === undefined) {
       problems.push(`${label} has a pairing code that is not a valid Matter setup code`);
     }
+  }
+  if (pairedWith !== undefined && pairedWith !== null && (typeof pairedWith !== 'string' || !pairedWith.trim())) {
+    problems.push(`${label} has a pairedWith that is no appliance name`);
+  }
+  if (deviceId !== undefined && deviceId !== null && typeof deviceId !== 'string') {
+    problems.push(`${label} has a deviceId that is not text`);
+  }
+  if (endpoint !== undefined && endpoint !== null && (!Number.isInteger(endpoint) || endpoint < 0)) {
+    problems.push(`${label} has an endpoint that is not an endpoint number`);
   }
   if (runningAs !== undefined && runningAs !== null && !RUNNING_AS.includes(runningAs)) {
     problems.push(`${label} has an unknown runningAs "${String(runningAs)}"`);
@@ -302,6 +325,25 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
 }
 
 /** Names must be unique: they are what a paired plug is remembered by. */
+/**
+ * Why an appliance cannot share the pairing it names, or nothing when it can:
+ * the other has to be configured, and to have a pairing of its own.
+ */
+export function pairedWithProblem(device: DeviceConfig, devices: DeviceConfig[]): string | undefined {
+  const { name, pairedWith } = device;
+  if (pairedWith === undefined || pairedWith === null) {
+    return undefined;
+  }
+  const owner = devices.find((other) => other.name === pairedWith.trim());
+  if (!owner || owner === device) {
+    return `"${name}" is paired with "${pairedWith}", which is no other appliance here`;
+  }
+  if (owner.pairedWith) {
+    return `"${name}" is paired with "${pairedWith}", which is itself paired with "${owner.pairedWith}"; name that one instead`;
+  }
+  return undefined;
+}
+
 export function duplicateNames(devices: DeviceConfig[]): string[] {
   const seen = new Set<string>();
   const duplicates = new Set<string>();

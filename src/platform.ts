@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import type { API, DynamicPlatformPlugin, Logging, PlatformAccessory } from 'homebridge';
 
 import { accessoryName, ApplianceAccessory } from './accessory.ts';
+import { chosenEndpoints, describeDevice, meteredDevices } from './bridged.ts';
+import type { MeteredDevice } from './bridged.ts';
 import {
   duplicateNames,
   isChildBridgeProcess,
@@ -11,6 +13,7 @@ import {
   usableDashboardPort,
   usablePhases,
   usablePollSeconds,
+  pairedWithProblem,
   parsePairingCode,
   validateDeviceConfig,
 } from './config.ts';
@@ -23,7 +26,7 @@ import { EnergyMeter } from './energy.ts';
 import type { DeviceEnergy } from './energy.ts';
 import { readJson, writeJson } from './json-file.ts';
 import type { Learned } from './learn.ts';
-import { activePowerValues, describeNode, MatterController, readActivePower } from './matter.ts';
+import { activePowerValues, describeNode, endpointTree, MatterController, readActivePower } from './matter.ts';
 import type { AttributeReport } from './matter.ts';
 import type { PairedNode } from '@project-chip/matter.js/device';
 import { FINISHED, phaseKey } from './counts.ts';
@@ -61,6 +64,12 @@ interface Appliance {
   watts?: number;
   /** Whether the plug is connected; unknown until it first is, or is not. */
   reachable?: boolean;
+  /**
+   * The endpoints whose readings are this appliance's: all of them for a
+   * plug of its own, those of the device it chose behind a bridge. Until the
+   * node has been read, none for an appliance that chose one; see bridged.ts.
+   */
+  accept: Set<number> | 'all';
 }
 
 /** At or below this a plug draws nothing, and is not asked; see #poll. */
@@ -189,15 +198,18 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
     const registry = new NodeRegistry(join(this.#dataPath, 'nodes.json'));
     // One after the other: commissioning several plugs at once would open
-    // several PASE sessions over the same border router for no gain.
-    for (const device of devices) {
+    // several PASE sessions over the same border router for no gain. An
+    // appliance paired with another comes along with that one: behind a
+    // bridge, which is paired once.
+    for (const device of devices.filter(({ pairedWith }) => !pairedWith)) {
       if (this.#stopping) {
         return;
       }
+      const sharing = devices.filter(({ pairedWith }) => pairedWith?.trim() === device.name);
       try {
-        await this.#setUp(controller, registry, device);
+        await this.#setUp(controller, registry, device, sharing);
       } catch (error) {
-        this.log.error(`${device.name}: ${message(error)}`);
+        this.log.error(`${[device, ...sharing].map(({ name }) => name).join(', ')}: ${message(error)}`);
       }
     }
     if (!this.#stopping) {
@@ -228,10 +240,17 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     for (const name of duplicateNames(valid)) {
       this.log.error(`More than one plug is called "${name}"; only the first is used.`);
     }
-    return valid.filter((device, index) => valid.findIndex(({ name }) => name === device.name) === index);
+    const unique = valid.filter((device, index) => valid.findIndex(({ name }) => name === device.name) === index);
+    return unique.filter((device) => {
+      const problem = pairedWithProblem(device, unique);
+      if (problem) {
+        this.log.error(`Ignoring plug: ${problem}`);
+      }
+      return !problem;
+    });
   }
 
-  async #setUp(controller: MatterController, registry: NodeRegistry, device: DeviceConfig): Promise<void> {
+  async #setUp(controller: MatterController, registry: NodeRegistry, device: DeviceConfig, sharing: DeviceConfig[] = []): Promise<void> {
     let nodeId = registry.get(device.name);
     // While shutting down, the closing controller reports every node as
     // unknown; forgetting the pairings then would orphan the plugs.
@@ -266,64 +285,125 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       this.log.info(`${device.name}: paired as node ${nodeId}. The pairing code can now be removed from the config.`);
     }
 
-    const appliance = this.#appliance(device);
+    const appliances = [device, ...sharing].map((each) => this.#appliance(each));
+    const names = appliances.map(({ device: { name } }) => name).join(', ');
     const store = this.#store!;
-    let introduced = false;
+    const introduced = new Set<Appliance>();
     let reachable: boolean | undefined;
     await controller.connect(nodeId, {
-      onState: (state) => this.#safely(device.name, () => {
+      onState: (state) => this.#safely(names, () => {
         const connected = state === 'Connected';
         // Only a change worth knowing about: lost after having been there, or
         // back after being lost. The steps in between (reconnecting,
         // waiting for discovery) and the start-up connect are left out.
         if (!this.#stopping && reachable !== undefined && connected !== reachable) {
           if (connected) {
-            this.log.info(`${device.name}: reachable again`);
+            this.log.info(`${names}: reachable again`);
           } else if (state === 'Disconnected') {
-            this.log.warn(`${device.name}: unreachable`);
+            this.log.warn(`${names}: unreachable`);
           }
         }
         if (connected || state === 'Disconnected') {
           reachable = connected;
-          appliance.reachable = connected;
+          for (const appliance of appliances) {
+            appliance.reachable = connected;
+          }
         }
       }),
-      onReady: (node) => this.#safely(device.name, () => {
-        // A device reports changes only, so without this nothing would be
-        // known until the first change after every (re)connection.
-        const current = activePowerValues(node);
-        for (const report of current) {
-          this.#onAttribute(appliance, report);
-        }
-        if (introduced) {
-          return;
-        }
-        introduced = true;
-        appliance.accessory?.setInfo(node.basicInformation ?? {});
-        // Everything the plug offers, once: when it is new. After that it is
-        // one line per start.
+      onReady: (node) => this.#safely(names, () => {
+        // Which device behind a bridge is whose: found again on every
+        // connection, as a bridge may have renumbered its endpoints.
+        const metered = meteredDevices(endpointTree(node));
+        this.#saveMetered(device.name, metered);
+        // Everything the plug offers, once: when it is new.
         if (!store.get(device.name).described) {
           for (const line of describeNode(node)) {
             this.log.info(`${device.name}:   ${line}`);
           }
           store.update(device.name, { described: true });
         }
-        const watts = current.map(({ value }) => activePowerWatts(value)).find((value) => value !== undefined);
-        this.log.info(
-          [
-            `${device.name}: ${node.basicInformation?.productName ?? 'connected'}`,
-            formatWatts(watts),
-            STATE_NAMES[appliance.monitor.state],
-            this.#learnedSummary(appliance),
-            ...(device.pollSeconds ? [`asked every ${device.pollSeconds} s`] : []),
-          ].join(', '),
-        );
-        if (device.pollSeconds) {
-          this.#poll(appliance, node, device.pollSeconds);
+        // A device reports changes only, so without this nothing would be
+        // known until the first change after every (re)connection.
+        const current = activePowerValues(node);
+        for (const appliance of appliances) {
+          this.#safely(appliance.device.name, () => {
+            this.#choose(appliance, metered, !introduced.has(appliance));
+            for (const report of current) {
+              this.#onAttribute(appliance, report);
+            }
+            if (introduced.has(appliance)) {
+              return;
+            }
+            introduced.add(appliance);
+            appliance.accessory?.setInfo(node.basicInformation ?? {});
+            const { accept } = appliance;
+            const watts = current
+              .filter(({ endpointId }) => accept === 'all' || accept.has(endpointId))
+              .map(({ value }) => activePowerWatts(value))
+              .find((value) => value !== undefined);
+            const { name, pollSeconds } = appliance.device;
+            this.log.info(
+              [
+                `${name}: ${node.basicInformation?.productName ?? 'connected'}`,
+                formatWatts(watts),
+                STATE_NAMES[appliance.monitor.state],
+                this.#learnedSummary(appliance),
+                ...(pollSeconds ? [`asked every ${pollSeconds} s`] : []),
+              ].join(', '),
+            );
+            if (pollSeconds) {
+              this.#poll(appliance, node, pollSeconds);
+            }
+          });
         }
       }),
-      onAttribute: (report) => this.#safely(device.name, () => this.#onAttribute(appliance, report)),
+      onAttribute: (report) => {
+        for (const appliance of appliances) {
+          this.#safely(appliance.device.name, () => this.#onAttribute(appliance, report));
+        }
+      },
     });
+  }
+
+  /**
+   * Which endpoints an appliance takes its readings from, and a word in the
+   * log where that needs one: a device chosen that is not there, or several
+   * measuring and none chosen. Told once per start, not on every reconnect.
+   */
+  #choose(appliance: Appliance, metered: MeteredDevice[], tell: boolean): void {
+    const { device } = appliance;
+    appliance.accept = chosenEndpoints(metered, device);
+    if (!tell) {
+      return;
+    }
+    const list = metered.map(describeDevice).join('; ');
+    if (appliance.accept !== 'all') {
+      const chosen = metered.find(({ endpoints }) => [...endpoints].some((number) => (appliance.accept as Set<number>).has(number)));
+      if (chosen) {
+        this.log.info(`${device.name}: follows ${describeDevice(chosen)}`);
+      } else {
+        this.log.warn(
+          `${device.name}: ${device.deviceId ? `no device with id ${device.deviceId}` : `no endpoint ${device.endpoint}`} ` +
+            `measures power here, so nothing is counted. There are: ${list || 'none'}.`,
+        );
+      }
+    } else if (metered.length > 1) {
+      this.log.warn(
+        `${device.name}: ${metered.length} devices measure power here, and all of them count as one appliance. ` +
+          `Choose one on the settings page, or set deviceId: ${list}.`,
+      );
+    }
+  }
+
+  /** What measures power behind each pairing, for the settings page to choose from; see bridged.ts. */
+  #saveMetered(owner: string, metered: MeteredDevice[]): void {
+    const path = join(this.#dataPath, 'endpoints.json');
+    const all = (readJson(path) as Record<string, MeteredDevice[]> | null) ?? {};
+    if (JSON.stringify(all[owner]) === JSON.stringify(metered)) {
+      return;
+    }
+    all[owner] = metered;
+    writeJson(path, all);
   }
 
   /**
@@ -347,7 +427,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         return;
       }
       busy = true;
-      readActivePower(node)
+      readActivePower(node, appliance.accept === 'all' ? undefined : appliance.accept)
         .then((reports) => {
           for (const report of reports) {
             this.#safely(appliance.device.name, () => this.#onAttribute(appliance, report));
@@ -487,6 +567,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       accessory: handle,
       energy: new EnergyMeter(this.#ledger[device.name]),
       phases: this.#phaseTrackers(device),
+      // Nothing yet for one that chose a device, until the node says where it is.
+      accept: device.deviceId || device.endpoint !== undefined ? new Set<number>() : 'all' as const,
     };
     this.#appliances.set(device.name, appliance);
     return appliance;
@@ -510,6 +592,10 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   }
 
   #onAttribute(appliance: Appliance, report: AttributeReport): void {
+    // Behind a bridge, the other devices' readings and switches are theirs.
+    if (appliance.accept !== 'all' && !appliance.accept.has(report.endpointId)) {
+      return;
+    }
     if (isOnOff(report.clusterId, report.attributeId)) {
       // A plug with a relay switched off: whatever ran there has finished.
       if (report.value === false && appliance.monitor.state === 'running') {

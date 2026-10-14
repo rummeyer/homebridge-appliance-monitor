@@ -172,6 +172,10 @@
     const config = configs[0];
     config.devices = Array.isArray(config.devices) ? config.devices.filter((d) => d && typeof d === 'object') : [];
     const pairedNames = new Set(paired);
+    /** Paired itself, or sharing the pairing of one that is. */
+    const isPairedDevice = (device) => pairedNames.has(device.name) || Boolean(device.pairedWith && pairedNames.has(device.pairedWith));
+    /** What measures power behind each pairing; see the server's /endpoints. */
+    const metered = (await homebridge.request('/endpoints').catch(() => null)) ?? {};
     /** What each appliance uses where its thresholds are empty; see the server's /learned. */
     let inUse = (await homebridge.request('/learned').catch(() => null)) ?? {};
     /** Where this machine can be reached, for the link to the dashboard. */
@@ -273,7 +277,7 @@
         onchange: (e) => { selected = Number(e.target.value); render(); },
       }, sortedIndices().map((index) => {
         const name = config.devices[index].name || '(no name)';
-        return el('option', { value: index, selected: index === selected }, `${name}${pairedNames.has(name) ? '  ✓' : ''}`);
+        return el('option', { value: index, selected: index === selected }, `${name}${isPairedDevice(config.devices[index]) ? '  ✓' : ''}`);
       }));
       const add = el('button', {
         type: 'button', class: 'btn btn-primary',
@@ -326,16 +330,54 @@
         changed();
       });
 
-      const isPaired = pairedNames.has(device.name);
+      const isPaired = isPairedDevice(device);
+
+      // Behind a Matter bridge, paired once: the others share that pairing,
+      // and each follows one device of it. Offered only where more than one
+      // device measures, so a house of plain plugs sees nothing of it.
+      const owners = config.devices
+        .filter((d) => d !== device && d.name && !d.pairedWith && (metered[d.name]?.length ?? 0) > 1)
+        .map((d) => d.name).sort(byName);
+      const pairingField = owners.length || device.pairedWith
+        ? field('Pairing',
+          choice(device.pairedWith ?? '', [['', 'Its own pairing code'], ...owners.map((name) => [name, `Shared with ${name} (a bridge)`])], (value) => {
+            setOrDrop(device, 'pairedWith', value);
+            if (value) {
+              delete device.pairingCode;
+            }
+            changed();
+            render();
+          }),
+          'A bridge is paired once; the devices behind it share that pairing.')
+        : null;
+      const devices = metered[device.pairedWith || device.name] ?? [];
+      const current = device.deviceId ?? (device.endpoint === undefined ? '' : `endpoint:${device.endpoint}`);
+      const deviceOptions = [['', 'Every reading (a plug of its own)'],
+        ...devices.map((d) => [d.uniqueId ?? `endpoint:${d.endpoint}`, `${d.name ?? 'Endpoint'} · endpoint ${d.endpoint}`])];
+      if (current && !deviceOptions.some(([key]) => key === current)) {
+        deviceOptions.push([current, `${current} (not found)`]);
+      }
+      const deviceField = devices.length > 1 || current
+        ? field('Device',
+          choice(current, deviceOptions, (value) => {
+            const endpoint = value.startsWith('endpoint:') ? Number(value.slice('endpoint:'.length)) : undefined;
+            setOrDrop(device, 'endpoint', endpoint);
+            setOrDrop(device, 'deviceId', endpoint === undefined ? value : '');
+            changed();
+          }),
+          'Which device behind the bridge this appliance follows.')
+        : null;
 
       return el('div', {},
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
           el('div', { class: 'om-set-grid' },
             field('Name', nameInput, 'Renaming means pairing again.', nameError(device.name ?? '')),
-            field('Pairing code', codeInput,
+            pairingField,
+            device.pairedWith ? null : field('Pairing code', codeInput,
               isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
-              codeError(device.pairingCode ?? '')))),
+              codeError(device.pairingCode ?? '')),
+            deviceField)),
 
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'In HomeKit'),
