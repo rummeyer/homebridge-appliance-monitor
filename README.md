@@ -117,7 +117,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its polling interval, its phases and the thresholds it learned under More" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, Part of and how it shows in HomeKit, and under More its polling interval, its phases and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -401,7 +401,7 @@ and **Last Year**, one row per plug and the total below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week, last month and last year, its last cycle, and a count per appliance" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week, last month and last year, its last cycle, and a count per appliance; two lamps that are part of another appliance indented in italics under it" width="760">
 </picture>
 
 Today counts from a plug's first reading of the day, so a plug added at noon
@@ -470,7 +470,7 @@ A web page with every appliance at a glance, for a tablet on the wall or a
 phone on the sofa, without logging in to Homebridge. It opens in the **Home**
 look, after Apple's Home app:
 
-<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home.png" alt="The dashboard in the Home look: square glass tiles on a warm wallpaper, Electricity with what all plugs draw together, the running Schreibtisch as a white tile, the power chart of all plugs and the statistics" width="760">
+<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home.png" alt="The dashboard in the Home look: square glass tiles on a warm wallpaper, Electricity with what all plugs draw together, the running Fernseher as a white tile, two lamps marked as part of another appliance, the power chart of all plugs and the statistics" width="760">
 
 - a tile per appliance with what it draws **now**, whether it is running and
   for how long, what the cycle has used so far, and the phases it is in;
