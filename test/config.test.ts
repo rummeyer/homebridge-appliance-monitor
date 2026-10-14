@@ -8,6 +8,7 @@ import {
   parsePairingCode,
   usablePhases,
   usablePollSeconds,
+  pairedWithProblem,
   validateDeviceConfig,
 } from '../src/config.ts';
 import type { PhaseConfig } from '../src/phases.ts';
@@ -176,4 +177,24 @@ test('Running is a switch or an occupancy sensor, nothing else', () => {
 test('the switches read the setting from when they were sensors, the new one winning', () => {
   assert.equal(showsInHomeKit({ name: 'Lamp', runningSwitch: false }), false);
   assert.equal(showsInHomeKit({ name: 'Lamp', runningSensor: false, runningSwitch: true }), true);
+});
+
+test('a device behind a bridge: the pairing it shares and the device it follows', () => {
+  assert.deepEqual(validateDeviceConfig({ name: 'Dryer', pairedWith: 'Washer', deviceId: 'shelly-dryer' }, 0), []);
+  assert.deepEqual(validateDeviceConfig({ name: 'Dryer', endpoint: 5 }, 0), []);
+  assert.equal(validateDeviceConfig({ name: 'Dryer', pairedWith: ' ' }, 0).length, 1);
+  assert.equal(validateDeviceConfig({ name: 'Dryer', deviceId: 5 }, 0).length, 1);
+  assert.equal(validateDeviceConfig({ name: 'Dryer', endpoint: -1 }, 0).length, 1);
+  assert.equal(validateDeviceConfig({ name: 'Dryer', endpoint: 1.5 }, 0).length, 1);
+});
+
+test('only a pairing of its own can be shared, by an appliance that is there', () => {
+  const washer = { name: 'Washer', pairingCode: MANUAL };
+  const dryer = { name: 'Dryer', pairedWith: 'Washer' };
+  assert.equal(pairedWithProblem(dryer, [washer, dryer]), undefined);
+  assert.equal(pairedWithProblem(washer, [washer, dryer]), undefined, 'one with a pairing of its own');
+  assert.match(pairedWithProblem({ name: 'Dryer', pairedWith: 'Fridge' }, [washer])!, /no other appliance/);
+  assert.match(pairedWithProblem({ name: 'Dryer', pairedWith: 'Dryer' }, [washer])!, /no other appliance/);
+  const lamp = { name: 'Lamp', pairedWith: 'Dryer' };
+  assert.match(pairedWithProblem(lamp, [washer, dryer, lamp])!, /itself paired with "Washer"/);
 });

@@ -122,6 +122,34 @@ A paired plug is remembered by its name, so renaming it means pairing it
 again. Remove the old pairing from the Home app first, under the plug's
 connected services.
 
+### Behind a Matter bridge
+
+A Matter bridge — homebridge-shelly-matter, say, with several metering
+Shellys behind it — is paired once and carries many devices. So is a plug
+with several channels, each measuring on its own endpoint. Without a choice,
+every reading of the node would count towards one appliance.
+
+1. Pair the bridge with one appliance, as above: in the Home app, **Turn On
+   Pairing Mode** on the bridge, and use that code.
+2. After the restart, the log lists what measures power behind it, by name,
+   endpoint and UniqueID, and warns that all of it counts as one appliance.
+3. On that appliance, choose its **Device** behind the bridge.
+4. For each further device, **+ Add** an appliance, set **Pairing** to
+   *Shared with* the first one — no code of its own — and choose its
+   **Device**. Restart once all are set.
+
+The choice is kept by the bridged device's UniqueID, which stays when the
+bridge renumbers its endpoints; a device without one is chosen by endpoint
+number. In config.json this is `"pairedWith"` (the appliance that paired the
+bridge), and `"deviceId"` or `"endpoint"`:
+
+```json
+"devices": [
+  { "name": "Waschmaschine", "pairingCode": "3497-011-2332", "deviceId": "shelly-plugs-a1b2c3" },
+  { "name": "Trockner", "pairedWith": "Waschmaschine", "deviceId": "shelly-plugs-d4e5f6" }
+]
+```
+
 ### Why the Home app calls it "Matter Test"
 
 Under the plug's connected services, the Home app lists this plugin as
@@ -501,6 +529,9 @@ config it writes looks like this:
 | `devices[].name` | — | The appliance. Its accessory is called "<name> Monitor", and its Running switch "<name> Running"; also the name in the log and the recordings. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
 | `devices[].runningSwitch` | `true` | Running in HomeKit, on while the appliance runs. |
+| `devices[].pairedWith` | | Another appliance whose pairing this one shares: a device behind a Matter bridge. See [Behind a Matter bridge](#behind-a-matter-bridge). |
+| `devices[].deviceId` | | Which device behind the bridge it follows, by UniqueID. Without it, every reading of the node counts. |
+| `devices[].endpoint` | | The same by endpoint number, for a device without UniqueID. |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
@@ -520,6 +551,8 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 - `matter/`: the controller's fabric, certificates and what it knows about
   the plugs. Deleting it unpairs everything, as far as the plugin is concerned.
 - `nodes.json`: which configured name is which Matter node.
+- `endpoints.json`: what measures power behind each pairing, for choosing a
+  device behind a bridge.
 - `devices.json`: what each appliance has learned, the state it is in, so that
   a running appliance is still running after a restart, and its counts.
   To have an appliance learn afresh, use **Forget** in the settings (see

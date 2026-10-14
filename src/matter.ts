@@ -6,9 +6,16 @@ import { NodeStates } from '@project-chip/matter.js/device';
 import type { Endpoint, PairedNode } from '@project-chip/matter.js/device';
 import type { Logging } from 'homebridge';
 
+import type { EndpointInfo } from './bridged.ts';
 import type { MatterLogLevel, PairingData } from './config.ts';
 import { ACTIVE_POWER, ELECTRICAL_POWER_MEASUREMENT, hex } from './power.ts';
 import { FABRIC_LABEL } from './settings.ts';
+
+/** Bridged Device Basic Information, and the attributes of it used here. */
+const BRIDGED_DEVICE_BASIC_INFORMATION = 0x0039;
+const PRODUCT_NAME = 0x0003;
+const NODE_LABEL = 0x0005;
+const UNIQUE_ID = 0x0012;
 
 /** Thread plugs can take a while to answer mDNS; the default is 30 s. */
 const DISCOVERY_TIMEOUT = Seconds(60);
@@ -96,7 +103,8 @@ export class MatterController {
   }
 
   /**
-   * Connects to a paired plug and subscribes to everything it has.
+   * Connects to a paired plug and subscribes to everything it has. Once per
+   * node: the appliances behind one bridge share the connection.
    *
    * matter.js keeps the connection up from here: it resubscribes after a
    * dropped subscription and rediscovers the plug if its address changes.
@@ -165,6 +173,36 @@ export function describeNode(node: PairedNode): string[] {
   return lines;
 }
 
+/**
+ * Every endpoint, where it sits, whether it measures power, and what a
+ * bridge says of the device it stands for; see bridged.ts.
+ */
+export function endpointTree(node: PairedNode): EndpointInfo[] {
+  const parents = new Map<number, number>();
+  for (const endpoint of allEndpoints(node)) {
+    for (const child of endpoint.getChildEndpoints()) {
+      parents.set(Number(child.number), Number(endpoint.number));
+    }
+  }
+  return allEndpoints(node).map((endpoint) => {
+    const number = Number(endpoint.number);
+    const info: EndpointInfo = { number, parent: parents.get(number), metering: false };
+    for (const cluster of endpoint.getAllClusterClients()) {
+      const id = Number(cluster.id);
+      if (id === ELECTRICAL_POWER_MEASUREMENT) {
+        info.metering = true;
+      } else if (id === BRIDGED_DEVICE_BASIC_INFORMATION) {
+        const text = (attributeId: number): string | undefined => {
+          const value = Object.values(cluster.attributes).find(({ id: inner }) => Number(inner) === attributeId)?.getLocal();
+          return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+        };
+        info.bridged = { uniqueId: text(UNIQUE_ID), name: text(NODE_LABEL) ?? text(PRODUCT_NAME) };
+      }
+    }
+    return info;
+  });
+}
+
 /** The ActivePower each endpoint currently holds, as if just reported. */
 export function activePowerValues(node: PairedNode): AttributeReport[] {
   const reports: AttributeReport[] = [];
@@ -195,9 +233,13 @@ export function activePowerValues(node: PairedNode): AttributeReport[] {
  * minute — which is too coarse to see a coffee run through. Asking can be
  * fresher, if the plug measures more often than it reports.
  */
-export async function readActivePower(node: PairedNode): Promise<AttributeReport[]> {
+export async function readActivePower(node: PairedNode, only?: Set<number>): Promise<AttributeReport[]> {
   const reports: AttributeReport[] = [];
   for (const endpoint of allEndpoints(node)) {
+    // Behind a bridge, only the device asked about: not every Shelly in the house.
+    if (only && !only.has(Number(endpoint.number))) {
+      continue;
+    }
     for (const cluster of endpoint.getAllClusterClients()) {
       if (Number(cluster.id) !== ELECTRICAL_POWER_MEASUREMENT) {
         continue;

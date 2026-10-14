@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Matter bridges, and plugs with several channels: an appliance follows one
+  device of the node (`deviceId`, its UniqueID, or `endpoint`), and further
+  appliances share the bridge's pairing (`pairedWith`) instead of pairing it
+  again. The log lists what measures power behind a pairing; the settings
+  page offers it to choose from. Asked for in #2.
+
 ## [1.4.1] — 2026-10-14
 
 ### Changed

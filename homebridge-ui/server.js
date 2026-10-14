@@ -33,6 +33,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     this.onRequest('/statistics', (request) => this.statistics(request));
     this.onRequest('/curve', (request) => this.curve(request));
     this.onRequest('/paired', () => this.paired());
+    this.onRequest('/endpoints', () => this.endpoints());
     this.onRequest('/address', () => this.address());
     this.onRequest('/learned', () => this.learned());
     this.onRequest('/reset', (request) => this.reset(request));
@@ -121,6 +122,15 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
   /** The names of the plugs that are paired, for a mark in the Settings tab's list. */
   async paired() {
     return Object.keys(this.readData('nodes.json'));
+  }
+
+  /**
+   * What measures power behind each pairing, by the appliance that paired
+   * it, for choosing a device behind a bridge. Written by the plugin once it
+   * has connected; see bridged.ts.
+   */
+  async endpoints() {
+    return this.readData('endpoints.json');
   }
 
   /**
