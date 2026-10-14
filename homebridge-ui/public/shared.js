@@ -63,11 +63,11 @@
     for (const [index, { name, values, partOf }] of table.rows.entries()) {
       const row = body.insertRow();
       const first = cell(row, name);
+      // In italics, as not in the total, and indented under the appliance it
+      // is part of, which comes right before it.
       if (partOf) {
-        // Says why the total is less than the rows add up to.
-        const small = document.createElement('small');
-        small.textContent = `part of ${partOf}, not in the total`;
-        first.append(small);
+        row.classList.add('part');
+        first.style.setProperty('--depth', table.depths?.[index] ?? 1);
       }
       decorate?.(first, name);
       values.forEach((value) => cell(row, kwh(value)));

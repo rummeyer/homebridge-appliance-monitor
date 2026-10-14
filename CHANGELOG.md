@@ -6,6 +6,20 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.2] — 2026-10-14
+
+### Changed
+
+- Running's **Not shown** on the settings page now says what it means: *Not
+  in HomeKit — still on the dashboard*, which keeps its tile either way.
+- The energy tables list each appliance's parts right under it, indented
+  and in italics, and several parts by name; the note *part of …, not in
+  the total* under their names is gone.
+
+### Fixed
+
+- The Statistics tab on the settings page counted parts in the total too.
+
 ## [1.6.1] — 2026-10-14
 
 ### Changed
@@ -648,7 +662,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.2...HEAD
+[1.6.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.4.6...v1.5.0

@@ -388,6 +388,28 @@ export function wholeOf(device: DeviceConfig, devices: DeviceConfig[]): string |
   return device.partOf.trim();
 }
 
+/**
+ * The appliances with each one's parts right after it, by name, and how
+ * deep each sits: a lamp in a strip in a room meter is two below the room.
+ * Otherwise in the order given.
+ */
+export function withParts<T extends DeviceConfig>(devices: T[]): { device: T; depth: number }[] {
+  const ordered: { device: T; depth: number }[] = [];
+  const add = (device: T, depth: number): void => {
+    ordered.push({ device, depth });
+    devices
+      .filter((part) => wholeOf(part, devices) === device.name)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }))
+      .forEach((part) => add(part, depth + 1));
+  };
+  for (const device of devices) {
+    if (wholeOf(device, devices) === undefined) {
+      add(device, 0);
+    }
+  }
+  return ordered;
+}
+
 /** Whether an appliance counts in the totals: not when another plug measures it too. */
 export function countsInTotal(device: DeviceConfig, devices: DeviceConfig[]): boolean {
   return wholeOf(device, devices) === undefined;

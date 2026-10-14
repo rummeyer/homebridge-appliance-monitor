@@ -407,7 +407,7 @@
           el('div', { class: 'om-set-grid' },
             field('Running',
               choice(!showing(device, 'running') ? 'none' : ['occupancy', 'outlet'].includes(device.runningAs) ? device.runningAs : 'switch',
-                [['switch', 'Switch — on while it runs'], ['outlet', 'Outlet — on while it runs'], ['occupancy', 'Occupancy sensor — taken while it draws'], ['none', 'Not shown']],
+                [['switch', 'Switch — on while it runs'], ['outlet', 'Outlet — on while it runs'], ['occupancy', 'Occupancy sensor — taken while it draws'], ['none', 'Not in HomeKit — still on the dashboard']],
                 (value) => {
                   setSwitch(device, 'running', value !== 'none');
                   setOrDrop(device, 'runningAs', ['occupancy', 'outlet'].includes(value) ? value : undefined);

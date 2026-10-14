@@ -95,6 +95,8 @@
     thead th small { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; }
     tbody td small { display: block; color: var(--muted); font-size: .75rem; }
     tbody td:first-child { font-weight: 500; }
+    tbody tr.part td { font-style: italic; }
+    tbody tr.part td:first-child { padding-left: calc(10px + var(--depth) * 20px); }
     tbody tr + tr td { border-top: 1px solid var(--line); }
     tfoot td { border-top: 1px solid var(--muted); font-weight: 600; }
     .error { color: var(--warn); }

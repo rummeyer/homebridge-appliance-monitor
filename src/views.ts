@@ -5,7 +5,7 @@
  */
 import { join } from 'node:path';
 
-import { countsInTotal, usablePhases } from './config.ts';
+import { usablePhases, wholeOf, withParts } from './config.ts';
 import type { DeviceConfig } from './config.ts';
 import { shownCount } from './counts.ts';
 import { phaseSpans, sumSamples, thin } from './curve.ts';
@@ -68,12 +68,19 @@ export function totalCurve(dir: string | undefined, names: string[], hours: numb
 }
 
 export interface StatisticsTable extends Statistics {
+  /** How far below another appliance each row sits, as part of it; 0 for one on its own. */
+  depths: number[];
   counts: { label: string; count: number; since: number | null }[];
   lastCycles: (LastCycle | null)[];
 }
 
-/** The table for the plugs given, in that order, with what each has counted. */
-export function statisticsTable(dir: string | undefined, devices: Pick<DeviceConfig, 'name' | 'phases' | 'partOf'>[], now = new Date()): StatisticsTable {
+/**
+ * The table for the plugs given, in that order but for each one's parts,
+ * which come right after it, with what each has counted.
+ */
+export function statisticsTable(dir: string | undefined, given: Pick<DeviceConfig, 'name' | 'phases' | 'partOf'>[], now = new Date()): StatisticsTable {
+  const ordered = withParts(given);
+  const devices = ordered.map(({ device }) => device);
   const ledger = readData<Record<string, DeviceEnergy>>(dir, 'energy.json', {});
   const records = readData<Record<string, DeviceRecord>>(dir, 'devices.json', {});
   const counts = devices.map((device) => {
@@ -83,8 +90,9 @@ export function statisticsTable(dir: string | undefined, devices: Pick<DeviceCon
   });
   const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
   // Only a partOf that holds: one naming nothing, or going round, is counted.
-  const plugs = devices.map((device) =>
-    countsInTotal(device, devices) ? { name: device.name } : { name: device.name, partOf: device.partOf!.trim() },
-  );
-  return { ...statistics(ledger, plugs, now), counts, lastCycles };
+  const plugs = devices.map((device) => {
+    const partOf = wholeOf(device, devices);
+    return partOf === undefined ? { name: device.name } : { name: device.name, partOf };
+  });
+  return { ...statistics(ledger, plugs, now), counts, lastCycles, depths: ordered.map(({ depth }) => depth) };
 }

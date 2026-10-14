@@ -25,6 +25,8 @@
   .om-table thead th:first-child { border-top-left-radius: .375rem; }
   .om-table thead th:last-child { border-top-right-radius: .375rem; }
   .om-table tbody td:first-child { font-weight: 500; }
+  .om-table tbody tr.part td { font-style: italic; }
+  .om-table tbody tr.part td:first-child { padding-left: calc(.5rem + var(--depth) * 1.25rem); }
   .om-table tbody tr + tr td { border-top: 1px solid rgba(128,128,128,.15); }
   /* The checkboxes for resetting, shown only while picking. */
   .om-table .om-reset-pick { display: none; margin-right: .5rem; vertical-align: -.1em; }
@@ -110,7 +112,7 @@
       const [config] = await homebridge.getPluginConfig();
       const devices = (config?.devices ?? [])
         .filter((device) => typeof device?.name === 'string' && device.name.trim())
-        .map((device) => ({ name: device.name.trim(), phases: device.phases ?? [] }));
+        .map((device) => ({ name: device.name.trim(), phases: device.phases ?? [], partOf: device.partOf }));
       document.getElementById('om-stats-none').classList.toggle('om-hidden', devices.length > 0);
       box.innerHTML = '';
       if (devices.length === 0) {

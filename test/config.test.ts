@@ -11,6 +11,7 @@ import {
   pairedWithProblem,
   partOfProblem,
   wholeOf,
+  withParts,
   countsInTotal,
   validateDeviceConfig,
 } from '../src/config.ts';
@@ -227,4 +228,19 @@ test('part of another appliance: named, not itself, and not round in a circle', 
   const bulb = { name: 'Bulb', partOf: 'Strip' };
   assert.equal(partOfProblem(bulb, [room, strip, bulb]), undefined);
   assert.equal(countsInTotal(bulb, [room, strip, bulb]), false);
+});
+
+test('parts come right after what they are part of, by name, and deeper', () => {
+  const devices = [
+    { name: 'Room' },
+    { name: 'Washer' },
+    { name: 'Lamp 10', partOf: 'Strip' },
+    { name: 'Strip', partOf: 'Room' },
+    { name: 'lamp 2', partOf: 'Strip' },
+    { name: 'Lost', partOf: 'Nowhere' },
+  ];
+  assert.deepEqual(
+    withParts(devices).map(({ device, depth }) => `${depth} ${device.name}`),
+    ['0 Room', '1 Strip', '2 lamp 2', '2 Lamp 10', '0 Washer', '0 Lost'],
+  );
 });

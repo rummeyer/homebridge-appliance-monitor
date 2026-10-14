@@ -415,13 +415,13 @@ The tables do not mark either; keep it in mind for a plug added recently.
 **Something measured twice** is counted once. A lamp that reports its own
 watts over Matter, plugged into a metered socket strip that is an appliance
 here too, is in the strip's figures already. Set the lamp's **Part of** to
-the strip: it keeps its own row, marked *part of …, not in the total*, and its
-own tile, but the total in the table, the Total tile and the Total chart leave
-it out. While the strip is switched off or draws nothing, the lamp draws
-nothing either, whatever its own meter last said — some report their last
-few tenths of a watt on after losing power; once the strip draws again, the
-lamp's own reading counts again. Chains work too, a lamp in a strip in a
-room meter. A **Part of** naming no appliance, or leading back round to the
+the strip: it keeps its own row, right under the strip's, indented and in
+italics (several parts by name), and its own tile, but the total in the
+table, the Total tile and the Total chart leave it out. While the strip is
+switched off or draws nothing, the lamp draws nothing either, whatever its
+own meter last said — some report their last few tenths of a watt on after
+losing power; once the strip draws again, the lamp's own reading counts
+again. Chains work too, a lamp in a strip in a room meter. A **Part of** naming no appliance, or leading back round to the
 one it is set on, is ignored with a warning in the log, and the appliance is
 counted.
 
