@@ -6,6 +6,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The Statistics tab of the settings page is headed **Energy**, as on the
+  dashboard, instead of "Energy and counts".
+
 ## [1.4.3] — 2026-10-14
 
 ### Changed
