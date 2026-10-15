@@ -12,6 +12,8 @@
 (function (root) {
   'use strict';
 
+  /** Dates and times in English, as every text here is, with a 24-hour clock; as in energy.ts. */
+  const LOCALE = 'en-GB';
   const W = 1000;
   const PLOT_H = 300;
   const PAD = { left: 96, right: 78, top: 16, bottom: 30 };
@@ -59,10 +61,10 @@
     const label = (at) => {
       const date = new Date(at);
       if (step >= DAY) {
-        return date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+        return date.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric' });
       }
-      const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      return multiDay ? `${date.toLocaleDateString([], { weekday: 'short' })} ${time}` : time;
+      const time = date.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+      return multiDay ? `${date.toLocaleDateString(LOCALE, { weekday: 'short' })} ${time}` : time;
     };
     return marks.map((at) => ({ at, label: label(at) }));
   }

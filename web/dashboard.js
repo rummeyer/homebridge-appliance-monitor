@@ -14,7 +14,7 @@
   const STATS_MS = 60_000;
   const $ = (id) => document.getElementById(id);
   const { ApplianceChart, ApplianceViews } = window;
-  const { byName, chartPointer, duration, kwh, statisticsTable } = ApplianceViews;
+  const { LOCALE, byName, chartPointer, duration, kwh, statisticsTable } = ApplianceViews;
   const { watts } = ApplianceChart;
 
   const style = document.createElement('style');
@@ -138,7 +138,7 @@
       button.append(chips);
     }
     if (appliance.at) {
-      button.title = `Last reading ${new Date(appliance.at).toLocaleTimeString()}`;
+      button.title = `Last reading ${new Date(appliance.at).toLocaleTimeString(LOCALE)}`;
     }
     if (detail) {
       // "so far" apart, for the Home look to leave out where the tile is small.
@@ -178,7 +178,7 @@
       return;
     }
     $('updated').classList.remove('error');
-    $('updated').textContent = `Updated ${new Date(live.at).toLocaleTimeString()}`;
+    $('updated').textContent = `Updated ${new Date(live.at).toLocaleTimeString(LOCALE)}`;
     $('version').textContent = live.version ? `Version ${live.version}` : '';
     const { appliances } = live;
     // The choice first, so the tiles mark it from the first time on.

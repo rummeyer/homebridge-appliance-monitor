@@ -6,6 +6,9 @@
 (function (root) {
   'use strict';
 
+  /** Dates and times in English, as every text here is, with a 24-hour clock; as in energy.ts. */
+  const LOCALE = 'en-GB';
+
   /** kWh from Wh, with as many decimals as are worth reading; nothing for none. */
   const kwh = (wattHours) => {
     if (wattHours === null || wattHours === undefined) {
@@ -141,7 +144,7 @@
 
   /** A time on the chart: with the weekday when it spans days, with seconds when not. */
   const clock = (ms, long) =>
-    new Date(ms).toLocaleString([], long
+    new Date(ms).toLocaleString(LOCALE, long
       ? { weekday: 'short', hour: '2-digit', minute: '2-digit' }
       : { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -256,5 +259,5 @@
     return { toChart, inPlot, hover, long };
   }
 
-  root.ApplianceViews = { kwh, duration, clock, byName, statisticsTable, chartPointer };
+  root.ApplianceViews = { LOCALE, kwh, duration, clock, byName, statisticsTable, chartPointer };
 })(typeof window !== 'undefined' ? window : globalThis);
