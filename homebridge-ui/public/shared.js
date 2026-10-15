@@ -34,14 +34,14 @@
   const BUBBLE_CSS = `
     tr.om-has-info:hover > td, tr.om-has-info.om-open > td { background-color: rgba(128,128,128,.12); }
     tr.om-has-info:focus-visible { outline: 2px solid rgba(128,128,128,.6); outline-offset: -2px; }
-    .om-bubble { position: fixed; z-index: 10000; max-width: 22rem; padding: .5rem .7rem; border-radius: .5rem;
+    .om-bubble { position: fixed; z-index: 10000; max-width: min(34rem, calc(100vw - 16px)); padding: .5rem .7rem; border-radius: .5rem;
                  background: rgba(28,28,30,.96); color: #f2f2f7; font: 400 .8rem/1.35 system-ui, -apple-system, sans-serif;
                  font-style: normal; text-align: left; white-space: normal; box-shadow: 0 4px 16px rgba(0,0,0,.3);
                  pointer-events: none; }
     .om-bubble[hidden] { display: none; }
     .om-bubble dl { display: grid; grid-template-columns: auto auto; gap: .1rem .8rem; margin: 0; }
     .om-bubble dt { color: #a1a1a6; font-weight: 400; }
-    .om-bubble dd { margin: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }`;
+    .om-bubble dd { margin: 0; font-variant-numeric: tabular-nums; }`;
 
   let bubble;
   /** The row the bubble is open for. */
