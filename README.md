@@ -117,7 +117,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, Part of, how it shows in HomeKit its Overtime and Idle On times, and under More its polling interval, its phases and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle On time and what it counts from, and under More its polling interval, its phases and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it

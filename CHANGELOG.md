@@ -6,6 +6,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- On the settings page, Idle On's two fields have a line of their own
+  under In HomeKit, in the same columns as the fields above.
+
 ## [1.10.0] — 2026-10-15
 
 ### Added

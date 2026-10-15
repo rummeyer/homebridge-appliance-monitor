@@ -44,6 +44,9 @@
   .om-set-section { margin-bottom: 1.25rem; }
   .om-set-section > h6 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; opacity: .65; margin-bottom: .5rem; }
   .om-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem 1rem; }
+  /* Rows of fewer fields, in the same columns as a full one. */
+  .om-set-grid.om-set-rows { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+  .om-set-rows + .om-set-rows { margin-top: .75rem; }
   .om-set-help { font-size: .78rem; opacity: .65; margin-top: .2rem; }
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
   /* Fixed widths for the checkboxes, as each row is a grid of its own and the
@@ -411,7 +414,7 @@
 
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'In HomeKit'),
-          el('div', { class: 'om-set-grid' },
+          el('div', { class: 'om-set-grid om-set-rows' },
             field('Running',
               choice(!showing(device, 'running') ? 'none' : ['occupancy', 'outlet'].includes(device.runningAs) ? device.runningAs : 'switch',
                 [['switch', 'Switch — on while it runs'], ['outlet', 'Outlet — on while it runs'], ['occupancy', 'Occupancy sensor — taken while it draws'], ['none', 'Not in HomeKit — still on the dashboard']],
@@ -428,7 +431,9 @@
               showError(input, minutesError(device.overtimeMinutes));
               changed();
             }, 1), 'Running this long in one go.',
-            minutesError(device.overtimeMinutes ?? device.leftOnMinutes)),
+            minutesError(device.overtimeMinutes ?? device.leftOnMinutes))),
+          // Idle On on a line of its own: its two fields belong together.
+          el('div', { class: 'om-set-grid om-set-rows' },
             field('Idle on after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
               setOrDrop(device, 'idleOnMinutes', numberOrUndefined(value));
               showError(input, minutesError(device.idleOnMinutes));
