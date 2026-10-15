@@ -87,6 +87,12 @@
               "placeholder": "off",
               "description": "Sensor on after this long on standby. Empty: none."
             },
+            "idleOnFrom": {
+              "title": "Idle on counted from (phase)",
+              "type": "string",
+              "placeholder": "not running",
+              "description": "Count Idle On from the end of this phase instead. Empty: from when it stops running."
+            },
             "pollSeconds": {
               "title": "Polling interval (seconds)",
               "type": "integer",

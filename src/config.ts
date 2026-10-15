@@ -66,6 +66,13 @@ export interface DeviceConfig {
    * left on overnight — and off when it runs again or draws nothing. None if not set.
    */
   idleOnMinutes?: number;
+  /**
+   * What Idle On counts from instead: the end of the last time this phase
+   * ran — 10 minutes after the last coffee drawn, say, for a coffee machine
+   * keeping itself warm, which never stops running. Off again when the
+   * phase runs again or the plug draws nothing.
+   */
+  idleOnFrom?: string;
   /** What runningSwitch was called while it was a sensor. */
   runningSensor?: boolean;
   /**
@@ -261,6 +268,22 @@ export function usablePollSeconds(device: DeviceConfig): { pollSeconds: number |
     };
   }
   return { pollSeconds };
+}
+
+/**
+ * The phase Idle On counts from, if one is set and is one of the
+ * appliance's phases, and why not if it was set but is not.
+ */
+export function usableIdleOnFrom(device: DeviceConfig, phases: PhaseConfig[]): { from: string | undefined; problem?: string } {
+  const { name, idleOnFrom } = device;
+  if (idleOnFrom === undefined || idleOnFrom === null || idleOnFrom === '') {
+    return { from: undefined };
+  }
+  const from = typeof idleOnFrom === 'string' ? idleOnFrom.trim() : '';
+  if (!phases.some((phase) => phase.name.trim() === from)) {
+    return { from: undefined, problem: `"${name}" has an idleOnFrom that is none of its phases; Idle On counts from when it stops running` };
+  }
+  return { from };
 }
 
 /** The sensors that turn on after a time: running too long, or drawing power too long without running. */

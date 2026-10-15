@@ -262,6 +262,11 @@
         el('label', { class: 'form-check-label', for: id }, label));
     }
 
+    /** The names of an appliance's phases, as Idle On may count from one. */
+    function phaseNames(device) {
+      return (device.phases ?? []).map((phase) => (phase.name ?? '').trim()).filter(Boolean);
+    }
+
     function choice(value, options, onChange) {
       return el('select', { class: 'form-select form-select-sm', onchange: (e) => onChange(e.target.value) },
         options.map(([key, label]) => el('option', { value: key, selected: key === value }, label)));
@@ -429,7 +434,16 @@
               showError(input, minutesError(device.idleOnMinutes));
               changed();
             }, 1), 'On standby this long.',
-            minutesError(device.idleOnMinutes)))),
+            minutesError(device.idleOnMinutes)),
+            // Only for an appliance with phases: Idle On may count from the end of one.
+            phaseNames(device).length > 0 && field('Idle on counted from',
+              choice(phaseNames(device).includes(device.idleOnFrom) ? device.idleOnFrom : '',
+                [['', 'Not running'], ...phaseNames(device).map((name) => [name, `End of ${name}`])],
+                (value) => {
+                  setOrDrop(device, 'idleOnFrom', value || undefined);
+                  changed();
+                }),
+              'For an appliance that keeps warm.'))),
 
         el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
           el('summary', {}, 'More: Polling, Phases & Thresholds'),

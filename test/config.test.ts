@@ -8,6 +8,7 @@ import {
   parsePairingCode,
   usablePhases,
   usablePollSeconds,
+  usableIdleOnFrom,
   usableMinutes,
   pairedWithProblem,
   partOfProblem,
@@ -157,6 +158,19 @@ test('Overtime and Idle On need a number of minutes; anything else costs only th
   }
   assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, overtimeMinutes: 240 }), 'a sensor is something to show');
   assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, idleOnMinutes: 30 }));
+});
+
+test('Idle On counts from the end of one of its phases, or else from when it stops running', () => {
+  const phases = [{ name: 'Bezug', minWatts: 30 }, { name: 'Milchschaum', minWatts: 450 }];
+  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: 'Bezug' }, phases), { from: 'Bezug' });
+  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: ' Bezug ' }, phases), { from: 'Bezug' });
+  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee' }, phases), { from: undefined });
+  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: '' }, phases), { from: undefined });
+  for (const wrong of ['Espresso', 42]) {
+    const { from, problem } = usableIdleOnFrom({ name: 'Coffee', idleOnFrom: wrong as string }, phases);
+    assert.equal(from, undefined);
+    assert.match(problem!, /none of its phases; Idle On counts from when it stops running/);
+  }
 });
 
 test('too short an interval for asking is lengthened, and does not cost the plug', () => {

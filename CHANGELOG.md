@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-10-15
+
+### Added
+
+- **Idle on counted from** a phase (`idleOnFrom`): Idle On turns on that
+  many minutes after the phase last ended, while the plug still draws
+  power, and off when the phase runs again or the plug draws nothing — 10
+  minutes after the last coffee, for a coffee machine that keeps itself
+  warm and so never stops running.
+
 ## [1.9.0] — 2026-10-15
 
 ### Added
@@ -743,7 +753,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.1...v1.8.0

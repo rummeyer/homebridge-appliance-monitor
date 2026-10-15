@@ -360,6 +360,13 @@ tell, to hang automations on:
   (`idleOnMinutes`). A part counts as running while what it is part of
   runs, so a desk lamp is not idle while the desk is in use.
 
+  An appliance that keeps itself warm, as a coffee machine does, never
+  stops running while it is on. For one with phases, Idle On can count
+  from the end of a phase instead: **Idle on counted from** **End of
+  Bezug** (`idleOnFrom`) turns it on 10 minutes, say, after the last
+  coffee drawn, while the machine is still on — and off with the next
+  coffee, or once the plug draws nothing.
+
   Turn on the notifications of either in the Home app.
 
 The plugin only measures, so the switches only report: one tapped in the Home
@@ -621,6 +628,7 @@ config it writes looks like this:
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].overtimeMinutes` | none | An Overtime occupancy sensor, on once the appliance has been running this many minutes in one go. Read from `leftOnMinutes` too. See [In the Home app](#in-the-home-app). |
 | `devices[].idleOnMinutes` | none | An Idle On occupancy sensor, on once the appliance has drawn power this many minutes without running. See [In the Home app](#in-the-home-app). |
+| `devices[].idleOnFrom` | none | A phase's name: Idle On counts from the end of the last time that phase ran instead, while the plug draws power. For an appliance that keeps itself warm. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |

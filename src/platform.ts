@@ -12,6 +12,7 @@ import {
   MATTER_LOG_LEVELS,
   usableDashboardPort,
   TIMED_SENSORS,
+  usableIdleOnFrom,
   usableMinutes,
   usablePhases,
   usablePollSeconds,
@@ -254,10 +255,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         }
         const { minutes: overtimeMinutes, problem: overtimeProblem } = usableMinutes(named, 'overtime');
         const { minutes: idleOnMinutes, problem: idleOnProblem } = usableMinutes(named, 'idleOn');
-        for (const problem of [overtimeProblem, idleOnProblem].filter(Boolean)) {
+        const { from: idleOnFrom, problem: fromProblem } = usableIdleOnFrom(named, phases);
+        for (const problem of [overtimeProblem, idleOnProblem, fromProblem].filter(Boolean)) {
           this.log.warn(problem!);
         }
-        valid.push({ ...named, phases, pollSeconds, overtimeMinutes, idleOnMinutes, leftOnMinutes: undefined });
+        valid.push({ ...named, phases, pollSeconds, overtimeMinutes, idleOnMinutes, idleOnFrom, leftOnMinutes: undefined });
       }
     }
     for (const name of duplicateNames(valid)) {
@@ -751,13 +753,15 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   #checkTimed(appliance: Appliance, now: number): void {
     this.#setTimed(appliance, 'overtime', now, appliance.monitor.progress(now)?.startedAt, 'running');
     if (appliance.device.idleOnMinutes !== undefined) {
-      this.#setTimed(appliance, 'idleOn', now, this.#idleSince(appliance, now), 'drawing power without running');
+      const { idleOnFrom } = appliance.device;
+      const doing = idleOnFrom === undefined ? 'drawing power without running' : `on, no ${idleOnFrom}`;
+      this.#setTimed(appliance, 'idleOn', now, this.#idleSince(appliance, now), doing);
     }
   }
 
   /**
-   * Since when the appliance has drawn power without running, kept over a
-   * restart. A part does not while its whole runs: what it draws then is in
+   * Since when the appliance has drawn power without running — or, with
+   * idleOnFrom, since that phase last ended — kept over a restart. A part does not while its whole runs: what it draws then is in
    * that one's running. Left as it was while the draw is not known.
    */
   #idleSince(appliance: Appliance, now: number): number | undefined {
@@ -765,13 +769,21 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     if (watts === undefined || reachable === false) {
       return appliance.idleSince;
     }
+    if (device.idleOnFrom !== undefined) {
+      // Started by the phase ending, in #onPhase; over once the plug draws nothing.
+      this.#setIdleSince(appliance, watts > IDLE_WATTS ? appliance.idleSince : undefined);
+      return appliance.idleSince;
+    }
     const drawing = watts > IDLE_WATTS && !this.#runsWithin(appliance);
-    const since = drawing ? appliance.idleSince ?? now : undefined;
+    this.#setIdleSince(appliance, drawing ? appliance.idleSince ?? now : undefined);
+    return appliance.idleSince;
+  }
+
+  #setIdleSince(appliance: Appliance, since: number | undefined): void {
     if (since !== appliance.idleSince) {
       appliance.idleSince = since;
-      this.#store?.update(device.name, { idleSince: since });
+      this.#store?.update(appliance.device.name, { idleSince: since });
     }
-    return since;
   }
 
   #setTimed(appliance: Appliance, sensor: TimedSensor, now: number, since: number | undefined, doing: string): void {
@@ -796,6 +808,10 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return;
     }
     const { device } = appliance;
+    // Idle On counting from this phase: from when it ends, not while it lasts.
+    if (device.idleOnMinutes !== undefined && device.idleOnFrom === tracker.name.trim()) {
+      this.#setIdleSince(appliance, change.active && !change.short ? undefined : change.at);
+    }
     if (change.short) {
       appliance.accessory?.phaseHappened(tracker.name);
       this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
