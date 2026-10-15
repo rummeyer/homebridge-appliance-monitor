@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.10.1] — 2026-10-15
+
 ### Changed
 
 - On the settings page, Idle On's two fields have a line of their own
@@ -758,7 +760,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.10.1...HEAD
+[1.10.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.0...v1.8.1
