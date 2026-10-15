@@ -347,6 +347,11 @@ tell, to hang automations on:
   the group switches the real plug off, mid-cycle.
 - **One switch per phase**: on while the phase lasts, "Bezug"
   say, or for a moment once it is over, for a phase with "shorter than".
+- **Left On**, if set: an occupancy sensor that turns on once the appliance
+  has been running for a given time in one go — a TV on all night, a desk
+  all day — and off when it finishes. Set **Left on after** under **In
+  HomeKit** in the settings (`leftOnMinutes`), and turn on the sensor's
+  notifications in the Home app.
 
 The plugin only measures, so the switches only report: one tapped in the Home
 app is put back to what the appliance is doing straight away, and an
@@ -410,7 +415,8 @@ is shown from the day it was added: a plug added on Wednesday 30 September
 2026 shows the 30th as last month, Wednesday to Sunday as last week, and,
 from 1 January 2027, 30 September to 31 December as last year. Where some
 plugs have a value and others do not yet, the total adds up those that have.
-The tables do not mark either; keep it in mind for a plug added recently.
+The tables do not mark either; keep it in mind for a plug added recently. A period no plug has
+a figure for yet, Last Year in the first year, is left out until one has.
 
 **Something measured twice** is counted once. A lamp that reports its own
 watts over Matter, plugged into a metered socket strip that is an appliance
@@ -439,16 +445,29 @@ a metered desk socket that is an appliance of its own:
 The settings page has it as **Part of**, under the appliance's name and
 pairing; it lists the other appliances.
 
-The **Last Cycle** column shows what each appliance used in its last
-cycle, from the moment it counted as running to the moment it finished.
-Point at it for when it finished and how long it ran.
+The columns are what adds up to a total. What is only the appliance's own
+shows in a bubble on pointing anywhere in its row, or tapping it on a
+phone:
 
-The **Count** column shows how often each appliance finished a cycle — or, if
+- **Last cycle**: what it used in its last cycle, from the moment it
+  counted as running to the moment it finished; how long it ran, and when
+  it finished.
+- **Usual running time**: how long its cycles usually take, as on the
+  dashboard's tiles. None for too few cycles, or for lengths all over the
+  place, as at a desk.
+- **Standby**: how much of what it used went on while it was not running —
+  standby, or resting between uses — as a share, and what that comes to in
+  a year at the same rate. It is worked out from the last 30 days, or from
+  when it began to be counted (from 1.7.0 on, and again after a reset), and
+  shows once an hour has been counted. A TV at 60 % that comes to 20 kWh a
+  year is a plug worth switching off at night. The **Total** row has it
+  for all appliances together.
+- **Count**: how often it finished a cycle — or, if
 one of its phases is ticked **Count** on the Power tab, how often that phase
-happened: coffees drawn rather than mornings the machine was on. If several
-are ticked, the first counts. Every finished cycle and every phase is counted
-all along, so ticking another phase shows its count from when the phase was
-set up, not from when it was ticked.
+  happened: coffees drawn rather than mornings the machine was on. If several
+  are ticked, the first counts. Every finished cycle and every phase is
+  counted all along, so ticking another phase shows its count from when the
+  phase was set up, not from when it was ticked.
 
 **Reset data** below the table empties the energy, last cycle and count of
 the appliances you pick, which start again from then; what they have learned
@@ -474,6 +493,10 @@ look, after Apple's Home app:
 
 - a tile per appliance with what it draws **now**, whether it is running and
   for how long, what the cycle has used so far, and the phases it is in;
+  for one whose cycles usually take about as long, **how long it has
+  left** — after two cycles of about the same length; a desk or a washing
+  machine on short and long programmes by turns has no usual length, and
+  shows its peak instead. **Left on** is marked too;
 - a tile with what all plugs draw together — **Electricity** in the Home
   look, as the Home app calls it, and **Total** in light and dark;
 - the **power chart** of all plugs together, or of the appliance picked —
@@ -577,6 +600,7 @@ config it writes looks like this:
 | `devices[].endpoint` | | The same by endpoint number, for a device without UniqueID. |
 | `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals, and draws nothing while that one is off. See [Statistics](#statistics). |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
+| `devices[].leftOnMinutes` | none | A Left On occupancy sensor, on once the appliance has been running this many minutes in one go. See [In the Home app](#in-the-home-app). |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |

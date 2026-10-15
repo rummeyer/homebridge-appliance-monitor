@@ -52,6 +52,12 @@ export interface DeviceConfig {
    * an outlet, for the outlet's icon. All three only show; tapping changes nothing.
    */
   runningAs?: RunningAs;
+  /**
+   * A Left On sensor in HomeKit, which turns on once the appliance has been
+   * running this many minutes in one go — a TV on all night, a desk all
+   * day — and off when it finishes. None if not set.
+   */
+  leftOnMinutes?: number;
   /** What runningSwitch was called while it was a sensor. */
   runningSensor?: boolean;
   /**
@@ -94,6 +100,7 @@ export const showsRunning = (device: DeviceConfig): boolean => (device.runningSw
 export function showsInHomeKit(device: DeviceConfig): boolean {
   return (
     showsRunning(device) ||
+    usableLeftOnMinutes(device).leftOnMinutes !== undefined ||
     usablePhases(device).phases.some((phase) => phase.sensor !== false)
   );
 }
@@ -245,6 +252,22 @@ export function usablePollSeconds(device: DeviceConfig): { pollSeconds: number |
     };
   }
   return { pollSeconds };
+}
+
+/**
+ * After how many minutes of running the appliance is left on, if that is
+ * wanted, and why not if it was set but is no number of minutes. Wrong costs
+ * only the sensor, not the plug.
+ */
+export function usableLeftOnMinutes(device: DeviceConfig): { leftOnMinutes: number | undefined; problem?: string } {
+  const { name, leftOnMinutes } = device;
+  if (leftOnMinutes === undefined || leftOnMinutes === null) {
+    return { leftOnMinutes: undefined };
+  }
+  if (typeof leftOnMinutes !== 'number' || !(leftOnMinutes > 0) || !Number.isFinite(leftOnMinutes)) {
+    return { leftOnMinutes: undefined, problem: `"${name}" has a leftOnMinutes that is not a number above 0; no Left On sensor` };
+  }
+  return { leftOnMinutes };
 }
 
 /**

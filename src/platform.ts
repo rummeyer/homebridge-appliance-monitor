@@ -11,6 +11,7 @@ import {
   showsInHomeKit,
   MATTER_LOG_LEVELS,
   usableDashboardPort,
+  usableLeftOnMinutes,
   usablePhases,
   usablePollSeconds,
   pairedWithProblem,
@@ -43,6 +44,7 @@ import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
 import { clearResets, pendingResets } from './resets.ts';
 import { NodeRegistry } from './registry.ts';
+import { durationsOf, typicalSeconds, withDuration } from './typical.ts';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.ts';
 import { DeviceStore } from './store.ts';
 
@@ -74,6 +76,8 @@ interface Appliance {
   relayOff?: boolean;
   /** Whether the plug is connected; unknown until it first is, or is not. */
   reachable?: boolean;
+  /** Whether it has been running for longer than its leftOnMinutes. */
+  leftOn?: boolean;
   /**
    * The endpoints whose readings are this appliance's: all of them for a
    * plug of its own, those of the device it chose behind a bridge. Until the
@@ -197,6 +201,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.#safely(appliance.device.name, () => {
           appliance.monitor.tick(now);
           appliance.energy.tick(now);
+          this.#checkLeftOn(appliance, now);
           for (const tracker of appliance.phases) {
             this.#onPhase(appliance, tracker, tracker.tick(now));
           }
@@ -244,7 +249,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         if (problem) {
           this.log.warn(problem);
         }
-        valid.push({ ...named, phases, pollSeconds });
+        const { leftOnMinutes, problem: leftOnProblem } = usableLeftOnMinutes(named);
+        if (leftOnProblem) {
+          this.log.warn(leftOnProblem);
+        }
+        valid.push({ ...named, phases, pollSeconds, leftOnMinutes });
       }
     }
     for (const name of duplicateNames(valid)) {
@@ -500,6 +509,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         return { name, paired: false, phases: [], ...partOf };
       }
       const { monitor } = appliance;
+      const record = this.#store?.get(name) ?? {};
+      const typical = typicalSeconds(durationsOf(record));
       return {
         ...partOf,
         name,
@@ -508,9 +519,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         watts: appliance.watts,
         at: appliance.last?.at,
         state: monitor.state,
-        since: this.#store?.get(name).since,
+        since: record.since,
         phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
         cycle: monitor.progress(now),
+        ...(typical === undefined ? {} : { typicalSeconds: typical }),
+        ...(appliance.leftOn ? { leftOn: true } : {}),
       };
     });
   }
@@ -583,11 +596,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       },
     );
 
+    const energy = new EnergyMeter(this.#ledger[device.name]);
+    energy.running(Date.now(), monitor.state === 'running');
     const appliance = {
       device,
       monitor,
       accessory: handle,
-      energy: new EnergyMeter(this.#ledger[device.name]),
+      energy,
       phases: this.#phaseTrackers(device),
       // Nothing yet for one that chose a device, until the node says where it is.
       accept: device.deviceId || device.endpoint !== undefined ? new Set<number>() : 'all' as const,
@@ -693,6 +708,29 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
   }
 
+  /**
+   * Left On: on once the appliance has been running for its leftOnMinutes
+   * in one go, off when it finishes. Looked at on every tick, as nothing
+   * else happens while a TV runs on all night.
+   */
+  #checkLeftOn(appliance: Appliance, now: number): void {
+    const { device, monitor } = appliance;
+    const minutes = device.leftOnMinutes;
+    if (minutes === undefined) {
+      return;
+    }
+    const startedAt = monitor.progress(now)?.startedAt;
+    const leftOn = startedAt !== undefined && now - startedAt >= minutes * 60_000;
+    if (leftOn === (appliance.leftOn ?? false)) {
+      return;
+    }
+    appliance.leftOn = leftOn;
+    appliance.accessory?.setLeftOn(leftOn);
+    if (leftOn) {
+      this.log.info(`${device.name}: running for ${formatDuration((now - startedAt!) / 1000)} — left on?`);
+    }
+  }
+
   #onPhase(appliance: Appliance, tracker: PhaseTracker, change: PhaseChange | undefined): void {
     if (!change) {
       return;
@@ -754,7 +792,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
     if (request.action === 'forget') {
       appliance.monitor.forget(now);
-      this.#store?.update(name, { learned: undefined, cycles: undefined, standbyWatts: undefined });
+      this.#store?.update(name, { learned: undefined, cycles: undefined, standbyWatts: undefined, durations: [] });
       this.log.info(`${name}: forgot what was learned — learning again from the next cycle`);
       reply(true, 'Forgotten. It learns again from the next cycle.');
       return;
@@ -796,6 +834,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   #onTransition(device: DeviceConfig, accessory: ApplianceAccessory | undefined, transition: Transition): void {
     accessory?.update(transition.to);
+    const appliance = this.#appliances.get(device.name);
+    appliance?.energy.running(transition.at, transition.to === 'running');
+    if (appliance && transition.to !== 'running') {
+      this.#checkLeftOn(appliance, transition.at);
+    }
     this.#store?.update(device.name, {
       state: transition.to,
       since: transition.at,
@@ -808,6 +851,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       this.#store?.increment(device.name, FINISHED, transition.at);
       this.#store?.update(device.name, {
         lastCycle: { startedAt: cycle.startedAt, endedAt: transition.at, seconds: cycle.seconds, wattHours: cycle.wattHours },
+        durations: withDuration(durationsOf(this.#store.get(device.name)), cycle.seconds),
       });
       this.log.info(
         `${device.name}: Finished${cycle.switchedOff ? ' (switched off)' : ''} — ran ${formatDuration(cycle.seconds)}, ` +

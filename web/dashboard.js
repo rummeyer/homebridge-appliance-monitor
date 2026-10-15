@@ -115,7 +115,8 @@
       button.classList.add('running');
       state = appliance.since ? `Running for ${duration((now - appliance.since) / 1000)}` : 'Running';
       if (appliance.cycle) {
-        detail = [kwh(appliance.cycle.wattHours), `peak ${watts(appliance.cycle.peakWatts)}`];
+        // How long it has left, where its cycles have a usual length, rather than its peak.
+        detail = [kwh(appliance.cycle.wattHours), remaining(appliance, now) ?? `peak ${watts(appliance.cycle.peakWatts)}`];
       }
     } else {
       button.classList.add('idle');
@@ -123,8 +124,11 @@
     }
     button.append(el('div', 'watts', typeof appliance.watts === 'number' ? watts(appliance.watts) : '–'));
     button.append(el('div', 'state', state));
-    if (appliance.phases.length > 0) {
+    if (appliance.phases.length > 0 || appliance.leftOn) {
       const chips = el('div', 'chips');
+      if (appliance.leftOn) {
+        chips.append(el('span', 'chip warn', 'Left on'));
+      }
       for (const phase of appliance.phases) {
         chips.append(el('span', 'chip', phase));
       }
@@ -146,6 +150,19 @@
     }
     button.addEventListener('click', () => choose(appliance.name));
     return button;
+  }
+
+  /** "35 min left", "about done", or "longer than usual", from how long its cycles usually take. */
+  function remaining(appliance, now) {
+    if (!appliance.typicalSeconds || !appliance.cycle?.startedAt) {
+      return undefined;
+    }
+    const left = appliance.typicalSeconds - (now - appliance.cycle.startedAt) / 1000;
+    if (left >= 90) {
+      return `${duration(left)} left`;
+    }
+    // A cycle a few minutes over is about done; one well over is not like the others.
+    return left > -0.15 * appliance.typicalSeconds ? 'about done' : 'longer than usual';
   }
 
   async function showLive() {

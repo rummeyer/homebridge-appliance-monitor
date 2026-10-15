@@ -16,6 +16,7 @@ import { findLevels, RECALL_MS } from './phases.ts';
 import type { Level, PhaseConfig } from './phases.ts';
 import { readSamples, readSeries } from './recorder.ts';
 import type { DeviceRecord, LastCycle } from './store.ts';
+import { durationsOf, MIN_CYCLES, typicalSeconds } from './typical.ts';
 
 /** Points drawn across the chart: about two per pixel of a wide page. */
 export const CHART_BUCKETS = 600;
@@ -72,6 +73,11 @@ export interface StatisticsTable extends Statistics {
   depths: number[];
   counts: { label: string; count: number; since: number | null }[];
   lastCycles: (LastCycle | null)[];
+  /**
+   * How long each one's cycles usually take, in seconds; null where they
+   * have no usual length, `cycles` saying whether that is for too few.
+   */
+  typicals: { seconds: number | null; cycles: number }[];
 }
 
 /**
@@ -89,10 +95,14 @@ export function statisticsTable(dir: string | undefined, given: Pick<DeviceConfi
     return { label, count: counted?.count ?? 0, since: counted?.since ?? null };
   });
   const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
+  const typicals = devices.map((device) => {
+    const durations = durationsOf(records[device.name] ?? {});
+    return { seconds: typicalSeconds(durations) ?? null, cycles: Math.min(durations.length, MIN_CYCLES) };
+  });
   // Only a partOf that holds: one naming nothing, or going round, is counted.
   const plugs = devices.map((device) => {
     const partOf = wholeOf(device, devices);
     return partOf === undefined ? { name: device.name } : { name: device.name, partOf };
   });
-  return { ...statistics(ledger, plugs, now), counts, lastCycles, depths: ordered.map(({ depth }) => depth) };
+  return { ...statistics(ledger, plugs, now), counts, lastCycles, typicals, depths: ordered.map(({ depth }) => depth) };
 }

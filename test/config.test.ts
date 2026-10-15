@@ -8,6 +8,7 @@ import {
   parsePairingCode,
   usablePhases,
   usablePollSeconds,
+  usableLeftOnMinutes,
   pairedWithProblem,
   partOfProblem,
   wholeOf,
@@ -136,6 +137,18 @@ test('a phase may leave out its upper end, not its lower one', () => {
     { name: 'Heating', minWatts: 1000, maxWatts: undefined, minSeconds: 5, holdSeconds: 30, maxSeconds: undefined, sensor: true },
   ]);
   assert.match(check({ name: 'Heating', maxWatts: 1400 }).problems[0]!, /needs a "from"/);
+});
+
+test('Left On needs a number of minutes; anything else costs only the sensor', () => {
+  assert.deepEqual(usableLeftOnMinutes({ name: 'TV', leftOnMinutes: 240 }), { leftOnMinutes: 240 });
+  assert.deepEqual(usableLeftOnMinutes({ name: 'TV' }), { leftOnMinutes: undefined });
+  assert.deepEqual(usableLeftOnMinutes({ name: 'TV', leftOnMinutes: null as unknown as number }), { leftOnMinutes: undefined });
+  for (const wrong of [0, -5, 'long']) {
+    const { leftOnMinutes, problem } = usableLeftOnMinutes({ name: 'TV', leftOnMinutes: wrong as number });
+    assert.equal(leftOnMinutes, undefined);
+    assert.match(problem!, /no Left On sensor/);
+  }
+  assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, leftOnMinutes: 240 }), 'a sensor is something to show');
 });
 
 test('too short an interval for asking is lengthened, and does not cost the plug', () => {

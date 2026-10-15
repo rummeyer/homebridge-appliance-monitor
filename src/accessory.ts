@@ -1,6 +1,6 @@
 import type { API, CharacteristicValue, PlatformAccessory, Service, WithUUID } from 'homebridge';
 
-import { RUNNING_AS, showsRunning } from './config.ts';
+import { RUNNING_AS, showsRunning, usableLeftOnMinutes } from './config.ts';
 import type { DeviceConfig, RunningAs } from './config.ts';
 import type { CycleState } from './cycle.ts';
 
@@ -30,7 +30,8 @@ const PUT_BACK_MS = 300;
  * - **Running**, on while the appliance runs. It goes off only when the
  *   appliance finishes, so "when it turns off" is "when it is done";
  * - one switch per phase, on while the phase lasts, or for a moment once
- *   it is over, for one that is told apart by being short.
+ *   it is over, for one that is told apart by being short;
+ * - if asked for, a Left On sensor, on once it has been running for long.
  *
  * Switches rather than sensors, at the owner's choice: an occupancy sensor
  * "detecting" a coffee being drawn read oddly, and the Home app tucks
@@ -41,6 +42,7 @@ export class ApplianceAccessory {
   readonly #api: API;
   readonly #accessory: PlatformAccessory;
   readonly #running: Service | undefined;
+  readonly #leftOn: Service | undefined;
   readonly #phases = new Map<string, Service>();
   /** What each switch should show, by subtype, to put a tapped one back to. */
   readonly #truth = new Map<string, boolean>();
@@ -54,10 +56,12 @@ export class ApplianceAccessory {
 
     // Earlier versions showed sensors; Homebridge brings a cached accessory
     // back with every service it had, so they are removed here. Running may
-    // be an occupancy sensor again, and is left to #service() below.
+    // be an occupancy sensor again, and Left On is one; both are left to
+    // #service() below.
     for (const service of [...accessory.services]) {
       const sensor = service.UUID === Service.OccupancySensor.UUID || service.UUID === Service.ContactSensor.UUID;
-      if (sensor && !(service.UUID === Service.OccupancySensor.UUID && service.subtype === 'running')) {
+      const ours = service.UUID === Service.OccupancySensor.UUID && (service.subtype === 'running' || service.subtype === 'left-on');
+      if (sensor && !ours) {
         accessory.removeService(service);
       }
     }
@@ -84,6 +88,9 @@ export class ApplianceAccessory {
     // What the appliance is, for HomeKit: in the Home app, an accessory shown
     // as one tile takes its icon from it, not from the phase switches around it.
     this.#running?.setPrimaryService(true);
+    // A sensor rather than a switch: the Home app notifies for sensors.
+    this.#leftOn = this.#service(Service.OccupancySensor, 'left-on',
+      usableLeftOnMinutes(device).leftOnMinutes !== undefined, `${device.name} Left On`);
     // Earlier versions had a Finished switch too, on for a moment when the
     // appliance finished: the moment Running goes off, so it told nothing more.
     this.#service(Service.Switch, 'finished', false, '');
@@ -108,6 +115,7 @@ export class ApplianceAccessory {
     }
 
     this.update(state);
+    this.setLeftOn(false);
     for (const name of this.#phases.keys()) {
       this.setPhase(name, false);
     }
@@ -116,6 +124,11 @@ export class ApplianceAccessory {
   /** Running follows the state. */
   update(state: CycleState): void {
     this.#show('running', state === 'running');
+  }
+
+  /** Left On, once it has been running for long, until it finishes. */
+  setLeftOn(on: boolean): void {
+    this.#show('left-on', on);
   }
 
   /** A phase, on while it lasts. */
@@ -156,6 +169,9 @@ export class ApplianceAccessory {
   #shown(subtype: string): Service | undefined {
     if (subtype === 'running') {
       return this.#running;
+    }
+    if (subtype === 'left-on') {
+      return this.#leftOn;
     }
     return this.#phases.get(subtype.slice('phase:'.length));
   }

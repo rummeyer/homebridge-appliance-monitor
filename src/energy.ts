@@ -20,6 +20,13 @@ export interface DeviceEnergy {
   since: number;
   /** Watt-hours per local day, keyed `YYYY-MM-DD`. */
   days: Record<string, number>;
+  /**
+   * What of that was used while the appliance was not running — on standby,
+   * or idle at whatever it rests at — per local day, since `standbySince`.
+   * Missing in files from before 1.7.0.
+   */
+  standby?: Record<string, number>;
+  standbySince?: number;
 }
 
 /** Days are kept for a little over two years: enough for "last year" in January. */
@@ -30,9 +37,15 @@ export class EnergyMeter {
   readonly #record: DeviceEnergy;
   #watts: number | undefined;
   #at: number | undefined;
+  /** Whether the appliance is not running; unknown until told. */
+  #idle: boolean | undefined;
 
   constructor(record?: DeviceEnergy) {
     this.#record = record ? { since: record.since, days: { ...record.days } } : { since: 0, days: {} };
+    if (record?.standby && record.standbySince) {
+      this.#record.standby = { ...record.standby };
+      this.#record.standbySince = record.standbySince;
+    }
   }
 
   /** What has been counted, to be saved. */
@@ -47,15 +60,34 @@ export class EnergyMeter {
     }
     this.#watts = watts;
     this.#at = at;
+    this.#startStandby(at);
+  }
+
+  /** Whether the appliance runs, from now on: what it uses while not running is standby. */
+  running(at: number, running: boolean): void {
+    this.tick(at);
+    this.#idle = !running;
+    this.#startStandby(at);
   }
 
   /** Counts up to now, so that a day ends with what was used in it. */
   tick(at: number): void {
     if (this.#watts !== undefined && this.#at !== undefined && at > this.#at) {
       addSpread(this.#record.days, this.#at, at, this.#watts);
+      if (this.#idle && this.#record.standby) {
+        addSpread(this.#record.standby, this.#at, at, this.#watts);
+      }
     }
     if (this.#at !== undefined) {
       this.#at = Math.max(this.#at, at);
+    }
+  }
+
+  /** Standby is counted from the first moment both the draw and the state are known. */
+  #startStandby(at: number): void {
+    if (!this.#record.standby && this.#watts !== undefined && this.#idle !== undefined) {
+      this.#record.standby = {};
+      this.#record.standbySince = at;
     }
   }
 
@@ -63,17 +95,22 @@ export class EnergyMeter {
   reset(at: number): void {
     this.#record.days = {};
     this.#record.since = this.#watts === undefined ? 0 : at;
+    delete this.#record.standby;
+    delete this.#record.standbySince;
     if (this.#at !== undefined) {
       this.#at = Math.max(this.#at, at);
     }
+    this.#startStandby(at);
   }
 
   /** Drops days too old to be in any period shown. */
   prune(now: number): void {
     const oldest = dayKey(new Date(now - KEEP_DAYS * 86_400_000));
-    for (const key of Object.keys(this.#record.days)) {
-      if (key < oldest) {
-        delete this.#record.days[key];
+    for (const days of [this.#record.days, this.#record.standby ?? {}]) {
+      for (const key of Object.keys(days)) {
+        if (key < oldest) {
+          delete days[key];
+        }
       }
     }
   }
@@ -176,20 +213,78 @@ function partTotal(energy: DeviceEnergy, period: Period): number | undefined {
   return periodTotal({ ...energy, since: period.start.getTime() }, period);
 }
 
+/** Standby is worked out from the last 30 days, or from when it began to be counted. */
+export const STANDBY_DAYS = 30;
+/** Less than this counted is too little to say anything about a year. */
+export const STANDBY_MIN_MS = 3_600_000;
+const YEAR_MS = 365.25 * 86_400_000;
+
+/** What a plug used on standby lately, and what it used in all over the same days. */
+export interface StandbyUse {
+  /** Watt-hours on standby, and in all, over the time looked at. */
+  wattHours: number;
+  totalWattHours: number;
+  /** How long that is, in ms: up to 30 days. */
+  ms: number;
+}
+
+/** Standby over the last 30 days, or since it began to be counted; null for too little counted. */
+export function standbyUse(energy: DeviceEnergy, now: Date): StandbyUse | null {
+  if (!energy.standby || !energy.standbySince) {
+    return null;
+  }
+  const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (STANDBY_DAYS - 1)).getTime();
+  const from = Math.max(windowStart, energy.standbySince);
+  const ms = now.getTime() - from;
+  if (ms < STANDBY_MIN_MS) {
+    return null;
+  }
+  // By whole days: the first one counts all it has, though standby began partway through it.
+  const first = dayKey(new Date(from));
+  const sum = (days: Record<string, number>) =>
+    Object.entries(days).reduce((total, [key, wattHours]) => (key >= first ? total + wattHours : total), 0);
+  return { wattHours: sum(energy.standby), totalWattHours: sum(energy.days), ms };
+}
+
+/** What standby comes to in a year at the rate it has gone at. */
+export const standbyPerYear = ({ wattHours, ms }: StandbyUse): number => (wattHours * YEAR_MS) / ms;
+
+/** Standby as shown: watt-hours a year, and the share of all the plug used; null for nothing to show. */
+export interface StandbyShown {
+  yearWattHours: number;
+  /** 0 to 1; null when nothing was used at all. */
+  share: number | null;
+  /** How long it is worked out from, in ms. */
+  ms: number;
+}
+
+function shown(uses: StandbyUse[]): StandbyShown | null {
+  if (uses.length === 0) {
+    return null;
+  }
+  const wattHours = uses.reduce((sum, use) => sum + use.wattHours, 0);
+  const total = uses.reduce((sum, use) => sum + use.totalWattHours, 0);
+  return {
+    yearWattHours: uses.reduce((sum, use) => sum + standbyPerYear(use), 0),
+    share: total > 0 ? Math.min(1, wattHours / total) : null,
+    ms: Math.max(...uses.map((use) => use.ms)),
+  };
+}
+
 export interface Statistics {
   periods: { kind: PeriodKind; label: string; dates: string }[];
   /**
    * Watt-hours per plug and period; null where the plug has none of it.
    * `partial` marks a week, month or year it was only counted for part of.
    */
-  rows: { name: string; values: (number | null)[]; partial: boolean[]; partOf?: string }[];
+  rows: { name: string; values: (number | null)[]; partial: boolean[]; standby: StandbyShown | null; partOf?: string }[];
   /**
    * The sum of each column over the plugs that have a value in it and count
    * in the total. `missing` says some such plug has none — one added later,
    * say — so the sum leaves it out; `partial` that it includes a part of a
    * period.
    */
-  total: { values: (number | null)[]; missing: boolean[]; partial: boolean[] };
+  total: { values: (number | null)[]; missing: boolean[]; partial: boolean[]; standby: StandbyShown | null };
 }
 
 /**
@@ -223,7 +318,9 @@ export function statistics(
     });
     const values = cells.map(({ value }) => value);
     const partial = cells.map(({ partial }) => partial);
-    return partOf ? { name, values, partial, partOf } : { name, values, partial };
+    const use = energy ? standbyUse(energy, now) : null;
+    const standby = shown(use ? [use] : []);
+    return { name, values, partial, standby, use, ...(partOf ? { partOf } : {}) };
   });
   const counted = rows.filter(({ partOf }) => !partOf);
   const total = {
@@ -233,6 +330,11 @@ export function statistics(
     }),
     missing: periods.map((_, column) => counted.some(({ values }) => values[column] === null)),
     partial: periods.map((_, column) => counted.some(({ partial }) => partial[column])),
+    standby: shown(counted.flatMap(({ use }) => (use ? [use] : []))),
   };
-  return { periods: periods.map(({ kind, label, dates }) => ({ kind, label, dates })), rows, total };
+  return {
+    periods: periods.map(({ kind, label, dates }) => ({ kind, label, dates })),
+    rows: rows.map(({ use: _, ...row }) => row),
+    total,
+  };
 }

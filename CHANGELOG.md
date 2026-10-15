@@ -6,6 +6,30 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-10-15
+
+### Changed
+
+- The energy tables are narrower: last cycle, count and standby are no
+  longer columns but in a bubble, shown on pointing anywhere in an
+  appliance's row or tapping it, together with the usual running time. The columns left are the ones that add up to a total.
+- A period no appliance has a figure for yet — Last Year, in the first
+  year — is left out of the energy tables until one has.
+
+### Added
+
+- **Standby** in the statistics, on the Statistics tab and the dashboard:
+  the share of what each appliance used while it was not running, and what
+  that comes to in a year, worked out from the last 30 days. Counted from
+  this version on.
+- **Time left** on the dashboard: for an appliance whose cycles usually take
+  about as long, its running tile says how long it has left, from the last
+  ten cycles.
+- **Left On** (`leftOnMinutes`): an occupancy sensor in HomeKit, on once the
+  appliance has been running this many minutes in one go, and off when it
+  finishes — for a notification about a TV on all night. Set under **In
+  HomeKit** on the settings page; marked on the dashboard too.
+
 ## [1.6.4] — 2026-10-14
 
 ### Changed
@@ -676,7 +700,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.4...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.4...v1.7.0
 [1.6.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.1...v1.6.2

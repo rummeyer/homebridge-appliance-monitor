@@ -24,6 +24,8 @@
   const MIN_POLL_SECONDS = 2;
   const pollError = (seconds) =>
     (seconds !== undefined && seconds < MIN_POLL_SECONDS ? `At least ${MIN_POLL_SECONDS} s; shorter asks every ${MIN_POLL_SECONDS} s.` : '');
+  /** As usableLeftOnMinutes in config.ts. */
+  const leftOnError = (minutes) => (minutes !== undefined && !(minutes > 0) ? 'More than 0 minutes, or empty for none.' : '');
   /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */
   const DEFAULT_DASHBOARD_PORT = 8582;
   const dashboardOn = (config) => config.dashboard ?? (config.dashboardPort !== undefined && config.dashboardPort !== null);
@@ -413,7 +415,13 @@
                   setOrDrop(device, 'runningAs', ['occupancy', 'outlet'].includes(value) ? value : undefined);
                   changed();
                 }),
-              'Changing it replaces it in HomeKit, with its automations.'))),
+              'Changing it replaces it in HomeKit, with its automations.'),
+            field('Left on after (min)', number(device.leftOnMinutes, 'off', (value, input) => {
+              setOrDrop(device, 'leftOnMinutes', numberOrUndefined(value));
+              showError(input, leftOnError(device.leftOnMinutes));
+              changed();
+            }, 1), 'A Left On sensor, on once it has run this long in one go: for a notification.',
+            leftOnError(device.leftOnMinutes)))),
 
         el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
           el('summary', {}, 'More: Polling, Phases & Thresholds'),

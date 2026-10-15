@@ -50,6 +50,8 @@ export interface SavedState {
 
 /** What a running cycle has used so far, to be saved with its state. */
 export interface CycleProgress {
+  /** When the draw first rose, in ms. */
+  startedAt: number;
   wattHours: number;
   peakWatts: number;
 }
@@ -121,7 +123,7 @@ export class CycleMachine {
       return undefined;
     }
     this.#accumulate(at);
-    return { wattHours: this.#wattHours, peakWatts: this.#peak };
+    return { startedAt: this.#cycleStart, wattHours: this.#wattHours, peakWatts: this.#peak };
   }
 
   /**

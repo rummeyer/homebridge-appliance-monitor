@@ -30,6 +30,8 @@ export interface DeviceRecord {
   standbyWatts?: number;
   /** The last finished cycle, for the Statistics tab. */
   lastCycle?: LastCycle;
+  /** How long the last few cycles ran, in seconds, oldest first; see typical.ts. */
+  durations?: number[];
   /** Finished cycles and ended phases, counted. See counts.ts. */
   counts?: Record<string, Counted>;
 }

@@ -10,7 +10,7 @@ process.env.TZ = 'Europe/Berlin';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { EnergyMeter, lastPeriods, periodTotal, statistics } from '../src/energy.ts';
+import { EnergyMeter, lastPeriods, periodTotal, standbyUse, statistics } from '../src/energy.ts';
 import type { DeviceEnergy } from '../src/energy.ts';
 
 const H = 3_600_000;
@@ -97,15 +97,16 @@ test('the table has a row per plug, and a total of what is there', () => {
   );
   const none = [false, false, false, false];
   assert.deepEqual(table.rows, [
-    { name: 'Washer', values: [300, 0, 1200, null], partial: none },
-    { name: 'Dryer', values: [0, null, null, null], partial: none }, // counted all of today, used nothing yet
-    { name: 'Lamp', values: [12, null, null, null], partial: none }, // added this morning: today from then
-    { name: 'Desk', values: [null, null, null, null], partial: none },
+    { name: 'Washer', values: [300, 0, 1200, null], partial: none, standby: null },
+    { name: 'Dryer', values: [0, null, null, null], partial: none, standby: null }, // counted all of today, used nothing yet
+    { name: 'Lamp', values: [12, null, null, null], partial: none, standby: null }, // added this morning: today from then
+    { name: 'Desk', values: [null, null, null, null], partial: none, standby: null },
   ]);
   assert.deepEqual(table.total, {
     values: [312, 0, 1200, null],
     missing: [true, true, true, true],
     partial: none,
+    standby: null,
   });
 });
 
@@ -124,6 +125,7 @@ test('a year the plug joined partway through is shown once it is over, marked as
     name: 'Washer',
     values: [0, 0, 400, 500], // nothing yet today, a week with nothing used, December, part of 2026
     partial: [false, false, false, true],
+    standby: null,
   });
   assert.deepEqual(after.rows[1]!.values, [null, null, null, null], 'a plug added after the year has none of it');
   assert.deepEqual(after.total.partial, [false, false, false, true]);
@@ -138,13 +140,14 @@ test('a week or a month the plug joined partway through is shown from then, mark
   const table = statistics(ledger, ['Washer', 'Socket'], new Date(local('2026-10-05T09:00:00')));
 
   assert.deepEqual(table.rows, [
-    { name: 'Washer', values: [7, 600, 100, null], partial: [false, true, true, false] },
-    { name: 'Socket', values: [0, 30, null, null], partial: [false, true, false, false] },
+    { name: 'Washer', values: [7, 600, 100, null], partial: [false, true, true, false], standby: null },
+    { name: 'Socket', values: [0, 30, null, null], partial: [false, true, false, false], standby: null },
   ]);
   assert.deepEqual(table.total, {
     values: [7, 630, 100, null],
     missing: [false, false, true, true],
     partial: [false, true, true, false],
+    standby: null,
   });
 });
 
@@ -176,8 +179,62 @@ test('an appliance that is part of another keeps its row but stays out of the to
     name: 'Lamp',
     values: [10, null, null, null],
     partial: [false, false, false, false],
+    standby: null,
     partOf: 'Desk',
   });
   assert.equal(table.total.values[0], 40, 'the lamp is in the desk already');
   assert.deepEqual(table.total.missing, [false, false, true, true], 'the lamp having no week is no gap in the total');
+});
+
+test('what is used while the appliance is not running is counted as standby too', () => {
+  const meter = new EnergyMeter();
+  meter.reading(local('2026-10-01T08:00:00'), 10);
+  assert.equal(meter.record.standby, undefined, 'not before the state is known');
+  meter.running(local('2026-10-01T09:00:00'), false);
+  assert.equal(meter.record.standbySince, local('2026-10-01T09:00:00'));
+  meter.reading(local('2026-10-01T10:00:00'), 2000);
+  meter.running(local('2026-10-01T10:00:00'), true);
+  meter.reading(local('2026-10-01T11:00:00'), 10);
+  meter.running(local('2026-10-01T11:30:00'), false);
+  meter.tick(local('2026-10-01T12:30:00'));
+  // 10 Wh from 9 to 10, then running until 11:30, then 10 Wh more.
+  assert.deepEqual(meter.record.standby, { '2026-10-01': 20 });
+  assert.equal(meter.record.days['2026-10-01'], 10 + 10 + 2000 + 5 + 10);
+});
+
+test('standby survives a restart, and a reset starts it again', () => {
+  const meter = new EnergyMeter({
+    since: 1,
+    days: { '2026-10-01': 50 },
+    standby: { '2026-10-01': 20 },
+    standbySince: local('2026-10-01T09:00:00'),
+  });
+  assert.deepEqual(meter.record.standby, { '2026-10-01': 20 });
+  meter.reading(local('2026-10-01T12:00:00'), 5);
+  meter.running(local('2026-10-01T12:00:00'), false);
+  meter.reset(local('2026-10-01T13:00:00'));
+  assert.deepEqual(meter.record.standby, {});
+  assert.equal(meter.record.standbySince, local('2026-10-01T13:00:00'));
+});
+
+test('standby is worked out over the last 30 days, or since it began, as a share and a year', () => {
+  const energy: DeviceEnergy = {
+    since: local('2026-09-01T00:00:00'),
+    days: { '2026-09-01': 999, '2026-10-06': 300, '2026-10-07': 100 },
+    standby: { '2026-10-06': 200, '2026-10-07': 40 },
+    standbySince: local('2026-10-06T00:00:00'),
+  };
+  const now = new Date(local('2026-10-08T00:00:00'));
+  assert.deepEqual(standbyUse(energy, now), { wattHours: 240, totalWattHours: 400, ms: 48 * H });
+
+  const table = statistics({ Desk: energy }, ['Desk'], now);
+  assert.equal(table.rows[0]!.standby!.share, 0.6);
+  // 240 Wh in two days is 120 Wh a day.
+  assert.equal(Math.round(table.rows[0]!.standby!.yearWattHours), Math.round(120 * 365.25));
+  assert.deepEqual(table.total.standby, table.rows[0]!.standby);
+
+  const late = new Date(local('2026-11-20T00:00:00'));
+  assert.equal(standbyUse(energy, late)!.wattHours, 0, 'days older than 30 are left out');
+  assert.equal(standbyUse(energy, new Date(local('2026-10-06T00:30:00'))), null, 'half an hour says nothing about a year');
+  assert.equal(standbyUse({ since: 1, days: {} }, now), null, 'a file from before 1.7.0');
 });

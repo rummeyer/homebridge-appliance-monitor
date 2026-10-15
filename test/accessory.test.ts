@@ -156,6 +156,24 @@ test('Running can be an occupancy sensor, taken while it runs; changing it repla
   assert.equal(switchOf(accessory, 'running'), undefined);
 });
 
+test('Left On is an occupancy sensor of its own, kept on a restored accessory and removed when not wanted', () => {
+  const accessory = platformAccessory();
+  const tv: DeviceConfig = { name: 'TV', leftOnMinutes: 240 };
+  const handle = new ApplianceAccessory(api, accessory, tv, 'running');
+  const sensor = () => accessory.getServiceById(Service.OccupancySensor, 'left-on');
+  const detected = () => sensor()!.getCharacteristic(Characteristic.OccupancyDetected).value;
+  assert.equal(sensor()!.getCharacteristic(Characteristic.ConfiguredName).value, 'TV Left On');
+  assert.equal(detected(), Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
+  handle.setLeftOn(true);
+  assert.equal(detected(), Characteristic.OccupancyDetected.OCCUPANCY_DETECTED);
+  assert.ok(switchOf(accessory, 'running'), 'Running stays as it was');
+
+  new ApplianceAccessory(api, accessory, tv, 'idle');
+  assert.ok(sensor(), 'restored');
+  new ApplianceAccessory(api, accessory, { name: 'TV' }, 'idle');
+  assert.equal(sensor(), undefined, 'gone once not set');
+});
+
 test('Running can be an outlet, on and in use while it runs, put back when tapped', async () => {
   const accessory = platformAccessory();
   const washer: DeviceConfig = { name: 'Washer' };
