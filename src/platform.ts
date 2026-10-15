@@ -597,7 +597,6 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     );
 
     const energy = new EnergyMeter(this.#ledger[device.name]);
-    energy.running(Date.now(), monitor.state === 'running');
     const appliance = {
       device,
       monitor,
@@ -608,6 +607,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       accept: device.deviceId || device.endpoint !== undefined ? new Set<number>() : 'all' as const,
     };
     this.#appliances.set(device.name, appliance);
+    this.#tellRunning(Date.now());
     return appliance;
   }
 
@@ -689,6 +689,31 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const whole = wholeOf(appliance.device, this.#devices);
     const of = whole === undefined ? undefined : this.#appliances.get(whole);
     return of !== undefined && (of.relayOff === true || (of.watts !== undefined && of.watts <= IDLE_WATTS));
+  }
+
+  /**
+   * Whether what an appliance's plug draws now is standby or not: not while
+   * it runs, nor while what it is part of runs — its draw is in that one's
+   * running then, so a part's standby stays within its whole's.
+   */
+  #runsWithin(appliance: Appliance): boolean {
+    const seen = new Set<string>();
+    for (let at: Appliance | undefined = appliance; at && !seen.has(at.device.name); ) {
+      if (at.monitor.state === 'running') {
+        return true;
+      }
+      seen.add(at.device.name);
+      const whole = wholeOf(at.device, this.#devices);
+      at = whole === undefined ? undefined : this.#appliances.get(whole);
+    }
+    return false;
+  }
+
+  /** Tells every meter whether its appliance counts as running, on any change of state. */
+  #tellRunning(at: number): void {
+    for (const appliance of this.#appliances.values()) {
+      appliance.energy.running(at, this.#runsWithin(appliance));
+    }
   }
 
   /** Tells the parts of an appliance when it goes off or on again. */
@@ -835,7 +860,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   #onTransition(device: DeviceConfig, accessory: ApplianceAccessory | undefined, transition: Transition): void {
     accessory?.update(transition.to);
     const appliance = this.#appliances.get(device.name);
-    appliance?.energy.running(transition.at, transition.to === 'running');
+    this.#tellRunning(transition.at);
     if (appliance && transition.to !== 'running') {
       this.#checkLeftOn(appliance, transition.at);
     }

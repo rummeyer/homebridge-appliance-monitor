@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-10-15
+
+### Fixed
+
+- A part counted standby while the appliance it is part of was running,
+  so a desk lamp could show standby while the desk, which measures it
+  too, showed none. A part now counts standby only while its whole is
+  not running either.
+
 ## [1.7.0] — 2026-10-15
 
 ### Changed
@@ -700,7 +709,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.4...v1.7.0
 [1.6.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.3...v1.6.4
 [1.6.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.2...v1.6.3

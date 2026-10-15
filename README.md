@@ -461,7 +461,9 @@ phone:
   when it began to be counted (from 1.7.0 on, and again after a reset), and
   shows once an hour has been counted. A TV at 60 % that comes to 20 kWh a
   year is a plug worth switching off at night. The **Total** row has it
-  for all appliances together.
+  for all appliances together. A part counts standby only while what it
+  is part of is not running either: a desk lamp's standby is then always
+  within the desk's.
 - **Count**: how often it finished a cycle — or, if
 one of its phases is ticked **Count** on the Power tab, how often that phase
   happened: coffees drawn rather than mornings the machine was on. If several
