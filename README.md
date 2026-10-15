@@ -415,7 +415,7 @@ and **Last Year**, one row per plug and the total below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week and last month, with the details of each in a bubble on pointing at its row; two lamps that are part of another appliance indented in italics under it" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week and last month, with the bubble open on the Kaffeemaschine — last cycle, running time, count and standby; two lamps that are part of another appliance indented in italics under it" width="760">
 </picture>
 
 Today counts from a plug's first reading of the day, so a plug added at noon
