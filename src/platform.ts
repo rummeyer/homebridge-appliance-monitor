@@ -11,7 +11,8 @@ import {
   showsInHomeKit,
   MATTER_LOG_LEVELS,
   usableDashboardPort,
-  usableLeftOnMinutes,
+  TIMED_SENSORS,
+  usableMinutes,
   usablePhases,
   usablePollSeconds,
   pairedWithProblem,
@@ -21,7 +22,7 @@ import {
   parsePairingCode,
   validateDeviceConfig,
 } from './config.ts';
-import type { DeviceConfig, MatterLogLevel, ApplianceMonitorPlatformConfig } from './config.ts';
+import type { DeviceConfig, MatterLogLevel, ApplianceMonitorPlatformConfig, TimedSensor } from './config.ts';
 import { cycleState } from './cycle.ts';
 import { Dashboard } from './dashboard.ts';
 import type { LiveAppliance } from './dashboard.ts';
@@ -76,8 +77,10 @@ interface Appliance {
   relayOff?: boolean;
   /** Whether the plug is connected; unknown until it first is, or is not. */
   reachable?: boolean;
-  /** Whether it has been running for longer than its leftOnMinutes. */
-  leftOn?: boolean;
+  /** Which of Overtime and Idle On are on. */
+  timed: Partial<Record<TimedSensor, boolean>>;
+  /** Since when it has drawn power without running; see #idleSince. */
+  idleSince?: number;
   /**
    * The endpoints whose readings are this appliance's: all of them for a
    * plug of its own, those of the device it chose behind a bridge. Until the
@@ -201,7 +204,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.#safely(appliance.device.name, () => {
           appliance.monitor.tick(now);
           appliance.energy.tick(now);
-          this.#checkLeftOn(appliance, now);
+          this.#checkTimed(appliance, now);
           for (const tracker of appliance.phases) {
             this.#onPhase(appliance, tracker, tracker.tick(now));
           }
@@ -249,11 +252,12 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         if (problem) {
           this.log.warn(problem);
         }
-        const { leftOnMinutes, problem: leftOnProblem } = usableLeftOnMinutes(named);
-        if (leftOnProblem) {
-          this.log.warn(leftOnProblem);
+        const { minutes: overtimeMinutes, problem: overtimeProblem } = usableMinutes(named, 'overtime');
+        const { minutes: idleOnMinutes, problem: idleOnProblem } = usableMinutes(named, 'idleOn');
+        for (const problem of [overtimeProblem, idleOnProblem].filter(Boolean)) {
+          this.log.warn(problem!);
         }
-        valid.push({ ...named, phases, pollSeconds, leftOnMinutes });
+        valid.push({ ...named, phases, pollSeconds, overtimeMinutes, idleOnMinutes, leftOnMinutes: undefined });
       }
     }
     for (const name of duplicateNames(valid)) {
@@ -523,7 +527,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
         cycle: monitor.progress(now),
         ...(typical === undefined ? {} : { typicalSeconds: typical }),
-        ...(appliance.leftOn ? { leftOn: true } : {}),
+        ...(appliance.timed.overtime ? { overtime: true } : {}),
+        ...(appliance.timed.idleOn ? { idleOn: true } : {}),
       };
     });
   }
@@ -605,6 +610,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       phases: this.#phaseTrackers(device),
       // Nothing yet for one that chose a device, until the node says where it is.
       accept: device.deviceId || device.endpoint !== undefined ? new Set<number>() : 'all' as const,
+      timed: {},
+      idleSince: record.idleSince,
     };
     this.#appliances.set(device.name, appliance);
     this.#tellRunning(Date.now());
@@ -734,25 +741,52 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   }
 
   /**
-   * Left On: on once the appliance has been running for its leftOnMinutes
-   * in one go, off when it finishes. Looked at on every tick, as nothing
-   * else happens while a TV runs on all night.
+   * Overtime: on once the appliance has been running for its overtimeMinutes
+   * in one go, off when it finishes. Idle On: on once it has drawn power for
+   * its idleOnMinutes without running, off when it runs again or draws
+   * nothing. Looked at on every tick, as nothing else happens while a TV
+   * runs on all night.
    */
-  #checkLeftOn(appliance: Appliance, now: number): void {
-    const { device, monitor } = appliance;
-    const minutes = device.leftOnMinutes;
+  #checkTimed(appliance: Appliance, now: number): void {
+    this.#setTimed(appliance, 'overtime', now, appliance.monitor.progress(now)?.startedAt, 'running');
+    if (appliance.device.idleOnMinutes !== undefined) {
+      this.#setTimed(appliance, 'idleOn', now, this.#idleSince(appliance, now), 'drawing power without running');
+    }
+  }
+
+  /**
+   * Since when the appliance has drawn power without running, kept over a
+   * restart. A part does not while its whole runs: what it draws then is in
+   * that one's running. Left as it was while the draw is not known.
+   */
+  #idleSince(appliance: Appliance, now: number): number | undefined {
+    const { device, watts, reachable } = appliance;
+    if (watts === undefined || reachable === false) {
+      return appliance.idleSince;
+    }
+    const drawing = watts > IDLE_WATTS && !this.#runsWithin(appliance);
+    const since = drawing ? appliance.idleSince ?? now : undefined;
+    if (since !== appliance.idleSince) {
+      appliance.idleSince = since;
+      this.#store?.update(device.name, { idleSince: since });
+    }
+    return since;
+  }
+
+  #setTimed(appliance: Appliance, sensor: TimedSensor, now: number, since: number | undefined, doing: string): void {
+    const { device } = appliance;
+    const minutes = device[TIMED_SENSORS[sensor].key];
     if (minutes === undefined) {
       return;
     }
-    const startedAt = monitor.progress(now)?.startedAt;
-    const leftOn = startedAt !== undefined && now - startedAt >= minutes * 60_000;
-    if (leftOn === (appliance.leftOn ?? false)) {
+    const on = since !== undefined && now - since >= minutes * 60_000;
+    if (on === (appliance.timed[sensor] ?? false)) {
       return;
     }
-    appliance.leftOn = leftOn;
-    appliance.accessory?.setLeftOn(leftOn);
-    if (leftOn) {
-      this.log.info(`${device.name}: running for ${formatDuration((now - startedAt!) / 1000)} — left on?`);
+    appliance.timed[sensor] = on;
+    appliance.accessory?.setTimed(sensor, on);
+    if (on) {
+      this.log.info(`${device.name}: ${doing} for ${formatDuration((now - since!) / 1000)} — ${TIMED_SENSORS[sensor].label}`);
     }
   }
 
@@ -861,8 +895,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     accessory?.update(transition.to);
     const appliance = this.#appliances.get(device.name);
     this.#tellRunning(transition.at);
-    if (appliance && transition.to !== 'running') {
-      this.#checkLeftOn(appliance, transition.at);
+    if (appliance) {
+      this.#checkTimed(appliance, transition.at);
     }
     this.#store?.update(device.name, {
       state: transition.to,

@@ -36,8 +36,10 @@ export interface LiveAppliance {
   cycle?: CycleProgress;
   /** How long its cycles usually take, in seconds, if they have a usual length; see typical.ts. */
   typicalSeconds?: number;
-  /** Running for longer than its leftOnMinutes. */
-  leftOn?: boolean;
+  /** Running for longer than its overtimeMinutes. */
+  overtime?: boolean;
+  /** Drawing power without running for longer than its idleOnMinutes. */
+  idleOn?: boolean;
   /** The appliance whose plug measures this one too, so the total leaves it out. */
   partOf?: string;
 }

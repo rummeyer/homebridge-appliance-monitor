@@ -124,10 +124,13 @@
     }
     button.append(el('div', 'watts', typeof appliance.watts === 'number' ? watts(appliance.watts) : '–'));
     button.append(el('div', 'state', state));
-    if (appliance.phases.length > 0 || appliance.leftOn) {
+    if (appliance.phases.length > 0 || appliance.overtime || appliance.idleOn) {
       const chips = el('div', 'chips');
-      if (appliance.leftOn) {
-        chips.append(el('span', 'chip warn', 'Left on'));
+      if (appliance.overtime) {
+        chips.append(el('span', 'chip warn', 'Overtime'));
+      }
+      if (appliance.idleOn) {
+        chips.append(el('span', 'chip warn', 'Idle on'));
       }
       for (const phase of appliance.phases) {
         chips.append(el('span', 'chip', phase));

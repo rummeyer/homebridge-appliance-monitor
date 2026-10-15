@@ -8,7 +8,7 @@ import {
   parsePairingCode,
   usablePhases,
   usablePollSeconds,
-  usableLeftOnMinutes,
+  usableMinutes,
   pairedWithProblem,
   partOfProblem,
   wholeOf,
@@ -139,16 +139,24 @@ test('a phase may leave out its upper end, not its lower one', () => {
   assert.match(check({ name: 'Heating', maxWatts: 1400 }).problems[0]!, /needs a "from"/);
 });
 
-test('Left On needs a number of minutes; anything else costs only the sensor', () => {
-  assert.deepEqual(usableLeftOnMinutes({ name: 'TV', leftOnMinutes: 240 }), { leftOnMinutes: 240 });
-  assert.deepEqual(usableLeftOnMinutes({ name: 'TV' }), { leftOnMinutes: undefined });
-  assert.deepEqual(usableLeftOnMinutes({ name: 'TV', leftOnMinutes: null as unknown as number }), { leftOnMinutes: undefined });
+test('Overtime and Idle On need a number of minutes; anything else costs only the sensor', () => {
+  assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 240 }, 'overtime'), { minutes: 240 });
+  assert.deepEqual(usableMinutes({ name: 'TV', leftOnMinutes: 240 }, 'overtime'), { minutes: 240 }, "1.7.0's name");
+  assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 300, leftOnMinutes: 240 }, 'overtime'), { minutes: 300 });
+  assert.deepEqual(usableMinutes({ name: 'TV', idleOnMinutes: 30 }, 'idleOn'), { minutes: 30 });
+  assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 240 }, 'idleOn'), { minutes: undefined });
+  assert.deepEqual(usableMinutes({ name: 'TV' }, 'overtime'), { minutes: undefined });
+  assert.deepEqual(usableMinutes({ name: 'TV', idleOnMinutes: null as unknown as number }, 'idleOn'), { minutes: undefined });
   for (const wrong of [0, -5, 'long']) {
-    const { leftOnMinutes, problem } = usableLeftOnMinutes({ name: 'TV', leftOnMinutes: wrong as number });
-    assert.equal(leftOnMinutes, undefined);
-    assert.match(problem!, /no Left On sensor/);
+    const overtime = usableMinutes({ name: 'TV', overtimeMinutes: wrong as number }, 'overtime');
+    assert.equal(overtime.minutes, undefined);
+    assert.match(overtime.problem!, /no Overtime sensor/);
+    const idleOn = usableMinutes({ name: 'TV', idleOnMinutes: wrong as number }, 'idleOn');
+    assert.equal(idleOn.minutes, undefined);
+    assert.match(idleOn.problem!, /idleOnMinutes .* no Idle On sensor/);
   }
-  assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, leftOnMinutes: 240 }), 'a sensor is something to show');
+  assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, overtimeMinutes: 240 }), 'a sensor is something to show');
+  assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, idleOnMinutes: 30 }));
 });
 
 test('too short an interval for asking is lengthened, and does not cost the plug', () => {

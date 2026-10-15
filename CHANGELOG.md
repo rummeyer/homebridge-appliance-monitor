@@ -6,6 +6,21 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-10-15
+
+### Added
+
+- **Idle On**: an occupancy sensor, on once an appliance has drawn power
+  for `idleOnMinutes` without running — left on standby — and off when it
+  runs again or draws nothing. Marked on the dashboard as well.
+
+### Changed
+
+- Left On is now called **Overtime** (`overtimeMinutes`), as it is about
+  running too long. `leftOnMinutes` is still read, and an existing Left On
+  sensor becomes Overtime and keeps its automations.
+- Shorter hints for these fields in the settings; the README explains them.
+
 ## [1.7.1] — 2026-10-15
 
 ### Fixed
@@ -709,7 +724,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.4...v1.7.0
 [1.6.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.6.3...v1.6.4

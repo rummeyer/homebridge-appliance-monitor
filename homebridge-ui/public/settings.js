@@ -24,8 +24,8 @@
   const MIN_POLL_SECONDS = 2;
   const pollError = (seconds) =>
     (seconds !== undefined && seconds < MIN_POLL_SECONDS ? `At least ${MIN_POLL_SECONDS} s; shorter asks every ${MIN_POLL_SECONDS} s.` : '');
-  /** As usableLeftOnMinutes in config.ts. */
-  const leftOnError = (minutes) => (minutes !== undefined && !(minutes > 0) ? 'More than 0 minutes, or empty for none.' : '');
+  /** As usableMinutes in config.ts. */
+  const minutesError = (minutes) => (minutes !== undefined && !(minutes > 0) ? 'More than 0 minutes, or empty for none.' : '');
   /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */
   const DEFAULT_DASHBOARD_PORT = 8582;
   const dashboardOn = (config) => config.dashboard ?? (config.dashboardPort !== undefined && config.dashboardPort !== null);
@@ -416,12 +416,20 @@
                   changed();
                 }),
               'Changing it replaces it in HomeKit, with its automations.'),
-            field('Left on after (min)', number(device.leftOnMinutes, 'off', (value, input) => {
-              setOrDrop(device, 'leftOnMinutes', numberOrUndefined(value));
-              showError(input, leftOnError(device.leftOnMinutes));
+            // 1.7.0 called Overtime leftOnMinutes; changing it moves it over.
+            field('Overtime after (min)', number(device.overtimeMinutes ?? device.leftOnMinutes, 'off', (value, input) => {
+              delete device.leftOnMinutes;
+              setOrDrop(device, 'overtimeMinutes', numberOrUndefined(value));
+              showError(input, minutesError(device.overtimeMinutes));
               changed();
-            }, 1), 'A Left On sensor, on once it has run this long in one go: for a notification.',
-            leftOnError(device.leftOnMinutes)))),
+            }, 1), 'Running this long in one go.',
+            minutesError(device.overtimeMinutes ?? device.leftOnMinutes)),
+            field('Idle on after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
+              setOrDrop(device, 'idleOnMinutes', numberOrUndefined(value));
+              showError(input, minutesError(device.idleOnMinutes));
+              changed();
+            }, 1), 'On standby this long.',
+            minutesError(device.idleOnMinutes)))),
 
         el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
           el('summary', {}, 'More: Polling, Phases & Thresholds'),

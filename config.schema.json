@@ -73,12 +73,19 @@
               ],
               "description": "An occupancy sensor reads better for a desk: taken while it draws power, free when not. An outlet only looks like one: tapping it switches nothing. Changing it replaces it in HomeKit, with any automation on it."
             },
-            "leftOnMinutes": {
-              "title": "Left on after (minutes)",
+            "overtimeMinutes": {
+              "title": "Overtime after (minutes)",
               "type": "number",
               "exclusiveMinimum": 0,
               "placeholder": "off",
-              "description": "A Left On occupancy sensor in HomeKit that turns on once the appliance has been running this many minutes in one go — a TV on all night, a desk all day — and off when it finishes. Turn on its notifications in the Home app. Empty: no sensor."
+              "description": "Sensor on after running this long in one go. Empty: none."
+            },
+            "idleOnMinutes": {
+              "title": "Idle on after (minutes)",
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "placeholder": "off",
+              "description": "Sensor on after this long on standby. Empty: none."
             },
             "pollSeconds": {
               "title": "Polling interval (seconds)",

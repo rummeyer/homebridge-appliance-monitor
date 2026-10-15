@@ -32,6 +32,8 @@ export interface DeviceRecord {
   lastCycle?: LastCycle;
   /** How long the last few cycles ran, in seconds, oldest first; see typical.ts. */
   durations?: number[];
+  /** Since when it has drawn power without running, for Idle On. */
+  idleSince?: number;
   /** Finished cycles and ended phases, counted. See counts.ts. */
   counts?: Record<string, Counted>;
 }

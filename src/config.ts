@@ -53,11 +53,19 @@ export interface DeviceConfig {
    */
   runningAs?: RunningAs;
   /**
-   * A Left On sensor in HomeKit, which turns on once the appliance has been
-   * running this many minutes in one go — a TV on all night, a desk all
-   * day — and off when it finishes. None if not set.
+   * An Overtime sensor in HomeKit, which turns on once the appliance has
+   * been running this many minutes in one go — a TV on all night, a long
+   * day at a desk — and off when it finishes. None if not set.
    */
+  overtimeMinutes?: number;
+  /** What overtimeMinutes was called in 1.7.0, as Left On. */
   leftOnMinutes?: number;
+  /**
+   * An Idle On sensor in HomeKit, which turns on once the appliance has been
+   * drawing power this many minutes without running — a PC asleep, a desk
+   * left on overnight — and off when it runs again or draws nothing. None if not set.
+   */
+  idleOnMinutes?: number;
   /** What runningSwitch was called while it was a sensor. */
   runningSensor?: boolean;
   /**
@@ -100,7 +108,8 @@ export const showsRunning = (device: DeviceConfig): boolean => (device.runningSw
 export function showsInHomeKit(device: DeviceConfig): boolean {
   return (
     showsRunning(device) ||
-    usableLeftOnMinutes(device).leftOnMinutes !== undefined ||
+    usableMinutes(device, 'overtime').minutes !== undefined ||
+    usableMinutes(device, 'idleOn').minutes !== undefined ||
     usablePhases(device).phases.some((phase) => phase.sensor !== false)
   );
 }
@@ -254,20 +263,29 @@ export function usablePollSeconds(device: DeviceConfig): { pollSeconds: number |
   return { pollSeconds };
 }
 
+/** The sensors that turn on after a time: running too long, or drawing power too long without running. */
+export type TimedSensor = 'overtime' | 'idleOn';
+
+export const TIMED_SENSORS: Record<TimedSensor, { key: 'overtimeMinutes' | 'idleOnMinutes'; label: string }> = {
+  overtime: { key: 'overtimeMinutes', label: 'Overtime' },
+  idleOn: { key: 'idleOnMinutes', label: 'Idle On' },
+};
+
 /**
- * After how many minutes of running the appliance is left on, if that is
- * wanted, and why not if it was set but is no number of minutes. Wrong costs
- * only the sensor, not the plug.
+ * After how many minutes the sensor turns on, if it is wanted, and why not
+ * if it was set but is no number of minutes. Wrong costs only the sensor,
+ * not the plug. Overtime is read from 1.7.0's leftOnMinutes too.
  */
-export function usableLeftOnMinutes(device: DeviceConfig): { leftOnMinutes: number | undefined; problem?: string } {
-  const { name, leftOnMinutes } = device;
-  if (leftOnMinutes === undefined || leftOnMinutes === null) {
-    return { leftOnMinutes: undefined };
+export function usableMinutes(device: DeviceConfig, sensor: TimedSensor): { minutes: number | undefined; problem?: string } {
+  const { key, label } = TIMED_SENSORS[sensor];
+  const minutes = sensor === 'overtime' ? device.overtimeMinutes ?? device.leftOnMinutes : device[key];
+  if (minutes === undefined || minutes === null) {
+    return { minutes: undefined };
   }
-  if (typeof leftOnMinutes !== 'number' || !(leftOnMinutes > 0) || !Number.isFinite(leftOnMinutes)) {
-    return { leftOnMinutes: undefined, problem: `"${name}" has a leftOnMinutes that is not a number above 0; no Left On sensor` };
+  if (typeof minutes !== 'number' || !(minutes > 0) || !Number.isFinite(minutes)) {
+    return { minutes: undefined, problem: `"${device.name}" has an ${key} that is not a number above 0; no ${label} sensor` };
   }
-  return { leftOnMinutes };
+  return { minutes };
 }
 
 /**

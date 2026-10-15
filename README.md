@@ -117,7 +117,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, Part of, how it shows in HomeKit and when it counts as left on, and under More its polling interval, its phases and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, Part of, how it shows in HomeKit its Overtime and Idle On times, and under More its polling interval, its phases and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -347,11 +347,20 @@ tell, to hang automations on:
   the group switches the real plug off, mid-cycle.
 - **One switch per phase**: on while the phase lasts, "Bezug"
   say, or for a moment once it is over, for a phase with "shorter than".
-- **Left On**, if set: an occupancy sensor that turns on once the appliance
-  has been running for a given time in one go — a TV on all night, a desk
-  all day — and off when it finishes. Set **Left on after** under **In
-  HomeKit** in the settings (`leftOnMinutes`), and turn on the sensor's
-  notifications in the Home app.
+- **Overtime**, if set: an occupancy sensor that turns on once the
+  appliance has been running for a given time in one go — a TV on all
+  night, more than ten hours at a desk — and off when it finishes. Set
+  **Overtime after** under **In HomeKit** in the settings
+  (`overtimeMinutes`; 1.7.0's `leftOnMinutes` still works, and its Left On
+  sensor becomes Overtime with its automations).
+- **Idle On**, if set: an occupancy sensor that turns on once the
+  appliance has been drawing power for a given time without running — a
+  PC asleep, a desk left on standby overnight — and off when it runs again
+  or draws nothing (0.5 W or less). Set **Idle on after**
+  (`idleOnMinutes`). A part counts as running while what it is part of
+  runs, so a desk lamp is not idle while the desk is in use.
+
+  Turn on the notifications of either in the Home app.
 
 The plugin only measures, so the switches only report: one tapped in the Home
 app is put back to what the appliance is doing straight away, and an
@@ -498,7 +507,7 @@ look, after Apple's Home app:
   for one whose cycles usually take about as long, **how long it has
   left** — after two cycles of about the same length; a desk or a washing
   machine on short and long programmes by turns has no usual length, and
-  shows its peak instead. **Left on** is marked too;
+  shows its peak instead. **Overtime** and **Idle on** are marked too;
 - a tile with what all plugs draw together — **Electricity** in the Home
   look, as the Home app calls it, and **Total** in light and dark;
 - the **power chart** of all plugs together, or of the appliance picked —
@@ -602,7 +611,8 @@ config it writes looks like this:
 | `devices[].endpoint` | | The same by endpoint number, for a device without UniqueID. |
 | `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals, and draws nothing while that one is off. See [Statistics](#statistics). |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
-| `devices[].leftOnMinutes` | none | A Left On occupancy sensor, on once the appliance has been running this many minutes in one go. See [In the Home app](#in-the-home-app). |
+| `devices[].overtimeMinutes` | none | An Overtime occupancy sensor, on once the appliance has been running this many minutes in one go. Read from `leftOnMinutes` too. See [In the Home app](#in-the-home-app). |
+| `devices[].idleOnMinutes` | none | An Idle On occupancy sensor, on once the appliance has drawn power this many minutes without running. See [In the Home app](#in-the-home-app). |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |

@@ -1,6 +1,7 @@
 import type { API, CharacteristicValue, PlatformAccessory, Service, WithUUID } from 'homebridge';
 
-import { RUNNING_AS, showsRunning, usableLeftOnMinutes } from './config.ts';
+import { RUNNING_AS, showsRunning, TIMED_SENSORS, usableMinutes } from './config.ts';
+import type { TimedSensor } from './config.ts';
 import type { DeviceConfig, RunningAs } from './config.ts';
 import type { CycleState } from './cycle.ts';
 
@@ -24,6 +25,9 @@ export const PULSE_MS = 2000;
 /** How soon a switch tapped in the Home app is put back to what the appliance is doing. */
 const PUT_BACK_MS = 300;
 
+/** The subtypes of the timed sensors in HomeKit. */
+const SUBTYPES: Record<TimedSensor, string> = { overtime: 'left-on', idleOn: 'idle-on' };
+
 /**
  * One appliance in HomeKit, as switches to hang automations on:
  *
@@ -31,7 +35,8 @@ const PUT_BACK_MS = 300;
  *   appliance finishes, so "when it turns off" is "when it is done";
  * - one switch per phase, on while the phase lasts, or for a moment once
  *   it is over, for one that is told apart by being short;
- * - if asked for, a Left On sensor, on once it has been running for long.
+ * - if asked for, an Overtime sensor, on once it has been running for long,
+ *   and an Idle On sensor, on once it has drawn power for long without running.
  *
  * Switches rather than sensors, at the owner's choice: an occupancy sensor
  * "detecting" a coffee being drawn read oddly, and the Home app tucks
@@ -42,7 +47,8 @@ export class ApplianceAccessory {
   readonly #api: API;
   readonly #accessory: PlatformAccessory;
   readonly #running: Service | undefined;
-  readonly #leftOn: Service | undefined;
+  /** Overtime and Idle On, those asked for. */
+  readonly #timed = new Map<TimedSensor, Service>();
   readonly #phases = new Map<string, Service>();
   /** What each switch should show, by subtype, to put a tapped one back to. */
   readonly #truth = new Map<string, boolean>();
@@ -56,11 +62,11 @@ export class ApplianceAccessory {
 
     // Earlier versions showed sensors; Homebridge brings a cached accessory
     // back with every service it had, so they are removed here. Running may
-    // be an occupancy sensor again, and Left On is one; both are left to
-    // #service() below.
+    // be an occupancy sensor again, and Overtime and Idle On are ones; all
+    // are left to #service() below.
     for (const service of [...accessory.services]) {
       const sensor = service.UUID === Service.OccupancySensor.UUID || service.UUID === Service.ContactSensor.UUID;
-      const ours = service.UUID === Service.OccupancySensor.UUID && (service.subtype === 'running' || service.subtype === 'left-on');
+      const ours = service.UUID === Service.OccupancySensor.UUID && ['running', ...Object.values(SUBTYPES)].includes(service.subtype!);
       if (sensor && !ours) {
         accessory.removeService(service);
       }
@@ -89,8 +95,17 @@ export class ApplianceAccessory {
     // as one tile takes its icon from it, not from the phase switches around it.
     this.#running?.setPrimaryService(true);
     // A sensor rather than a switch: the Home app notifies for sensors.
-    this.#leftOn = this.#service(Service.OccupancySensor, 'left-on',
-      usableLeftOnMinutes(device).leftOnMinutes !== undefined, `${device.name} Left On`);
+    for (const sensor of Object.keys(SUBTYPES) as TimedSensor[]) {
+      const { label } = TIMED_SENSORS[sensor];
+      // Overtime was Left On in 1.7.0, and keeps its subtype, so that
+      // automations on it are kept; one still called so is renamed.
+      const service = this.#service(Service.OccupancySensor, SUBTYPES[sensor],
+        usableMinutes(device, sensor).minutes !== undefined, `${device.name} ${label}`,
+        sensor === 'overtime' ? `${device.name} Left On` : undefined);
+      if (service) {
+        this.#timed.set(sensor, service);
+      }
+    }
     // Earlier versions had a Finished switch too, on for a moment when the
     // appliance finished: the moment Running goes off, so it told nothing more.
     this.#service(Service.Switch, 'finished', false, '');
@@ -115,7 +130,8 @@ export class ApplianceAccessory {
     }
 
     this.update(state);
-    this.setLeftOn(false);
+    this.setTimed('overtime', false);
+    this.setTimed('idleOn', false);
     for (const name of this.#phases.keys()) {
       this.setPhase(name, false);
     }
@@ -126,9 +142,9 @@ export class ApplianceAccessory {
     this.#show('running', state === 'running');
   }
 
-  /** Left On, once it has been running for long, until it finishes. */
-  setLeftOn(on: boolean): void {
-    this.#show('left-on', on);
+  /** Overtime or Idle On, once the time is up, until the appliance finishes or runs again. */
+  setTimed(sensor: TimedSensor, on: boolean): void {
+    this.#show(SUBTYPES[sensor], on);
   }
 
   /** A phase, on while it lasts. */
@@ -170,8 +186,9 @@ export class ApplianceAccessory {
     if (subtype === 'running') {
       return this.#running;
     }
-    if (subtype === 'left-on') {
-      return this.#leftOn;
+    const timed = (Object.keys(SUBTYPES) as TimedSensor[]).find((sensor) => SUBTYPES[sensor] === subtype);
+    if (timed) {
+      return this.#timed.get(timed);
     }
     return this.#phases.get(subtype.slice('phase:'.length));
   }
