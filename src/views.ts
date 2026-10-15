@@ -16,7 +16,7 @@ import { findLevels, RECALL_MS } from './phases.ts';
 import type { Level, PhaseConfig } from './phases.ts';
 import { readSamples, readSeries } from './recorder.ts';
 import type { DeviceRecord, LastCycle } from './store.ts';
-import { durationsOf, MIN_CYCLES, typicalSeconds } from './typical.ts';
+import { MIN_CYCLES, runsOf, usualByStart, usualSeconds } from './typical.ts';
 
 /** Points drawn across the chart: about two per pixel of a wide page. */
 export const CHART_BUCKETS = 600;
@@ -77,7 +77,11 @@ export interface StatisticsTable extends Statistics {
    * How long each one's cycles usually take, in seconds; null where they
    * have no usual length, `cycles` saying whether that is for too few.
    */
-  typicals: { seconds: number | null; cycles: number }[];
+  /**
+   * How long each usually runs: all its cycles together, or else per kind
+   * of start (`byStart`, shortest first), as a washing machine's programmes.
+   */
+  typicals: { seconds: number | null; cycles: number; byStart: number[] }[];
 }
 
 /**
@@ -96,8 +100,8 @@ export function statisticsTable(dir: string | undefined, given: Pick<DeviceConfi
   });
   const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
   const typicals = devices.map((device) => {
-    const durations = durationsOf(records[device.name] ?? {});
-    return { seconds: typicalSeconds(durations) ?? null, cycles: Math.min(durations.length, MIN_CYCLES) };
+    const runs = runsOf(records[device.name] ?? {});
+    return { seconds: usualSeconds(runs) ?? null, cycles: Math.min(runs.length, MIN_CYCLES), byStart: usualByStart(runs) };
   });
   // Only a partOf that holds: one naming nothing, or going round, is counted.
   const plugs = devices.map((device) => {

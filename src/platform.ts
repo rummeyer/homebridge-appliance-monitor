@@ -45,7 +45,7 @@ import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
 import { clearResets, pendingResets } from './resets.ts';
 import { NodeRegistry } from './registry.ts';
-import { durationsOf, typicalSeconds, withDuration } from './typical.ts';
+import { runsOf, usualSeconds, withRun } from './typical.ts';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.ts';
 import { DeviceStore } from './store.ts';
 
@@ -514,7 +514,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
       const { monitor } = appliance;
       const record = this.#store?.get(name) ?? {};
-      const typical = typicalSeconds(durationsOf(record));
+      const cycle = monitor.progress(now);
+      const typical = usualSeconds(runsOf(record), cycle && monitor.startOf(cycle.startedAt, now));
       return {
         ...partOf,
         name,
@@ -525,7 +526,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         state: monitor.state,
         since: record.since,
         phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
-        cycle: monitor.progress(now),
+        cycle,
         ...(typical === undefined ? {} : { typicalSeconds: typical }),
         ...(appliance.timed.overtime ? { overtime: true } : {}),
         ...(appliance.timed.idleOn ? { idleOn: true } : {}),
@@ -851,7 +852,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
     if (request.action === 'forget') {
       appliance.monitor.forget(now);
-      this.#store?.update(name, { learned: undefined, cycles: undefined, standbyWatts: undefined, durations: [] });
+      this.#store?.update(name, { learned: undefined, cycles: undefined, standbyWatts: undefined, runs: [] });
       this.log.info(`${name}: forgot what was learned — learning again from the next cycle`);
       reply(true, 'Forgotten. It learns again from the next cycle.');
       return;
@@ -910,7 +911,10 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       this.#store?.increment(device.name, FINISHED, transition.at);
       this.#store?.update(device.name, {
         lastCycle: { startedAt: cycle.startedAt, endedAt: transition.at, seconds: cycle.seconds, wattHours: cycle.wattHours },
-        durations: withDuration(durationsOf(this.#store.get(device.name)), cycle.seconds),
+        runs: withRun(runsOf(this.#store.get(device.name)), {
+          seconds: cycle.seconds,
+          ...this.#startOf(appliance, cycle.startedAt, cycle.startedAt + cycle.seconds * 1000),
+        }),
       });
       this.log.info(
         `${device.name}: Finished${cycle.switchedOff ? ' (switched off)' : ''} — ran ${formatDuration(cycle.seconds)}, ` +
@@ -919,6 +923,12 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     } else {
       this.log.info(`${device.name}: ${STATE_NAMES[transition.to]}`);
     }
+  }
+
+  /** A finished cycle's first minutes, if the readings reach back to its start. */
+  #startOf(appliance: Appliance | undefined, startedAt: number, endedAt: number): { start?: number[] } {
+    const start = appliance?.monitor.startOf(startedAt, endedAt);
+    return start && start.length > 0 ? { start } : {};
   }
 
   #logLearned(device: DeviceConfig, learned: Learned, cycles: number): void {

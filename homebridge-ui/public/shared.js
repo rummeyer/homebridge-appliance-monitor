@@ -199,8 +199,11 @@
         ? [['Last cycle', kwh(last.wattHours)], ['Running time', duration(last.seconds)], ['Finished', clock(last.endedAt, true)]]
         : [['Last cycle', 'none yet']];
       const typical = table.typicals?.[index];
+      // Per kind of start, as a washing machine's programmes, when its cycles do not agree all together.
+      const byStart = typical?.byStart ?? [];
       lines.push(['Usual running time', typical?.seconds ? `about ${duration(typical.seconds)}`
-        : (typical?.cycles ?? 0) < 2 ? 'after two cycles' : 'none: lengths vary']);
+        : byStart.length > 0 ? `about ${byStart.map(duration).join(' or ')}, by how it starts`
+          : (typical?.cycles ?? 0) < 2 ? 'after two cycles' : 'none: lengths vary']);
       lines.push(['Count', `${count} × ${label}`], ['Standby', standbyText(standby) ?? 'not counted yet']);
       addInfo(row, name, lines);
       shownOnly(values).forEach((value) => cell(row, kwh(value)));

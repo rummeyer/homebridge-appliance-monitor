@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-10-15
+
+### Added
+
+- **Programmes told apart by how they start**: each cycle's first ten
+  minutes are kept with its length, and from a running cycle's third
+  minute on, the time left on the dashboard comes only from the cycles that
+  started alike. A washing machine on quick and long programmes, which had
+  no usual running time before, has one per programme; the Statistics tab
+  lists them. The last 20 cycles are kept, up from 10.
+
 ## [1.8.1] — 2026-10-15
 
 ### Fixed
@@ -732,7 +743,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.1...v1.8.0
 [1.7.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.7.0...v1.7.1

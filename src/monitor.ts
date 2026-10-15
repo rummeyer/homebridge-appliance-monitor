@@ -21,6 +21,7 @@ import {
   STANDBY_STEADY_RATIO as STEADY_RATIO,
 } from './learn.ts';
 import type { Learned, Sample } from './learn.ts';
+import { startOf } from './typical.ts';
 
 export const LEARNING_DEFAULTS: CycleParams = {
   runWatts: 5,
@@ -113,6 +114,11 @@ export class DeviceMonitor {
   /** What the running cycle has used up to now; see CycleMachine.progress. */
   progress(at: number): CycleProgress | undefined {
     return this.#machine.progress(at);
+  }
+
+  /** What the cycle started at `startedAt` drew in its first minutes, up to `until`; see typical.ts. */
+  startOf(startedAt: number, until: number): number[] | undefined {
+    return startOf(this.#samples, startedAt, until);
   }
 
   /** The standby found before anything was learned, if any. */

@@ -462,8 +462,12 @@ phone:
   counted as running to the moment it finished; how long it ran, and when
   it finished.
 - **Usual running time**: how long its cycles usually take, as on the
-  dashboard's tiles. None for too few cycles, or for lengths all over the
-  place, as at a desk.
+  dashboard's tiles: the median of the last 20, if most of them are close
+  to it. A washing machine on quick and long programmes has none taken all
+  together, but one per programme, told apart by how its cycles start —
+  "about 1 h 28 min or 3 h 16 min, by how it starts". None for too few
+  cycles, or for lengths all over the place, as at a desk or a coffee
+  machine used for a quarter of an hour or two.
 - **Standby**: how much of what it used went on while it was not running —
   standby, or resting between uses — as a share, and what that comes to in
   a year at the same rate. It is worked out from the last 30 days, or from
@@ -505,9 +509,13 @@ look, after Apple's Home app:
 - a tile per appliance with what it draws **now**, whether it is running and
   for how long, what the cycle has used so far, and the phases it is in;
   for one whose cycles usually take about as long, **how long it has
-  left** — after two cycles of about the same length; a desk or a washing
-  machine on short and long programmes by turns has no usual length, and
-  shows its peak instead. **Overtime** and **Idle on** are marked too;
+  left** — after two cycles of about the same length. Each cycle's first
+  ten minutes are kept with its length, and from a running cycle's third
+  minute on only the cycles that started alike count: a washing machine
+  that heats straight away is on its quick programme, one that turns the
+  drum first on its long one, and it knows which after a few washes of
+  each. A start not seen before, or a desk, whose cycles start alike but
+  last any time, has no usual length and shows its peak instead. **Overtime** and **Idle on** are marked too;
 - a tile with what all plugs draw together — **Electricity** in the Home
   look, as the Home app calls it, and **Total** in light and dark;
 - the **power chart** of all plugs together, or of the appliance picked —

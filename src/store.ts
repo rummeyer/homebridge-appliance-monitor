@@ -2,6 +2,7 @@ import type { CycleState } from './cycle.ts';
 import { readJson, writeJson } from './json-file.ts';
 import type { Counted } from './counts.ts';
 import type { Learned } from './learn.ts';
+import type { Run } from './typical.ts';
 
 /** A finished cycle: when it ran, for how long, and what it used. */
 export interface LastCycle {
@@ -30,7 +31,9 @@ export interface DeviceRecord {
   standbyWatts?: number;
   /** The last finished cycle, for the Statistics tab. */
   lastCycle?: LastCycle;
-  /** How long the last few cycles ran, in seconds, oldest first; see typical.ts. */
+  /** How long the last few cycles ran and how each started, oldest first; see typical.ts. */
+  runs?: Run[];
+  /** Their lengths only, in seconds, as kept in 1.7 and 1.8. */
   durations?: number[];
   /** Since when it has drawn power without running, for Idle On. */
   idleSince?: number;
