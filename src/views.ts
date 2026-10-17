@@ -16,7 +16,7 @@ import { findLevels, RECALL_MS } from './phases.ts';
 import type { Level, PhaseConfig } from './phases.ts';
 import { readSamples, readSeries } from './recorder.ts';
 import type { DeviceRecord, LastCycle } from './store.ts';
-import { MIN_CYCLES, runsOf, usualByStart, usualSeconds } from './typical.ts';
+import { medianSeconds, MIN_CYCLES, runsOf, usualByStart, usualSeconds } from './typical.ts';
 
 /** Points drawn across the chart: about two per pixel of a wide page. */
 export const CHART_BUCKETS = 600;
@@ -74,14 +74,12 @@ export interface StatisticsTable extends Statistics {
   counts: { label: string; count: number; since: number | null }[];
   lastCycles: (LastCycle | null)[];
   /**
-   * How long each one's cycles usually take, in seconds; null where they
-   * have no usual length, `cycles` saying whether that is for too few.
-   */
-  /**
    * How long each usually runs: all its cycles together, or else per kind
-   * of start (`byStart`, shortest first), as a washing machine's programmes.
+   * of start (`byStart`, shortest first), as a washing machine's programmes;
+   * null where they have no usual length, `cycles` saying whether that is
+   * for too few. `median` is the median of all, close to it or not.
    */
-  typicals: { seconds: number | null; cycles: number; byStart: number[] }[];
+  typicals: { seconds: number | null; cycles: number; byStart: number[]; median: number | null }[];
 }
 
 /**
@@ -101,7 +99,12 @@ export function statisticsTable(dir: string | undefined, given: Pick<DeviceConfi
   const lastCycles = devices.map((device) => records[device.name]?.lastCycle ?? null);
   const typicals = devices.map((device) => {
     const runs = runsOf(records[device.name] ?? {});
-    return { seconds: usualSeconds(runs) ?? null, cycles: Math.min(runs.length, MIN_CYCLES), byStart: usualByStart(runs) };
+    return {
+      seconds: usualSeconds(runs) ?? null,
+      cycles: Math.min(runs.length, MIN_CYCLES),
+      byStart: usualByStart(runs),
+      median: medianSeconds(runs.map(({ seconds }) => seconds)) ?? null,
+    };
   });
   // Only a partOf that holds: one naming nothing, or going round, is counted.
   const plugs = devices.map((device) => {

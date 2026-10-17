@@ -41,7 +41,10 @@
     .om-bubble[hidden] { display: none; }
     .om-bubble dl { display: grid; grid-template-columns: auto auto; gap: .1rem .8rem; margin: 0; }
     .om-bubble dt { color: #a1a1a6; font-weight: 400; }
-    .om-bubble dd { margin: 0; font-variant-numeric: tabular-nums; }`;
+    .om-bubble dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .om-bubble dt.om-heading { grid-column: 1 / -1; color: inherit; font-weight: 600; }
+    .om-bubble dt.om-in { padding-left: .6rem; }
+    .om-bubble dd + dt.om-heading { margin-top: .35rem; }`;
 
   let bubble;
   /** The row the bubble is open for. */
@@ -78,13 +81,25 @@
   /**
    * Shows `lines` ([label, value]) over `row`, at `x` across — where the
    * pointer is — or at the start of the row; below it where there is no room above.
+   * A label without a value heads the lines up to the next one without.
    */
   function show(row, lines, x) {
     const box = theBubble();
     const list = document.createElement('dl');
+    // Lines under a heading are indented.
+    let grouped = false;
     for (const [label, value] of lines) {
+      if (value === undefined) {
+        grouped = true;
+        const term = document.createElement('dt');
+        term.className = 'om-heading';
+        term.textContent = label;
+        list.append(term);
+        continue;
+      }
       const term = document.createElement('dt');
       term.textContent = label;
+      term.classList.toggle('om-in', grouped);
       const detail = document.createElement('dd');
       detail.textContent = value;
       list.append(term, detail);
@@ -123,7 +138,7 @@
     }
     row.classList.add('om-has-info');
     row.tabIndex = 0;
-    row.setAttribute('aria-label', `${label}: ${lines.map(([key, value]) => `${key} ${value}`).join(', ')}`);
+    row.setAttribute('aria-label', `${label}: ${lines.map(([key, value]) => (value === undefined ? key : `${key} ${value}`)).join(', ')}`);
     row.addEventListener('pointerenter', (event) => event.pointerType === 'mouse' && show(row, lines, event.clientX));
     row.addEventListener('pointermove', (event) => event.pointerType === 'mouse' && openFor === row && place(event.clientX));
     row.addEventListener('pointerleave', (event) => event.pointerType === 'mouse' && hide());
@@ -192,18 +207,24 @@
         first.style.setProperty('--depth', table.depths?.[index] ?? 1);
       }
       decorate?.(first, name);
-      // What does not fit as a column: the last cycle, the count and standby.
+      // What does not fit as a column, in two groups: the last cycle — a dash
+      // for each until there is one — and, overall, the estimated duration,
+      // the count and standby.
       const last = table.lastCycles?.[index];
       const { label, count } = table.counts[index];
-      const lines = last
-        ? [['Last cycle', kwh(last.wattHours)], ['Running time', duration(last.seconds)], ['Finished', clock(last.endedAt, true)]]
-        : [['Last cycle', 'none yet']];
+      const lines = [['Last cycle'],
+        ['Energy', last ? kwh(last.wattHours) : '–'],
+        ['Running', last ? duration(last.seconds) : '–'],
+        ['Finished', last ? clock(last.endedAt, true) : '–']];
       const typical = table.typicals?.[index];
-      // Per kind of start, as a washing machine's programmes, when its cycles do not agree all together.
+      // Per kind of start, as a washing machine's programmes, when its cycles
+      // do not agree all together; or else, lengths all over the place, their median.
       const byStart = typical?.byStart ?? [];
-      lines.push(['Usual running time', typical?.seconds ? `about ${duration(typical.seconds)}`
-        : byStart.length > 0 ? `about ${byStart.map(duration).join(' or ')}, by how it starts`
-          : (typical?.cycles ?? 0) < 2 ? 'after two cycles' : 'none: lengths vary']);
+      lines.push(['Overall'], ['Estimated duration', typical?.seconds ? `about ${duration(typical.seconds)}`
+        : byStart.length > 0 ? `about ${byStart.map(duration).join(' or ')}`
+          : typical?.median ? `median ${duration(typical.median)}, lengths vary`
+            // Two: MIN_CYCLES in typical.ts.
+            : `still learning · ${typical?.cycles ?? 0} of 2 cycles`]);
       lines.push(['Count', `${count} × ${label}`], ['Standby', standbyText(standby) ?? 'not counted yet']);
       addInfo(row, name, lines);
       shownOnly(values).forEach((value) => cell(row, kwh(value)));

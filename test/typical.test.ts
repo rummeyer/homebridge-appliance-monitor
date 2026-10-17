@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { difference, KEEP_CYCLES, runsOf, startOf, typicalSeconds, usualByStart, usualSeconds, withRun } from '../src/typical.ts';
+import { difference, KEEP_CYCLES, medianSeconds, runsOf, startOf, typicalSeconds, usualByStart, usualSeconds, withRun } from '../src/typical.ts';
 
 test('cycles of about the same length have a usual one: their median', () => {
   assert.equal(typicalSeconds([3600, 3900, 3700]), 3700);
@@ -94,4 +94,10 @@ test('cycles that agree keep their usual length, and a start alike but lengths a
   assert.equal(usualSeconds(coffee, [1190, 1190, 1190]), undefined);
   assert.deepEqual(usualByStart(coffee), []);
   assert.equal(usualSeconds(washes.map(({ seconds }) => ({ seconds })), SHORT), undefined, 'no starts kept: all count');
+});
+
+test('lengths all over the place still have a median', () => {
+  assert.equal(medianSeconds([1800, 9600, 3600, 600, 7200]), 3600);
+  assert.equal(medianSeconds([600, 1800]), 1200);
+  assert.equal(medianSeconds([3600]), undefined);
 });

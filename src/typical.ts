@@ -58,17 +58,33 @@ export function runsOf(record: DeviceRecord): Run[] {
 /** The runs with one more, keeping the last KEEP_CYCLES. */
 export const withRun = (runs: Run[], run: Run): Run[] => [...runs, run].slice(-KEEP_CYCLES);
 
-/** The usual length in seconds of cycles this long, or undefined if there is none. */
-export function typicalSeconds(durations: number[] | undefined): number | undefined {
-  const list = (durations ?? []).filter((seconds) => Number.isFinite(seconds) && seconds > 0);
-  if (list.length < MIN_CYCLES) {
+/** The lengths worth counting: none missing, zero or negative. */
+const lengths = (durations: number[] | undefined): number[] =>
+  (durations ?? []).filter((seconds) => Number.isFinite(seconds) && seconds > 0);
+
+/**
+ * The median length in seconds of cycles this long, whether or not most are
+ * close to it; undefined for too few. The median rather than the mean: one
+ * desk session left on overnight would drag a mean far off.
+ */
+export function medianSeconds(durations: number[] | undefined): number | undefined {
+  const sorted = lengths(durations).sort((a, b) => a - b);
+  if (sorted.length < MIN_CYCLES) {
     return undefined;
   }
-  const sorted = [...list].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
-  const median = sorted.length % 2 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
+  return Math.round(sorted.length % 2 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2);
+}
+
+/** The usual length in seconds of cycles this long, or undefined if there is none. */
+export function typicalSeconds(durations: number[] | undefined): number | undefined {
+  const list = lengths(durations);
+  const median = medianSeconds(list);
+  if (median === undefined) {
+    return undefined;
+  }
   const close = list.filter((seconds) => Math.abs(seconds - median) <= median * CLOSE).length;
-  return close >= list.length * MOST ? Math.round(median) : undefined;
+  return close >= list.length * MOST ? median : undefined;
 }
 
 /**

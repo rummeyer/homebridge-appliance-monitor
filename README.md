@@ -422,7 +422,7 @@ and **Last Year**, one row per plug and the total below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week and last month, with the bubble open on the Kaffeemaschine — last cycle, running time, count and standby; two lamps that are part of another appliance indented in italics under it" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week and last month, with the bubble open on the Kaffeemaschine — its last cycle, and overall its estimated duration, count and standby; two lamps that are part of another appliance indented in italics under it" width="760">
 </picture>
 
 Today counts from a plug's first reading of the day, so a plug added at noon
@@ -463,18 +463,31 @@ pairing; it lists the other appliances.
 
 The columns are what adds up to a total. What is only the appliance's own
 shows in a bubble on pointing anywhere in its row, or tapping it on a
-phone:
+phone. Under **Last cycle**:
 
-- **Last cycle**: what it used in its last cycle, from the moment it
-  counted as running to the moment it finished; how long it ran, and when
-  it finished.
-- **Usual running time**: how long its cycles usually take, as on the
+- **Energy**: what it used in its last cycle, from the moment it counted as
+  running to the moment it finished.
+- **Running**: how long that cycle ran.
+- **Finished**: when it finished.
+
+A dash stands for each until the first cycle. Under **Overall**:
+
+- **Estimated duration**: how long its cycles usually take, as on the
   dashboard's tiles: the median of the last 20, if most of them are close
   to it. A washing machine on quick and long programmes has none taken all
   together, but one per programme, told apart by how its cycles start —
-  "about 1 h 28 min or 3 h 16 min, by how it starts". None for too few
-  cycles, or for lengths all over the place, as at a desk or a coffee
-  machine used for a quarter of an hour or two.
+  "about 1 h 28 min or 3 h 16 min". Where lengths are all over the place,
+  as at a desk or a coffee machine used for a quarter of an hour or two, it
+  shows their median, "median 45 min, lengths vary" — the median rather
+  than the average, so that one session left on overnight does not pull it
+  far off. The dashboard does not count down from that. Until the second
+  cycle it is "still learning · 1 of 2 cycles".
+- **Count**: how often it finished a cycle — or, if one of its phases is
+  ticked **Count** on the Power tab, how often that phase happened: coffees
+  drawn rather than mornings the machine was on. If several are ticked, the
+  first counts. Every finished cycle and every phase is counted all along,
+  so ticking another phase shows its count from when the phase was set up,
+  not from when it was ticked.
 - **Standby**: how much of what it used went on while it was not running —
   standby, or resting between uses — as a share, and what that comes to in
   a year at the same rate. It is worked out from the last 30 days, or from
@@ -484,12 +497,6 @@ phone:
   for all appliances together. A part counts standby only while what it
   is part of is not running either: a desk lamp's standby is then always
   within the desk's.
-- **Count**: how often it finished a cycle — or, if
-one of its phases is ticked **Count** on the Power tab, how often that phase
-  happened: coffees drawn rather than mornings the machine was on. If several
-  are ticked, the first counts. Every finished cycle and every phase is
-  counted all along, so ticking another phase shows its count from when the
-  phase was set up, not from when it was ticked.
 
 **Reset data** below the table empties the energy, last cycle and count of
 the appliances you pick, which start again from then; what they have learned
