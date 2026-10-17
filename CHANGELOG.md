@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.2] — 2026-10-17
+
+### Fixed
+
+- **Outlet** was missing from the Icon list in the settings; it is the
+  first entry again, above the groups.
+- The Icon field is always under the name: for an appliance sharing a
+  bridge's pairing, the Device field now takes the pairing code's place
+  next to Pairing.
+
 ## [1.12.1] — 2026-10-17
 
 ### Changed
@@ -823,7 +833,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.2...HEAD
+[1.12.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.2...v1.12.0
 [1.11.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.1...v1.11.2

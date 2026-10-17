@@ -422,7 +422,7 @@
       }, ApplianceIcons.groups.map(([group, icons]) => {
         const options = icons.map(([key, label]) => el('option', { value: key, selected: key === iconValue }, label));
         return group ? el('optgroup', { label: group }, options) : options;
-      }));
+      }).flat());
       const iconField = field('Icon', el('div', { class: 'om-set-icon' }, iconPreview, iconList), 'On its dashboard tile, in the Home look.');
 
       // What Idle On counts, under its field; changes with what it counts from.
@@ -435,14 +435,18 @@
       return el('div', {},
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
-          el('div', { class: 'om-set-grid' },
+          // Two rows, so that the icon is always under the name: the
+          // pairing first, with the device behind a bridge where no code is
+          // needed, then the rest.
+          el('div', { class: 'om-set-grid om-set-rows' },
             field('Name', nameInput, 'Renaming means pairing again.', nameError(device.name ?? '')),
             pairingField,
-            device.pairedWith ? null : field('Pairing code', codeInput,
+            device.pairedWith ? deviceField : field('Pairing code', codeInput,
               isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
-              codeError(device.pairingCode ?? '')),
+              codeError(device.pairingCode ?? ''))),
+          el('div', { class: 'om-set-grid om-set-rows' },
             iconField,
-            deviceField,
+            device.pairedWith ? null : deviceField,
             partOfField)),
 
         el('div', { class: 'om-set-section' },
