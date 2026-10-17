@@ -25,6 +25,10 @@
   const pollError = (seconds) =>
     (seconds !== undefined && seconds < MIN_POLL_SECONDS ? `At least ${MIN_POLL_SECONDS} s; shorter asks every ${MIN_POLL_SECONDS} s.` : '');
   /** As usableMinutes in config.ts. */
+  /** What Idle On counts: from the end of a phase, or from when it stops running. */
+  const idleOnHelp = (device) => (device.idleOnFrom
+    ? `This long after the end of ${device.idleOnFrom}.`
+    : 'On this long without running.');
   const minutesError = (minutes) => (minutes !== undefined && !(minutes > 0) ? 'More than 0 minutes, or empty for none.' : '');
   /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */
   const DEFAULT_DASHBOARD_PORT = 8582;
@@ -400,6 +404,13 @@
           'Its plug is also measured by another appliance here, so the totals leave it out.')
         : null;
 
+      // What Idle On counts, under its field; changes with what it counts from.
+      const idleOnField = field('Idle on after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
+        setOrDrop(device, 'idleOnMinutes', numberOrUndefined(value));
+        showError(input, minutesError(device.idleOnMinutes));
+        changed();
+      }, 1), idleOnHelp(device), minutesError(device.idleOnMinutes));
+
       return el('div', {},
         el('div', { class: 'om-set-section' },
           el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
@@ -434,18 +445,14 @@
             minutesError(device.overtimeMinutes ?? device.leftOnMinutes))),
           // Idle On on a line of its own: its two fields belong together.
           el('div', { class: 'om-set-grid om-set-rows' },
-            field('Idle on after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
-              setOrDrop(device, 'idleOnMinutes', numberOrUndefined(value));
-              showError(input, minutesError(device.idleOnMinutes));
-              changed();
-            }, 1), 'On standby this long.',
-            minutesError(device.idleOnMinutes)),
+            idleOnField,
             // Only for an appliance with phases: Idle On may count from the end of one.
             phaseNames(device).length > 0 && field('Idle on counted from',
               choice(phaseNames(device).includes(device.idleOnFrom) ? device.idleOnFrom : '',
                 [['', 'Not running'], ...phaseNames(device).map((name) => [name, `End of ${name}`])],
                 (value) => {
                   setOrDrop(device, 'idleOnFrom', value || undefined);
+                  idleOnField.querySelector('.om-set-help').textContent = idleOnHelp(device);
                   changed();
                 }),
               'For an appliance that keeps warm.'))),

@@ -85,7 +85,7 @@
               "type": "number",
               "exclusiveMinimum": 0,
               "placeholder": "off",
-              "description": "Sensor on after this long on standby. Empty: none."
+              "description": "Sensor on after drawing power this long without running, or this long after the end of the phase below. Empty: none."
             },
             "idleOnFrom": {
               "title": "Idle on counted from (phase)",

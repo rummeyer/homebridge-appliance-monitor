@@ -6,6 +6,20 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.11.2] — 2026-10-17
+
+### Fixed
+
+- The hint under **Idle on after** said "On standby this long", which was
+  wrong for an appliance counted from the end of a phase. It now says what
+  Idle On counts: "This long after the end of Bezug", or "On this long
+  without running".
+
+### Changed
+
+- The README tells how to switch an appliance off with a Home app
+  automation on Idle On or Overtime.
+
 ## [1.11.1] — 2026-10-17
 
 ### Changed
@@ -791,7 +805,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.2...HEAD
+[1.11.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.1...v1.11.2
 [1.11.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.10.2...v1.11.0
 [1.10.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.10.1...v1.10.2

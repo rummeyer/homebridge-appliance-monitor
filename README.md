@@ -369,6 +369,16 @@ tell, to hang automations on:
 
   Turn on the notifications of either in the Home app.
 
+  Either can also **switch the appliance off**, by a Home app automation
+  that turns off the plug itself, which is in the Home app too: **When
+  "Kaffeemaschine Idle On" detects occupancy**, turn off the Kaffeemaschine
+  plug — an hour after the last coffee, with **Idle on after** 60 and
+  counted from **End of Bezug**. Idle On counts only once a coffee has
+  been drawn, so a machine still heating up is left alone. For one
+  switched on and then forgotten, with no coffee at all, add Overtime the
+  same way: **When "Kaffeemaschine Overtime" detects occupancy**, turn it
+  off — after two hours on, say, whatever happened.
+
 The plugin only measures, so the switches only report: one tapped in the Home
 app is put back to what the appliance is doing straight away, and an
 automation never sees a state that is not true.
