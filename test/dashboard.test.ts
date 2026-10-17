@@ -38,7 +38,7 @@ after(() => {
 });
 
 test('the page and what it loads are served', async () => {
-  for (const [path, type] of [['/', 'text/html'], ['/dashboard.js', 'text/javascript'], ['/theme.js', 'text/javascript'], ['/chart.js', 'text/javascript'], ['/shared.js', 'text/javascript'], ['/icon.png', 'image/png'], ['/home.svg', 'image/svg\\+xml']]) {
+  for (const [path, type] of [['/', 'text/html'], ['/dashboard.js', 'text/javascript'], ['/theme.js', 'text/javascript'], ['/chart.js', 'text/javascript'], ['/shared.js', 'text/javascript'], ['/icons.js', 'text/javascript'], ['/icon.png', 'image/png'], ['/home.svg', 'image/svg\\+xml']]) {
     const response = await fetch(`${base}${path}`);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get('content-type') ?? '', new RegExp(`^${type}`), path);

@@ -42,6 +42,8 @@ export interface LiveAppliance {
   idleOn?: boolean;
   /** The appliance whose plug measures this one too, so the total leaves it out. */
   partOf?: string;
+  /** The icon its tile shows, if one was picked; see homebridge-ui/public/icons.js. */
+  icon?: string;
 }
 
 export interface DashboardSource {
@@ -68,6 +70,7 @@ const FILES: Record<string, { type: string; path: string }> = {
   // The settings page's own, so both show the same.
   '/chart.js': { type: 'text/javascript; charset=utf-8', path: 'homebridge-ui/public/chart.js' },
   '/shared.js': { type: 'text/javascript; charset=utf-8', path: 'homebridge-ui/public/shared.js' },
+  '/icons.js': { type: 'text/javascript; charset=utf-8', path: 'homebridge-ui/public/icons.js' },
   '/icon.png': { type: 'image/png', path: 'web/icon.png' },
   '/home.svg': { type: 'image/svg+xml', path: 'web/home.svg' },
 };

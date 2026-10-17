@@ -40,14 +40,16 @@
     return element;
   }
 
-  /** A plug, as the Home app draws an outlet; shown only in the Home look. */
-  function icon(total) {
+  /**
+   * The icon of a tile, shown only in the Home look: a flash for the total,
+   * else the one picked for the appliance, an outlet if none; see icons.js.
+   */
+  function icon(total, key) {
     const box = el('span', 'icon');
     box.setAttribute('aria-hidden', 'true');
-    // A filled outlet, its holes in --hole: two slots and the earth below.
     box.innerHTML = total
       ? '<svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M13.2 2.5 5.6 13.1c-.4.6 0 1.4.7 1.4h4.6l-1.2 7c-.1.6.7.9 1 .4l7.6-10.6c.4-.6 0-1.4-.7-1.4H13l1.2-7c.1-.6-.7-.9-1-.4z"/></svg>'
-      : '<svg viewBox="0 0 24 24" width="26" height="26"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="currentColor"/><g style="fill: var(--hole)"><rect x="8.3" y="7.6" width="1.9" height="4.6" rx=".95"/><rect x="13.8" y="7.6" width="1.9" height="4.6" rx=".95"/><path d="M10.5 17v-1.1a1.5 1.5 0 0 1 3 0V17z"/></g></svg>';
+      : window.ApplianceIcons.svg(key);
     return box;
   }
 
@@ -101,7 +103,7 @@
     button.type = 'button';
     button.dataset.name = appliance.name;
     button.classList.toggle('chosen', appliance.name === $('plug').value);
-    button.append(icon(false), el('div', 'name', appliance.name));
+    button.append(icon(false, appliance.icon), el('div', 'name', appliance.name));
 
     let state;
     let detail;

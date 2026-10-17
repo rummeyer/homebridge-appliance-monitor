@@ -52,6 +52,8 @@
   .om-set-grid.om-set-rows { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
   .om-set-rows + .om-set-rows { margin-top: .75rem; }
   .om-set-help { font-size: .78rem; opacity: .65; margin-top: .2rem; }
+  .om-set-icon { display: flex; align-items: center; gap: .5rem; }
+  .om-set-icon-preview { display: flex; flex: none; --hole: var(--bs-body-bg, #fff); }
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
   /* Fixed widths for the checkboxes, as each row is a grid of its own and the
      heading row has none: each as wide as its label measured in the
@@ -404,6 +406,25 @@
           'Its plug is also measured by another appliance here, so the totals leave it out.')
         : null;
 
+      // The icon of its dashboard tile, shown next to the list as it is picked.
+      const { ApplianceIcons } = window;
+      const iconPreview = el('span', { class: 'om-set-icon-preview', 'aria-hidden': 'true' });
+      iconPreview.innerHTML = ApplianceIcons.svg(device.icon, 22);
+      const iconValue = ApplianceIcons.has(device.icon) ? device.icon ?? ApplianceIcons.DEFAULT : ApplianceIcons.DEFAULT;
+      // In groups, as there are many; the outlet, the default, on its own first.
+      const iconList = el('select', {
+        class: 'form-select form-select-sm',
+        onchange: (e) => {
+          setOrDrop(device, 'icon', e.target.value === ApplianceIcons.DEFAULT ? undefined : e.target.value);
+          iconPreview.innerHTML = ApplianceIcons.svg(e.target.value, 22);
+          changed();
+        },
+      }, ApplianceIcons.groups.map(([group, icons]) => {
+        const options = icons.map(([key, label]) => el('option', { value: key, selected: key === iconValue }, label));
+        return group ? el('optgroup', { label: group }, options) : options;
+      }));
+      const iconField = field('Icon', el('div', { class: 'om-set-icon' }, iconPreview, iconList), 'On its dashboard tile, in the Home look.');
+
       // What Idle On counts, under its field; changes with what it counts from.
       const idleOnField = field('Idle on after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
         setOrDrop(device, 'idleOnMinutes', numberOrUndefined(value));
@@ -420,6 +441,7 @@
             device.pairedWith ? null : field('Pairing code', codeInput,
               isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
               codeError(device.pairingCode ?? '')),
+            iconField,
             deviceField,
             partOfField)),
 

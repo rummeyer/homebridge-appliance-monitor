@@ -562,6 +562,13 @@ The button at the top right switches the look, round the three:
 | sun | **Light** |
 | moon | **Dark** |
 
+In the Home look each tile has an icon in a circle, as the Home app has.
+An outlet unless another is picked as **Icon**, under the appliance's name
+in the settings (`icon`): 64 others, in groups — a washing machine, a
+dryer, a TV, a coffee machine, a desk lamp, a computer, a car charger and
+so on. They are only for the dashboard; HomeKit shows the appliance as
+before.
+
 The page opens in Home. A browser that was switched to light or dark keeps
 it on the next visit, until it is switched back. Without JavaScript the page
 follows the system's light or dark mode.
@@ -641,6 +648,7 @@ config it writes looks like this:
 | `devices[].pairedWith` | | Another appliance whose pairing this one shares: a device behind a Matter bridge. See [Behind a Matter bridge](#behind-a-matter-bridge). |
 | `devices[].deviceId` | | Which device behind the bridge it follows, by UniqueID. Without it, every reading of the node counts. |
 | `devices[].endpoint` | | The same by endpoint number, for a device without UniqueID. |
+| `devices[].icon` | `outlet` | The icon of its tile in the dashboard's Home look: `tv`, `washer`, `dryer`, `coffee`, `desk-lamp`, `computer` and others — the settings page lists them all. Not shown in HomeKit. |
 | `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals, and draws nothing while that one is off. See [Statistics](#statistics). |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].overtimeMinutes` | none | An Overtime occupancy sensor, on once the appliance has been running this many minutes in one go. Read from `leftOnMinutes` too. See [In the Home app](#in-the-home-app). |
@@ -714,4 +722,7 @@ controller like this one, so it only shows with Homebridge's debug logging.
 
 ## Licence
 
-MIT
+MIT. The dashboard's appliance icons, all but the outlet, are
+[Material Symbols](https://github.com/google/material-design-icons) by
+Google, under the Apache License 2.0; the dryer is put together from two of
+them.

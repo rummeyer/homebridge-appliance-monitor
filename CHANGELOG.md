@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-10-17
+
+### Added
+
+- **Icon** per appliance, under its name in the settings (`icon`): what
+  its tile shows in the dashboard's Home look instead of an outlet. 64 to
+  pick from, in groups — washing machine, dryer, TV, coffee machine, desk
+  lamp, computer, car charger and more — from Material Symbols (Apache
+  License 2.0), in the same filled, rounded look. HomeKit is not changed by
+  it.
+
 ## [1.11.2] — 2026-10-17
 
 ### Fixed
@@ -805,7 +816,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.2...v1.12.0
 [1.11.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.1...v1.11.2
 [1.11.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.10.2...v1.11.0

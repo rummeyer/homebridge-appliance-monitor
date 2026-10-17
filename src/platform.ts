@@ -510,9 +510,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     return this.#devices.map((device) => {
       const { name } = device;
       const partOf = countsInTotal(device, this.#devices) ? {} : { partOf: device.partOf!.trim() };
+      // The page knows the icons, and shows an outlet for one it does not.
+      const icon = typeof device.icon === 'string' && device.icon ? { icon: device.icon } : {};
       const appliance = this.#appliances.get(name);
       if (!appliance) {
-        return { name, paired: false, phases: [], ...partOf };
+        return { name, paired: false, phases: [], ...partOf, ...icon };
       }
       const { monitor } = appliance;
       const record = this.#store?.get(name) ?? {};
@@ -520,6 +522,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       const typical = usualSeconds(runsOf(record), cycle && monitor.startOf(cycle.startedAt, now));
       return {
         ...partOf,
+        ...icon,
         name,
         paired: true,
         reachable: appliance.reachable,

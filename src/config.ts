@@ -44,6 +44,12 @@ export interface DeviceConfig {
    * otherwise be counted twice.
    */
   partOf?: string;
+  /**
+   * The icon of its tile in the dashboard's Home look: "tv", "washer",
+   * "dryer" and so on, from the list in homebridge-ui/public/icons.js. An
+   * outlet if not set, or not one of them. HomeKit is not changed by it.
+   */
+  icon?: string;
   /** A Running switch in HomeKit, on while the appliance runs. On by default. */
   runningSwitch?: boolean;
   /**
