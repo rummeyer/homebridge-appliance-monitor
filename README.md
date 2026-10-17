@@ -117,7 +117,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle On time and what it counts from, and under More its polling interval, its phases and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle On time and what it counts from, and under More its polling interval, its phases and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -528,7 +528,7 @@ A web page with every appliance at a glance, for a tablet on the wall or a
 phone on the sofa, without logging in to Homebridge. It opens in the **Home**
 look, after Apple's Home app:
 
-<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home.png" alt="The dashboard in the Home look: square glass tiles on a warm wallpaper, Electricity with what all plugs draw together, the running Schreibtisch and Arbeitsplatz as white tiles, two lamps marked as part of another appliance, the power chart of all plugs and the statistics" width="760">
+<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home.png" alt="The dashboard in the Home look: square glass tiles on a warm wallpaper, each with its icon — a fan, a washing machine, a dryer, a desk, a computer, a coffee machine, a TV and more — Electricity with what all plugs draw together, the running Fernseher as a white tile, two lamps marked as part of another appliance, the power chart of all plugs and the statistics" width="760">
 
 - a tile per appliance with what it draws **now**, whether it is running and
   for how long, what the cycle has used so far, and the phases it is in;
@@ -550,7 +550,7 @@ look, after Apple's Home app:
 It updates itself every few seconds. On a phone, the tiles are two side by
 side:
 
-<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home-phone.png" alt="The Home look on a phone: two tiles side by side" width="300">
+<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home-phone.png" alt="The Home look on a phone: two tiles side by side, each with its icon" width="300">
 
 ### Home, light and dark
 
