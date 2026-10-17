@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.12.3] — 2026-10-17
+
+### Changed
+
+- New README screenshots of the dashboard in all three looks and of the
+  settings, as of 1.12.2.
+
 ## [1.12.2] — 2026-10-17
 
 ### Fixed
@@ -833,7 +840,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.3...HEAD
+[1.12.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.11.2...v1.12.0
