@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Verified by Homebridge; the README says so.
+- MQTT's three fields are on a line of their own under **General** in the
+  settings, below the dashboard's.
+
+### Fixed
+
+- An appliance's cached accessory is renamed with `updateDisplayName`,
+  as Homebridge means it to be.
+
 ## [1.15.0] — 2026-10-18
 
 ### Added

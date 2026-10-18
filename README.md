@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img src="https://img.shields.io/badge/_-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge" alt="Verified by Homebridge"></a>
   <a href="https://www.npmjs.com/package/homebridge-appliance-monitor"><img src="https://img.shields.io/npm/v/homebridge-appliance-monitor?label=npm" alt="npm"></a>
   <a href="https://www.npmjs.com/package/homebridge-appliance-monitor"><img src="https://img.shields.io/npm/dt/homebridge-appliance-monitor" alt="Downloads"></a>
   <a href="https://github.com/rummeyer/homebridge-appliance-monitor/actions/workflows/build.yml"><img src="https://github.com/rummeyer/homebridge-appliance-monitor/actions/workflows/build.yml/badge.svg" alt="CI"></a>

@@ -601,7 +601,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       const uuid = this.#uuid(device.name);
       let accessory = this.#cached.get(uuid);
       if (accessory) {
-        accessory.displayName = accessoryName(device);
+        accessory.updateDisplayName(accessoryName(device));
       } else {
         accessory = new this.api.platformAccessory(accessoryName(device), uuid);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);

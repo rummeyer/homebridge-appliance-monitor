@@ -694,7 +694,9 @@
             setOrDrop(config, 'dashboardPort', numberOrUndefined(value), DEFAULT_DASHBOARD_PORT);
             changed();
             showDashboardLinks();
-          }, 1)),
+          }, 1))),
+        // MQTT on a line of its own: its three fields belong together.
+        el('div', { class: 'om-set-grid mt-3' },
           el('div', {},
             check('om-set-mqtt', 'MQTT', config.mqtt === true, (on) => { setOrDrop(config, 'mqtt', on, false); changed(); }),
             el('div', { class: 'om-set-help' }, "Each appliance's state as topics: <prefix>/<name>/state, watts, phases and more.")),
