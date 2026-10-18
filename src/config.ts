@@ -67,16 +67,17 @@ export interface DeviceConfig {
   /** What overtimeMinutes was called in 1.7.0, as Left On. */
   leftOnMinutes?: number;
   /**
-   * An Idle sensor in HomeKit, which turns on once the appliance has been
-   * drawing power this many minutes without running — a PC asleep, a desk
-   * left on overnight — and off when it runs again or draws nothing. None if not set.
+   * An Idle sensor in HomeKit, which turns on once the appliance has not
+   * run for this many minutes, whatever it draws — a PC asleep, a TV in
+   * standby, a desk left on overnight — and off when it runs again or the
+   * plug's relay is switched off. None if not set.
    */
   idleOnMinutes?: number;
   /**
    * What Idle counts from instead: the end of the last time this phase
    * ran — 10 minutes after the last coffee drawn, say, for a coffee machine
    * keeping itself warm, which never stops running. Off again when the
-   * phase runs again or the plug draws nothing.
+   * phase runs again or the plug's relay is switched off.
    */
   idleOnFrom?: string;
   /** What runningSwitch was called while it was a sensor. */

@@ -357,20 +357,22 @@ tell, to hang automations on:
   (`overtimeMinutes`; 1.7.0's `leftOnMinutes` still works, and its Left On
   sensor becomes Overtime with its automations).
 - **Idle**, if set: an occupancy sensor that turns on once the
-  appliance has been drawing power for a given time without running — a
-  PC asleep, a desk left on standby overnight — and off when it runs again
-  or draws nothing (0.5 W or less). Set **Idle after**
+  appliance has not run for a given time, whatever it draws — a PC
+  asleep, a TV in standby, at 1 W or at 0 W — and off when it runs again
+  or the plug's relay is switched off. Set **Idle after**
   (`idleOnMinutes`; until 1.12 the sensor was called Idle On, and one
-  still so called is renamed, with its automations). A part counts as
-  running while what it is part of runs, so a desk lamp is not idle while
-  the desk is in use.
+  still so called is renamed, with its automations). On a plug without
+  a relay, such as the Shelly Plug PM, it stays on until the appliance runs
+  again. A part counts as running while what it is part of runs, so a
+  desk lamp is not idle while the desk is in use.
 
   An appliance that keeps itself warm, as a coffee machine does, never
   stops running while it is on. For one with phases, Idle can count
   from the end of a phase instead: **Idle counted from** **End of
   Bezug** (`idleOnFrom`) turns it on 10 minutes, say, after the last
-  coffee drawn, while the machine is still on — and off with the next
-  coffee, or once the plug draws nothing.
+  coffee drawn, whether the machine still keeps warm or has switched
+  itself off — and off with the next coffee, or once the plug is switched
+  off.
 
   Turn on the notifications of either in the Home app.
 
@@ -382,7 +384,9 @@ tell, to hang automations on:
   been drawn, so a machine still heating up is left alone. For one
   switched on and then forgotten, with no coffee at all, add Overtime the
   same way: **When "Kaffeemaschine Overtime" detects occupancy**, turn it
-  off — after two hours on, say, whatever happened.
+  off — after two hours on, say, whatever happened. A TV the same way with
+  Idle alone: **When "Fernseher Idle" detects occupancy**, turn off the
+  Fernseher plug, 30 minutes after it was last watched, in standby or not.
 
 The plugin only measures, so the switches only report: one tapped in the Home
 app is put back to what the appliance is doing straight away, and an

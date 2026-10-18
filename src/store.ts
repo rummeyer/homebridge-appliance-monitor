@@ -35,7 +35,7 @@ export interface DeviceRecord {
   runs?: Run[];
   /** Their lengths only, in seconds, as kept in 1.7 and 1.8. */
   durations?: number[];
-  /** Since when it has drawn power without running, for Idle. */
+  /** Since when it has not run, for Idle. */
   idleSince?: number;
   /** Finished cycles and ended phases, counted. See counts.ts. */
   counts?: Record<string, Counted>;

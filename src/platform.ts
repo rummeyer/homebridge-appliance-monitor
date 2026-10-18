@@ -778,28 +778,34 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#setTimed(appliance, 'overtime', now, appliance.monitor.progress(now)?.startedAt, 'running');
     if (appliance.device.idleOnMinutes !== undefined) {
       const { idleOnFrom } = appliance.device;
-      const doing = idleOnFrom === undefined ? 'drawing power without running' : `on, no ${idleOnFrom}`;
+      const doing = idleOnFrom === undefined ? 'not running' : `on, no ${idleOnFrom}`;
       this.#setTimed(appliance, 'idleOn', now, this.#idleSince(appliance, now), doing);
     }
   }
 
   /**
-   * Since when the appliance has drawn power without running — or, with
-   * idleOnFrom, since that phase last ended — kept over a restart. A part does not while its whole runs: what it draws then is in
-   * that one's running. Left as it was while the draw is not known.
+   * Since when the appliance has not run — or, with idleOnFrom, since that
+   * phase last ended — kept over a restart. Whatever it draws: a TV in a
+   * standby that reads 0 W has not run either. A part does not count while
+   * its whole runs: what it draws then is in that one's running. Over once
+   * the plug's relay is switched off, so that switching it off by
+   * automation is done once; left as it was while nothing is known.
    */
   #idleSince(appliance: Appliance, now: number): number | undefined {
-    const { device, watts, reachable } = appliance;
+    const { device, watts, reachable, relayOff } = appliance;
+    if (relayOff) {
+      this.#setIdleSince(appliance, undefined);
+      return undefined;
+    }
     if (watts === undefined || reachable === false) {
       return appliance.idleSince;
     }
     if (device.idleOnFrom !== undefined) {
-      // Started by the phase ending, in #onPhase; over once the plug draws nothing.
-      this.#setIdleSince(appliance, watts > IDLE_WATTS ? appliance.idleSince : undefined);
+      // Started by the phase ending, and over when it starts again, in #onPhase.
       return appliance.idleSince;
     }
-    const drawing = watts > IDLE_WATTS && !this.#runsWithin(appliance);
-    this.#setIdleSince(appliance, drawing ? appliance.idleSince ?? now : undefined);
+    const idle = !this.#runsWithin(appliance);
+    this.#setIdleSince(appliance, idle ? appliance.idleSince ?? now : undefined);
     return appliance.idleSince;
   }
 
@@ -833,7 +839,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
     const { device } = appliance;
     // Idle counting from this phase: from when it ends, not while it lasts.
-    if (device.idleOnMinutes !== undefined && device.idleOnFrom === tracker.name.trim()) {
+    if (device.idleOnMinutes !== undefined && device.idleOnFrom === tracker.name.trim() && !appliance.relayOff) {
       this.#setIdleSince(appliance, change.active && !change.short ? undefined : change.at);
     }
     if (change.short) {
