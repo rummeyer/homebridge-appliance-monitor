@@ -6,6 +6,26 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-10-18
+
+### Changed
+
+- The **Idle On** sensor is now called **Idle**, and its fields **Idle
+  after** and **Idle counted from**. A sensor still called "… Idle On" in
+  the Home app is renamed on start and keeps its automations; one renamed
+  there keeps its name. The config keys stay `idleOnMinutes` and
+  `idleOnFrom`.
+
+### Fixed
+
+- A plug that is unreachable, or has its relay switched off, no longer keeps
+  a phase on: it counts as out of every range, and the phase ends after its
+  hold. A standby phase from 0 W stayed on while the plug was gone, or
+  switched off and reporting 0 W.
+- The relay's state is read on connecting, not only on its next change.
+- An unreachable appliance's dashboard tile shows – rather than what it
+  drew last.
+
 ## [1.12.3] — 2026-10-17
 
 ### Changed
@@ -840,7 +860,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.3...v1.13.0
 [1.12.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.1...v1.12.2
 [1.12.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.0...v1.12.1

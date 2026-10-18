@@ -67,13 +67,13 @@ export interface DeviceConfig {
   /** What overtimeMinutes was called in 1.7.0, as Left On. */
   leftOnMinutes?: number;
   /**
-   * An Idle On sensor in HomeKit, which turns on once the appliance has been
+   * An Idle sensor in HomeKit, which turns on once the appliance has been
    * drawing power this many minutes without running — a PC asleep, a desk
    * left on overnight — and off when it runs again or draws nothing. None if not set.
    */
   idleOnMinutes?: number;
   /**
-   * What Idle On counts from instead: the end of the last time this phase
+   * What Idle counts from instead: the end of the last time this phase
    * ran — 10 minutes after the last coffee drawn, say, for a coffee machine
    * keeping itself warm, which never stops running. Off again when the
    * phase runs again or the plug draws nothing.
@@ -277,7 +277,7 @@ export function usablePollSeconds(device: DeviceConfig): { pollSeconds: number |
 }
 
 /**
- * The phase Idle On counts from, if one is set and is one of the
+ * The phase Idle counts from, if one is set and is one of the
  * appliance's phases, and why not if it was set but is not.
  */
 export function usableIdleOnFrom(device: DeviceConfig, phases: PhaseConfig[]): { from: string | undefined; problem?: string } {
@@ -287,7 +287,7 @@ export function usableIdleOnFrom(device: DeviceConfig, phases: PhaseConfig[]): {
   }
   const from = typeof idleOnFrom === 'string' ? idleOnFrom.trim() : '';
   if (!phases.some((phase) => phase.name.trim() === from)) {
-    return { from: undefined, problem: `"${name}" has an idleOnFrom that is none of its phases; Idle On counts from when it stops running` };
+    return { from: undefined, problem: `"${name}" has an idleOnFrom that is none of its phases; Idle counts from when it stops running` };
   }
   return { from };
 }
@@ -297,7 +297,7 @@ export type TimedSensor = 'overtime' | 'idleOn';
 
 export const TIMED_SENSORS: Record<TimedSensor, { key: 'overtimeMinutes' | 'idleOnMinutes'; label: string }> = {
   overtime: { key: 'overtimeMinutes', label: 'Overtime' },
-  idleOn: { key: 'idleOnMinutes', label: 'Idle On' },
+  idleOn: { key: 'idleOnMinutes', label: 'Idle' },
 };
 
 /**

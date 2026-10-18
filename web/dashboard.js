@@ -124,7 +124,8 @@
       button.classList.add('idle');
       state = 'Idle';
     }
-    button.append(el('div', 'watts', typeof appliance.watts === 'number' ? watts(appliance.watts) : '–'));
+    // What an unreachable plug said last is not what it draws now.
+    button.append(el('div', 'watts', current(appliance) ? watts(appliance.watts) : '–'));
     button.append(el('div', 'state', state));
     if (appliance.phases.length > 0 || appliance.overtime || appliance.idleOn) {
       const chips = el('div', 'chips');
@@ -132,7 +133,7 @@
         chips.append(el('span', 'chip warn', 'Overtime'));
       }
       if (appliance.idleOn) {
-        chips.append(el('span', 'chip warn', 'Idle on'));
+        chips.append(el('span', 'chip warn', 'Idle'));
       }
       for (const phase of appliance.phases) {
         chips.append(el('span', 'chip', phase));

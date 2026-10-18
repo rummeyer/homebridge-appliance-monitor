@@ -25,7 +25,7 @@
   const pollError = (seconds) =>
     (seconds !== undefined && seconds < MIN_POLL_SECONDS ? `At least ${MIN_POLL_SECONDS} s; shorter asks every ${MIN_POLL_SECONDS} s.` : '');
   /** As usableMinutes in config.ts. */
-  /** What Idle On counts: from the end of a phase, or from when it stops running. */
+  /** What Idle counts: from the end of a phase, or from when it stops running. */
   const idleOnHelp = (device) => (device.idleOnFrom
     ? `This long after the end of ${device.idleOnFrom}.`
     : 'On this long without running.');
@@ -271,7 +271,7 @@
         el('label', { class: 'form-check-label', for: id }, label));
     }
 
-    /** The names of an appliance's phases, as Idle On may count from one. */
+    /** The names of an appliance's phases, as Idle may count from one. */
     function phaseNames(device) {
       return (device.phases ?? []).map((phase) => (phase.name ?? '').trim()).filter(Boolean);
     }
@@ -425,8 +425,8 @@
       }).flat());
       const iconField = field('Icon', el('div', { class: 'om-set-icon' }, iconPreview, iconList), 'On its dashboard tile, in the Home look.');
 
-      // What Idle On counts, under its field; changes with what it counts from.
-      const idleOnField = field('Idle on after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
+      // What Idle counts, under its field; changes with what it counts from.
+      const idleOnField = field('Idle after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
         setOrDrop(device, 'idleOnMinutes', numberOrUndefined(value));
         showError(input, minutesError(device.idleOnMinutes));
         changed();
@@ -469,11 +469,11 @@
               changed();
             }, 1), 'Running this long in one go.',
             minutesError(device.overtimeMinutes ?? device.leftOnMinutes))),
-          // Idle On on a line of its own: its two fields belong together.
+          // Idle's two fields on a line of their own: they belong together.
           el('div', { class: 'om-set-grid om-set-rows' },
             idleOnField,
-            // Only for an appliance with phases: Idle On may count from the end of one.
-            phaseNames(device).length > 0 && field('Idle on counted from',
+            // Only for an appliance with phases: Idle may count from the end of one.
+            phaseNames(device).length > 0 && field('Idle counted from',
               choice(phaseNames(device).includes(device.idleOnFrom) ? device.idleOnFrom : '',
                 [['', 'Not running'], ...phaseNames(device).map((name) => [name, `End of ${name}`])],
                 (value) => {

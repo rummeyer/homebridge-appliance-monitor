@@ -140,6 +140,18 @@ export class PhaseTracker {
     return this.#check(at);
   }
 
+  /**
+   * Nothing in the band, whatever the plug reports: it is unreachable, or
+   * its relay is off. The phase ends as on leaving the band, after its hold,
+   * so that a moment's dropout does not end it.
+   */
+  none(at: number): PhaseChange | undefined {
+    this.#advance(at);
+    this.#watts = undefined;
+    this.#outSince ??= at;
+    return this.#check(at);
+  }
+
   tick(at: number): PhaseChange | undefined {
     this.#advance(at);
     return this.#check(at);

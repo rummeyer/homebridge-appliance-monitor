@@ -140,7 +140,7 @@ test('a phase may leave out its upper end, not its lower one', () => {
   assert.match(check({ name: 'Heating', maxWatts: 1400 }).problems[0]!, /needs a "from"/);
 });
 
-test('Overtime and Idle On need a number of minutes; anything else costs only the sensor', () => {
+test('Overtime and Idle need a number of minutes; anything else costs only the sensor', () => {
   assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 240 }, 'overtime'), { minutes: 240 });
   assert.deepEqual(usableMinutes({ name: 'TV', leftOnMinutes: 240 }, 'overtime'), { minutes: 240 }, "1.7.0's name");
   assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 300, leftOnMinutes: 240 }, 'overtime'), { minutes: 300 });
@@ -154,13 +154,13 @@ test('Overtime and Idle On need a number of minutes; anything else costs only th
     assert.match(overtime.problem!, /no Overtime sensor/);
     const idleOn = usableMinutes({ name: 'TV', idleOnMinutes: wrong as number }, 'idleOn');
     assert.equal(idleOn.minutes, undefined);
-    assert.match(idleOn.problem!, /idleOnMinutes .* no Idle On sensor/);
+    assert.match(idleOn.problem!, /idleOnMinutes .* no Idle sensor/);
   }
   assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, overtimeMinutes: 240 }), 'a sensor is something to show');
   assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, idleOnMinutes: 30 }));
 });
 
-test('Idle On counts from the end of one of its phases, or else from when it stops running', () => {
+test('Idle counts from the end of one of its phases, or else from when it stops running', () => {
   const phases = [{ name: 'Bezug', minWatts: 30 }, { name: 'Milchschaum', minWatts: 450 }];
   assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: 'Bezug' }, phases), { from: 'Bezug' });
   assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: ' Bezug ' }, phases), { from: 'Bezug' });
@@ -169,7 +169,7 @@ test('Idle On counts from the end of one of its phases, or else from when it sto
   for (const wrong of ['Espresso', 42]) {
     const { from, problem } = usableIdleOnFrom({ name: 'Coffee', idleOnFrom: wrong as string }, phases);
     assert.equal(from, undefined);
-    assert.match(problem!, /none of its phases; Idle On counts from when it stops running/);
+    assert.match(problem!, /none of its phases; Idle counts from when it stops running/);
   }
 });
 

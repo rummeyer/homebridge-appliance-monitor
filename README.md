@@ -117,7 +117,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle On time and what it counts from, and under More its polling interval, its phases and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle time and what it counts from, and under More its polling interval, its phases and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -268,7 +268,10 @@ how long the draw has to be in it.
 Phases are ranges, not thresholds, because the order does not hold: drawing
 a coffee is less than heating. And a phase ends only once the draw has been
 out of its range for a while (30 seconds by default), because a heating
-element switched by a thermostat goes on and off every few seconds.
+element switched by a thermostat goes on and off every few seconds. A plug
+that is unreachable, or has its relay switched off, counts as out of every
+range: a standby phase from 0 W is not on while nothing is known, nor while
+the plug reports 0 W because it is switched off.
 
 The easiest way to set one up is the **Power** tab of the settings page. It
 shows a plug's recorded power, from the last hour to the last two weeks, with
@@ -353,16 +356,18 @@ tell, to hang automations on:
   **Overtime after** under **In HomeKit** in the settings
   (`overtimeMinutes`; 1.7.0's `leftOnMinutes` still works, and its Left On
   sensor becomes Overtime with its automations).
-- **Idle On**, if set: an occupancy sensor that turns on once the
+- **Idle**, if set: an occupancy sensor that turns on once the
   appliance has been drawing power for a given time without running — a
   PC asleep, a desk left on standby overnight — and off when it runs again
-  or draws nothing (0.5 W or less). Set **Idle on after**
-  (`idleOnMinutes`). A part counts as running while what it is part of
-  runs, so a desk lamp is not idle while the desk is in use.
+  or draws nothing (0.5 W or less). Set **Idle after**
+  (`idleOnMinutes`; until 1.12 the sensor was called Idle On, and one
+  still so called is renamed, with its automations). A part counts as
+  running while what it is part of runs, so a desk lamp is not idle while
+  the desk is in use.
 
   An appliance that keeps itself warm, as a coffee machine does, never
-  stops running while it is on. For one with phases, Idle On can count
-  from the end of a phase instead: **Idle on counted from** **End of
+  stops running while it is on. For one with phases, Idle can count
+  from the end of a phase instead: **Idle counted from** **End of
   Bezug** (`idleOnFrom`) turns it on 10 minutes, say, after the last
   coffee drawn, while the machine is still on — and off with the next
   coffee, or once the plug draws nothing.
@@ -371,9 +376,9 @@ tell, to hang automations on:
 
   Either can also **switch the appliance off**, by a Home app automation
   that turns off the plug itself, which is in the Home app too: **When
-  "Kaffeemaschine Idle On" detects occupancy**, turn off the Kaffeemaschine
-  plug — an hour after the last coffee, with **Idle on after** 60 and
-  counted from **End of Bezug**. Idle On counts only once a coffee has
+  "Kaffeemaschine Idle" detects occupancy**, turn off the Kaffeemaschine
+  plug — an hour after the last coffee, with **Idle after** 60 and
+  counted from **End of Bezug**. Idle counts only once a coffee has
   been drawn, so a machine still heating up is left alone. For one
   switched on and then forgotten, with no coffee at all, add Overtime the
   same way: **When "Kaffeemaschine Overtime" detects occupancy**, turn it
@@ -539,9 +544,12 @@ look, after Apple's Home app:
   that heats straight away is on its quick programme, one that turns the
   drum first on its long one, and it knows which after a few washes of
   each. A start not seen before, or a desk, whose cycles start alike but
-  last any time, has no usual length and shows its peak instead. **Overtime** and **Idle on** are marked too;
+  last any time, has no usual length and shows its peak instead.
+  **Overtime** and **Idle** are marked too. An unreachable plug's tile says
+  **Unreachable** and shows – rather than what it drew last;
 - a tile with what all plugs draw together — **Electricity** in the Home
-  look, as the Home app calls it, and **Total** in light and dark;
+  look, as the Home app calls it, and **Total** in light and dark, without
+  unreachable plugs;
 - the **power chart** of all plugs together, or of the appliance picked —
   click its tile, or pick it from the list. It opens on all plugs and the
   last 6 hours; the time picked is kept for the next visit;
@@ -652,8 +660,8 @@ config it writes looks like this:
 | `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals, and draws nothing while that one is off. See [Statistics](#statistics). |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].overtimeMinutes` | none | An Overtime occupancy sensor, on once the appliance has been running this many minutes in one go. Read from `leftOnMinutes` too. See [In the Home app](#in-the-home-app). |
-| `devices[].idleOnMinutes` | none | An Idle On occupancy sensor, on once the appliance has drawn power this many minutes without running. See [In the Home app](#in-the-home-app). |
-| `devices[].idleOnFrom` | none | A phase's name: Idle On counts from the end of the last time that phase ran instead, while the plug draws power. For an appliance that keeps itself warm. |
+| `devices[].idleOnMinutes` | none | An Idle occupancy sensor, on once the appliance has drawn power this many minutes without running. See [In the Home app](#in-the-home-app). |
+| `devices[].idleOnFrom` | none | A phase's name: Idle counts from the end of the last time that phase ran instead, while the plug draws power. For an appliance that keeps itself warm. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |

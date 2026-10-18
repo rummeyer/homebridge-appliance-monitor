@@ -154,17 +154,17 @@
               "description": "Sensor on after running this long in one go. Empty: none."
             },
             "idleOnMinutes": {
-              "title": "Idle on after (minutes)",
+              "title": "Idle after (minutes)",
               "type": "number",
               "exclusiveMinimum": 0,
               "placeholder": "off",
               "description": "Sensor on after drawing power this long without running, or this long after the end of the phase below. Empty: none."
             },
             "idleOnFrom": {
-              "title": "Idle on counted from (phase)",
+              "title": "Idle counted from (phase)",
               "type": "string",
               "placeholder": "not running",
-              "description": "Count Idle On from the end of this phase instead. Empty: from when it stops running."
+              "description": "Count Idle from the end of this phase instead. Empty: from when it stops running."
             },
             "pollSeconds": {
               "title": "Polling interval (seconds)",

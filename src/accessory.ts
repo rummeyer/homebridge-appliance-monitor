@@ -36,7 +36,7 @@ const SUBTYPES: Record<TimedSensor, string> = { overtime: 'left-on', idleOn: 'id
  * - one switch per phase, on while the phase lasts, or for a moment once
  *   it is over, for one that is told apart by being short;
  * - if asked for, an Overtime sensor, on once it has been running for long,
- *   and an Idle On sensor, on once it has drawn power for long without running.
+ *   and an Idle sensor, on once it has drawn power for long without running.
  *
  * Switches rather than sensors, at the owner's choice: an occupancy sensor
  * "detecting" a coffee being drawn read oddly, and the Home app tucks
@@ -47,7 +47,7 @@ export class ApplianceAccessory {
   readonly #api: API;
   readonly #accessory: PlatformAccessory;
   readonly #running: Service | undefined;
-  /** Overtime and Idle On, those asked for. */
+  /** Overtime and Idle, those asked for. */
   readonly #timed = new Map<TimedSensor, Service>();
   readonly #phases = new Map<string, Service>();
   /** What each switch should show, by subtype, to put a tapped one back to. */
@@ -62,7 +62,7 @@ export class ApplianceAccessory {
 
     // Earlier versions showed sensors; Homebridge brings a cached accessory
     // back with every service it had, so they are removed here. Running may
-    // be an occupancy sensor again, and Overtime and Idle On are ones; all
+    // be an occupancy sensor again, and Overtime and Idle are ones; all
     // are left to #service() below.
     for (const service of [...accessory.services]) {
       const sensor = service.UUID === Service.OccupancySensor.UUID || service.UUID === Service.ContactSensor.UUID;
@@ -97,11 +97,12 @@ export class ApplianceAccessory {
     // A sensor rather than a switch: the Home app notifies for sensors.
     for (const sensor of Object.keys(SUBTYPES) as TimedSensor[]) {
       const { label } = TIMED_SENSORS[sensor];
-      // Overtime was Left On in 1.7.0, and keeps its subtype, so that
-      // automations on it are kept; one still called so is renamed.
+      // Overtime was Left On in 1.7.0, and Idle was Idle On until 1.12; each
+      // keeps its subtype, so that automations on it are kept, and one still
+      // called so is renamed.
       const service = this.#service(Service.OccupancySensor, SUBTYPES[sensor],
         usableMinutes(device, sensor).minutes !== undefined, `${device.name} ${label}`,
-        sensor === 'overtime' ? `${device.name} Left On` : undefined);
+        `${device.name} ${sensor === 'overtime' ? 'Left On' : 'Idle On'}`);
       if (service) {
         this.#timed.set(sensor, service);
       }
@@ -142,7 +143,7 @@ export class ApplianceAccessory {
     this.#show('running', state === 'running');
   }
 
-  /** Overtime or Idle On, once the time is up, until the appliance finishes or runs again. */
+  /** Overtime or Idle, once the time is up, until the appliance finishes or runs again. */
   setTimed(sensor: TimedSensor, on: boolean): void {
     this.#show(SUBTYPES[sensor], on);
   }

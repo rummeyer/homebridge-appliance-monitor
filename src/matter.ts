@@ -8,7 +8,7 @@ import type { Logging } from 'homebridge';
 
 import type { EndpointInfo } from './bridged.ts';
 import type { MatterLogLevel, PairingData } from './config.ts';
-import { ACTIVE_POWER, ELECTRICAL_POWER_MEASUREMENT, hex } from './power.ts';
+import { ACTIVE_POWER, ELECTRICAL_POWER_MEASUREMENT, hex, ON_OFF, ON_OFF_STATE } from './power.ts';
 import { FABRIC_LABEL } from './settings.ts';
 
 /** Bridged Device Basic Information, and the attributes of it used here. */
@@ -203,23 +203,29 @@ export function endpointTree(node: PairedNode): EndpointInfo[] {
   });
 }
 
-/** The ActivePower each endpoint currently holds, as if just reported. */
-export function activePowerValues(node: PairedNode): AttributeReport[] {
+/**
+ * The ActivePower and relay state each endpoint currently holds, as if just
+ * reported: the relay first, so that a reading is taken knowing whether the
+ * relay is off.
+ */
+export function currentValues(node: PairedNode): AttributeReport[] {
   const reports: AttributeReport[] = [];
-  for (const endpoint of allEndpoints(node)) {
-    for (const cluster of endpoint.getAllClusterClients()) {
-      if (Number(cluster.id) !== ELECTRICAL_POWER_MEASUREMENT) {
-        continue;
-      }
-      const attribute = Object.values(cluster.attributes).find(({ id }) => Number(id) === ACTIVE_POWER);
-      if (attribute) {
-        reports.push({
-          endpointId: Number(endpoint.number),
-          clusterId: ELECTRICAL_POWER_MEASUREMENT,
-          attributeId: ACTIVE_POWER,
-          attributeName: attribute.name,
-          value: attribute.getLocal(),
-        });
+  for (const [clusterId, attributeId] of [[ON_OFF, ON_OFF_STATE], [ELECTRICAL_POWER_MEASUREMENT, ACTIVE_POWER]] as const) {
+    for (const endpoint of allEndpoints(node)) {
+      for (const cluster of endpoint.getAllClusterClients()) {
+        if (Number(cluster.id) !== clusterId) {
+          continue;
+        }
+        const attribute = Object.values(cluster.attributes).find(({ id }) => Number(id) === attributeId);
+        if (attribute) {
+          reports.push({
+            endpointId: Number(endpoint.number),
+            clusterId,
+            attributeId,
+            attributeName: attribute.name,
+            value: attribute.getLocal(),
+          });
+        }
       }
     }
   }

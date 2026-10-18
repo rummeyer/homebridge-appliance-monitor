@@ -179,3 +179,19 @@ test('after a restart, the recording tells where the draw came from', () => {
   assert.deepEqual(track(unknown, [[0, 3.2]], 100).map(({ active, at }) => [active, at / S]), [[true, 25]],
     'nothing recorded: a false alarm rather than none');
 });
+
+test('a plug gone unreachable or switched off ends a phase after its hold, as nothing is known to be drawn, and a dropout does not', () => {
+  const standby = new PhaseTracker({ name: 'Standby', minWatts: 0, maxWatts: 1.3 });
+  assert.equal(standby.reading(0, 0.8), undefined);
+  assert.deepEqual(standby.tick(10 * S), { active: true, at: 10 * S });
+  // Back within the hold: still the same standby.
+  assert.equal(standby.none(100 * S), undefined);
+  assert.equal(standby.reading(110 * S, 0.8), undefined);
+  assert.equal(standby.tick(200 * S), undefined);
+  assert.ok(standby.active);
+  // Gone for good: over half a minute later, however long the last reading was in the band.
+  assert.equal(standby.none(300 * S), undefined);
+  assert.equal(standby.tick(320 * S), undefined);
+  assert.deepEqual(standby.tick(330 * S), { active: false, at: 330 * S, since: 10 * S, inBandMs: 290 * S }, 'the dropout not counted as in the band');
+  assert.equal(standby.tick(3600 * S), undefined, 'and stays off while unreachable');
+});

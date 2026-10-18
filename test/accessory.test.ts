@@ -156,14 +156,14 @@ test('Running can be an occupancy sensor, taken while it runs; changing it repla
   assert.equal(switchOf(accessory, 'running'), undefined);
 });
 
-test('Overtime and Idle On are occupancy sensors of their own, kept on a restored accessory and removed when not wanted', () => {
+test('Overtime and Idle are occupancy sensors of their own, kept on a restored accessory and removed when not wanted', () => {
   const accessory = platformAccessory();
   const tv: DeviceConfig = { name: 'TV', overtimeMinutes: 240, idleOnMinutes: 30 };
   const handle = new ApplianceAccessory(api, accessory, tv, 'running');
   const sensor = (subtype: string) => accessory.getServiceById(Service.OccupancySensor, subtype);
   const detected = (subtype: string) => sensor(subtype)!.getCharacteristic(Characteristic.OccupancyDetected).value;
   assert.equal(sensor('left-on')!.getCharacteristic(Characteristic.ConfiguredName).value, 'TV Overtime');
-  assert.equal(sensor('idle-on')!.getCharacteristic(Characteristic.ConfiguredName).value, 'TV Idle On');
+  assert.equal(sensor('idle-on')!.getCharacteristic(Characteristic.ConfiguredName).value, 'TV Idle');
   assert.equal(detected('left-on'), Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
   handle.setTimed('overtime', true);
   assert.equal(detected('left-on'), Characteristic.OccupancyDetected.OCCUPANCY_DETECTED);
@@ -192,6 +192,19 @@ test("1.7.0's Left On becomes Overtime, keeping its automations, and its name un
   sensor.setCharacteristic(Characteristic.ConfiguredName, 'Telly on too long');
   new ApplianceAccessory(api, accessory, { name: 'TV', overtimeMinutes: 240 }, 'idle');
   assert.equal(sensor.getCharacteristic(Characteristic.ConfiguredName).value, 'Telly on too long');
+});
+
+test('Idle On, as it was called until 1.12, becomes Idle, keeping its automations, and its name unless renamed', () => {
+  const accessory = platformAccessory();
+  new ApplianceAccessory(api, accessory, { name: 'TV', idleOnMinutes: 30 }, 'idle');
+  const sensor = accessory.getServiceById(Service.OccupancySensor, 'idle-on')!;
+  sensor.setCharacteristic(Characteristic.ConfiguredName, 'TV Idle On');
+  new ApplianceAccessory(api, accessory, { name: 'TV', idleOnMinutes: 30 }, 'idle');
+  assert.equal(accessory.getServiceById(Service.OccupancySensor, 'idle-on'), sensor, 'the same service');
+  assert.equal(sensor.getCharacteristic(Characteristic.ConfiguredName).value, 'TV Idle');
+  sensor.setCharacteristic(Characteristic.ConfiguredName, 'Telly forgotten');
+  new ApplianceAccessory(api, accessory, { name: 'TV', idleOnMinutes: 30 }, 'idle');
+  assert.equal(sensor.getCharacteristic(Characteristic.ConfiguredName).value, 'Telly forgotten');
 });
 
 test('Running can be an outlet, on and in use while it runs, put back when tapped', async () => {
