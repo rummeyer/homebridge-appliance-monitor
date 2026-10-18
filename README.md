@@ -552,7 +552,8 @@ look, after Apple's Home app:
   unreachable plugs;
 - the **power chart** of all plugs together, or of the appliance picked —
   click its tile, or pick it from the list. It opens on all plugs and the
-  last 6 hours; the time picked is kept for the next visit;
+  last 6 hours; the plug and the time picked are kept for the next visit,
+  in this browser;
 - the **statistics**, as on the Statistics tab.
 
 It updates itself every few seconds. On a phone, the tiles are two side by

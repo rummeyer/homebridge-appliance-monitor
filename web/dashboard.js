@@ -200,8 +200,9 @@
 
   function fillPlugs() {
     const select = $('plug');
-    // Every visit opens on all plugs together; only a change of plugs keeps the choice.
-    const chosen = select.value || TOTAL;
+    // A visit opens on the plug picked last time, or on all plugs together
+    // when there is none or it is gone.
+    const chosen = select.value || remembered('plug', TOTAL);
     select.replaceChildren(...[[TOTAL, totalName()], ...names.map((name) => [name, name])].map(([value, text]) => {
       const option = el('option', '', text);
       option.value = value;
@@ -215,6 +216,7 @@
 
   function choose(name) {
     $('plug').value = name;
+    remember('plug', name);
     for (const button of document.querySelectorAll('.tile[data-name]')) {
       button.classList.toggle('chosen', button.dataset.name === name);
     }

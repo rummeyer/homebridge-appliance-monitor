@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.13.1] — 2026-10-18
+
+### Changed
+
+- The dashboard keeps the plug picked for the power chart for the next
+  visit, as it does the time, in the same browser; all plugs again if that
+  plug is gone.
+- New README screenshots of the settings and the dashboard, as of 1.13.0.
+
 ## [1.13.0] — 2026-10-18
 
 ### Changed
@@ -860,7 +869,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.13.1...HEAD
+[1.13.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.3...v1.13.0
 [1.12.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.2...v1.12.3
 [1.12.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.1...v1.12.2
