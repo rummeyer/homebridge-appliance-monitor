@@ -44,6 +44,10 @@ them as a second controller (Matter multi-admin) and subscribes to their power
 readings: over Wi-Fi directly, or over Thread through the HomePod or Apple TV
 that is already the border router. It only reads; it never switches anything.
 
+What it measures goes to HomeKit, and, if you want, to a read-only
+[dashboard](#dashboard) in the browser and to an [MQTT](#mqtt) broker, for a
+display, Node-RED or Home Assistant.
+
 What it needs is **ActivePower** (in milliwatts) from the standard
 **Electrical Power Measurement** cluster (`0x0090`). That is where the Home app
 reads its watts from, so a device that shows watts in the Home app without
@@ -616,6 +620,35 @@ login, so anyone who can reach the port can see your appliances and what
 they use. Keep it on your home network, and do not forward the port to the
 internet.
 
+## MQTT
+
+The plugin can also publish each appliance's state to an MQTT broker, such
+as Mosquitto, for whatever else listens on your network: a pixel display
+such as an AWTRIX clock, Node-RED, Home Assistant. It only publishes;
+nothing sent to it changes anything.
+
+| Topic | Value |
+|---|---|
+| `appliance-monitor/status` | `online`, or `offline` once the plugin is gone |
+| `appliance-monitor/<name>/state` | `running` or `idle` |
+| `appliance-monitor/<name>/watts` | what it draws, to a tenth of a watt: `14.9` |
+| `appliance-monitor/<name>/reachable` | `true` or `false`; while `false`, `watts` is the last reading |
+| `appliance-monitor/<name>/phase/<phase>` | `ON` or `OFF`, for each phase; a phase with "shorter than" is `ON` for a moment once it is over |
+| `appliance-monitor/<name>/overtime` | `ON` or `OFF`, if Overtime is set |
+| `appliance-monitor/<name>/idle` | `ON` or `OFF`, if Idle is set |
+
+Every value is retained, so a listener that connects later has the current
+ones at once, and sent only when it changes. `<name>` is the appliance's
+name as in the settings, with any `/`, `+` or `#` in it turned into `_`:
+`appliance-monitor/Kaffeemaschine/phase/Bezug`.
+
+To turn it on, open **General** on the plugin's settings page, tick
+**MQTT**, and restart the child bridge. The broker is `mqtt://localhost:1883`
+unless **MQTT broker** says otherwise; a login goes in the address,
+`mqtt://user:password@host:1883`, and is never written to the log.
+**MQTT topic prefix** replaces `appliance-monitor`. If the broker is not
+there, the plugin runs on, says so once, and tries again every 10 seconds.
+
 ## Plugs that report seldom
 
 A plug decides itself how often it reports its power. The Shelly Plug PM
@@ -677,6 +710,9 @@ config it writes looks like this:
 | `matterLogLevel` | `warn` | How much of matter.js's own logging to show. |
 | `dashboard` | `false` | Serve a read-only page with the power and statistics, without login. See [Dashboard](#dashboard). |
 | `dashboardPort` | `8582` | Its port. |
+| `mqtt` | `false` | Publish each appliance's state to an MQTT broker. See [MQTT](#mqtt). |
+| `mqttUrl` | `mqtt://localhost:1883` | The broker; a login goes in it, `mqtt://user:password@host:1883`. |
+| `mqttPrefix` | `appliance-monitor` | The first level of every topic. |
 
 ## Files
 

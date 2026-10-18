@@ -149,6 +149,12 @@ export interface ApplianceMonitorPlatformConfig extends PlatformConfig {
   dashboard?: boolean;
   /** Its port; DEFAULT_DASHBOARD_PORT if not set. */
   dashboardPort?: number;
+  /** Each appliance's state as MQTT topics; see mqtt.ts. Off by default. */
+  mqtt?: boolean;
+  /** The broker; DEFAULT_MQTT_URL if not set. A login goes in it: mqtt://user:password@host. */
+  mqttUrl?: string;
+  /** The first level of every topic; DEFAULT_MQTT_PREFIX if not set. */
+  mqttPrefix?: string;
 }
 
 export const DEFAULT_DASHBOARD_PORT = 8582;
@@ -172,6 +178,30 @@ export function usableDashboardPort(config: ApplianceMonitorPlatformConfig): { p
     return { port: undefined, problem: `dashboardPort ${String(dashboardPort)} is not a port from 1 to 65535; no dashboard` };
   }
   return { port: dashboardPort };
+}
+
+export const DEFAULT_MQTT_URL = 'mqtt://localhost:1883';
+export const DEFAULT_MQTT_PREFIX = 'appliance-monitor';
+
+/**
+ * The broker and the topics' prefix, or none when MQTT is off, and why there
+ * is none if it was asked for. As with the dashboard, a setting that cannot
+ * work turns MQTT off rather than costing the plugin.
+ */
+export function usableMqtt(config: ApplianceMonitorPlatformConfig): { url?: string; prefix?: string; problem?: string } {
+  if (config.mqtt !== true) {
+    return {};
+  }
+  const url = typeof config.mqttUrl === 'string' && config.mqttUrl.trim() ? config.mqttUrl.trim() : DEFAULT_MQTT_URL;
+  if (!/^(mqtts?|wss?):\/\/[^/\s]+/.test(url)) {
+    // Not repeated: it may hold a password.
+    return { problem: 'mqttUrl is no broker address like mqtt://host:1883; no MQTT' };
+  }
+  const prefix = typeof config.mqttPrefix === 'string' && config.mqttPrefix.trim() ? config.mqttPrefix.trim().replace(/\/+$/, '') : DEFAULT_MQTT_PREFIX;
+  if (/[+#\0]/.test(prefix) || prefix.startsWith('/')) {
+    return { problem: `mqttPrefix ${prefix} has a wildcard or starts with /; no MQTT` };
+  }
+  return { url, prefix };
 }
 
 export const MATTER_LOG_LEVELS: readonly MatterLogLevel[] = ['debug', 'info', 'notice', 'warn', 'error'];

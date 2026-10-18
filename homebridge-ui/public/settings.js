@@ -33,6 +33,9 @@
   /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */
   const DEFAULT_DASHBOARD_PORT = 8582;
   const dashboardOn = (config) => config.dashboard ?? (config.dashboardPort !== undefined && config.dashboardPort !== null);
+  /** As DEFAULT_MQTT_URL and DEFAULT_MQTT_PREFIX in config.ts. */
+  const DEFAULT_MQTT_URL = 'mqtt://localhost:1883';
+  const DEFAULT_MQTT_PREFIX = 'appliance-monitor';
   const PAIRING_CODE = /^\s*((\d[\s-]*){11}|(\d[\s-]*){21}|MT:[0-9A-Z.\-]+)\s*$/i;
   const LOG_LEVELS = [
     ['error', 'Errors only'],
@@ -691,7 +694,18 @@
             setOrDrop(config, 'dashboardPort', numberOrUndefined(value), DEFAULT_DASHBOARD_PORT);
             changed();
             showDashboardLinks();
-          }, 1))));
+          }, 1)),
+          el('div', {},
+            check('om-set-mqtt', 'MQTT', config.mqtt === true, (on) => { setOrDrop(config, 'mqtt', on, false); changed(); }),
+            el('div', { class: 'om-set-help' }, "Each appliance's state as topics: <prefix>/<name>/state, watts, phases and more.")),
+          field('MQTT broker', text(config.mqttUrl, DEFAULT_MQTT_URL, (value) => {
+            setOrDrop(config, 'mqttUrl', value.trim() || undefined, DEFAULT_MQTT_URL);
+            changed();
+          }), 'A login goes in it: mqtt://user:password@host:1883.'),
+          field('MQTT topic prefix', text(config.mqttPrefix, DEFAULT_MQTT_PREFIX, (value) => {
+            setOrDrop(config, 'mqttPrefix', value.trim() || undefined, DEFAULT_MQTT_PREFIX);
+            changed();
+          }))));
     }
 
     /**

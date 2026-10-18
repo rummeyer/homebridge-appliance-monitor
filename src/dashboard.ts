@@ -38,7 +38,7 @@ export interface LiveAppliance {
   typicalSeconds?: number;
   /** Running for longer than its overtimeMinutes. */
   overtime?: boolean;
-  /** Drawing power without running for longer than its idleOnMinutes. */
+  /** Not running for longer than its idleOnMinutes. */
   idleOn?: boolean;
   /** The appliance whose plug measures this one too, so the total leaves it out. */
   partOf?: string;

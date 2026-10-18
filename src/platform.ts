@@ -11,6 +11,7 @@ import {
   showsInHomeKit,
   MATTER_LOG_LEVELS,
   usableDashboardPort,
+  usableMqtt,
   TIMED_SENSORS,
   usableIdleOnFrom,
   usableMinutes,
@@ -41,6 +42,7 @@ import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker, RECALL_MS } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, OFF_WATTS } from './power.ts';
+import { MqttPublisher, phaseTopic, stateTopics } from './mqtt.ts';
 import { PowerRecorder, readSamples } from './recorder.ts';
 import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
@@ -108,6 +110,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   #ticker: NodeJS.Timeout | undefined;
   #energySaver: NodeJS.Timeout | undefined;
   #dashboard: Dashboard | undefined;
+  #mqtt: MqttPublisher | undefined;
+  /** The first level of every topic, once MQTT is on. */
+  #mqttPrefix = '';
   /** The plugs configured and usable, in the order of the settings. */
   #devices: DeviceConfig[] = [];
   /** Set on shutdown, when every plug disconnecting is expected and not worth a line. */
@@ -136,6 +141,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
       clearInterval(this.#energySaver);
       this.#dashboard?.close();
+      void this.#mqtt?.close();
       this.#saveEnergy();
       this.#controller?.stop().catch((error: unknown) => {
         this.log.debug(`Could not stop the Matter controller cleanly: ${message(error)}`);
@@ -206,11 +212,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
           for (const tracker of appliance.phases) {
             this.#onPhase(appliance, tracker, tracker.tick(now));
           }
+          this.#publish(appliance);
         });
       }
     }, TICK_MS);
     this.#energySaver = setInterval(() => this.#saveEnergy(), SAVE_ENERGY_MS);
     await this.#startDashboard();
+    this.#startMqtt();
 
     const registry = new NodeRegistry(join(this.#dataPath, 'nodes.json'));
     // One after the other: commissioning several plugs at once would open
@@ -341,6 +349,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
             if (!connected) {
               this.#nothingDrawn(appliance, Date.now());
             }
+            this.#publish(appliance);
           }
         }
       }),
@@ -508,36 +517,59 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   /** What each appliance is doing now, for the dashboard. */
   #live(): LiveAppliance[] {
     const now = Date.now();
-    return this.#devices.map((device) => {
-      const { name } = device;
-      const partOf = countsInTotal(device, this.#devices) ? {} : { partOf: device.partOf!.trim() };
-      // The page knows the icons, and shows an outlet for one it does not.
-      const icon = typeof device.icon === 'string' && device.icon ? { icon: device.icon } : {};
-      const appliance = this.#appliances.get(name);
-      if (!appliance) {
-        return { name, paired: false, phases: [], ...partOf, ...icon };
-      }
-      const { monitor } = appliance;
-      const record = this.#store?.get(name) ?? {};
-      const cycle = monitor.progress(now);
-      const typical = usualSeconds(runsOf(record), cycle && monitor.startOf(cycle.startedAt, now));
-      return {
-        ...partOf,
-        ...icon,
-        name,
-        paired: true,
-        reachable: appliance.reachable,
-        watts: appliance.watts,
-        at: appliance.last?.at,
-        state: monitor.state,
-        since: record.since,
-        phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
-        cycle,
-        ...(typical === undefined ? {} : { typicalSeconds: typical }),
-        ...(appliance.timed.overtime ? { overtime: true } : {}),
-        ...(appliance.timed.idleOn ? { idleOn: true } : {}),
-      };
-    });
+    return this.#devices.map((device) => this.#liveOf(device, now));
+  }
+
+  /** What one appliance is doing now, for the dashboard and MQTT. */
+  #liveOf(device: DeviceConfig, now: number): LiveAppliance {
+    const { name } = device;
+    const partOf = countsInTotal(device, this.#devices) ? {} : { partOf: device.partOf!.trim() };
+    // The page knows the icons, and shows an outlet for one it does not.
+    const icon = typeof device.icon === 'string' && device.icon ? { icon: device.icon } : {};
+    const appliance = this.#appliances.get(name);
+    if (!appliance) {
+      return { name, paired: false, phases: [], ...partOf, ...icon };
+    }
+    const { monitor } = appliance;
+    const record = this.#store?.get(name) ?? {};
+    const cycle = monitor.progress(now);
+    const typical = usualSeconds(runsOf(record), cycle && monitor.startOf(cycle.startedAt, now));
+    return {
+      ...partOf,
+      ...icon,
+      name,
+      paired: true,
+      reachable: appliance.reachable,
+      watts: appliance.watts,
+      at: appliance.last?.at,
+      state: monitor.state,
+      since: record.since,
+      phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
+      cycle,
+      ...(typical === undefined ? {} : { typicalSeconds: typical }),
+      ...(appliance.timed.overtime ? { overtime: true } : {}),
+      ...(appliance.timed.idleOn ? { idleOn: true } : {}),
+    };
+  }
+
+  /** Each appliance's state as MQTT topics, if it is switched on; see mqtt.ts. Without it the plugin runs on. */
+  #startMqtt(): void {
+    const { url, prefix, problem } = usableMqtt(this.config);
+    if (problem) {
+      this.log.warn(problem);
+    }
+    if (url === undefined || prefix === undefined || this.#stopping) {
+      return;
+    }
+    this.#mqtt = new MqttPublisher(this.log, url, prefix);
+    this.#mqttPrefix = prefix;
+  }
+
+  /** Sends what changed about the appliance; called wherever something may have. */
+  #publish(appliance: Appliance): void {
+    if (this.#mqtt) {
+      this.#mqtt.publish(stateTopics(this.#mqttPrefix, appliance.device, this.#liveOf(appliance.device, Date.now())));
+    }
   }
 
   /** "learning", or "learned from 3 cycles". */
@@ -660,6 +692,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         appliance.monitor.switchedOff(Date.now());
       }
       this.#passOn(appliance, Date.now());
+      this.#publish(appliance);
       return;
     }
     if (!isActivePower(report.clusterId, report.attributeId)) {
@@ -703,6 +736,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
     }
     this.#passOn(appliance, now);
+    this.#publish(appliance);
   }
 
   /**
@@ -842,6 +876,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
     if (change.short) {
       appliance.accessory?.phaseHappened(tracker.name);
+      this.#mqtt?.pulse(phaseTopic(this.#mqttPrefix, device.name, tracker.name));
       this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
       this.log.info(`${device.name}: ${tracker.name}, ${formatDuration((change.inBandMs ?? 0) / 1000)} in range`);
       return;

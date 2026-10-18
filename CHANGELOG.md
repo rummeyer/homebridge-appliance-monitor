@@ -6,6 +6,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **MQTT.** Each appliance's state, published to a broker such as Mosquitto,
+  retained and only when it changes: `<prefix>/<name>/state`, `watts`,
+  `reachable`, `phase/<phase>`, `overtime` and `idle`, and
+  `<prefix>/status` online or offline. Off by default; **MQTT**, **MQTT
+  broker** and **MQTT topic prefix** under **General** in the settings. Only
+  publishes: nothing sent to it changes anything. See the README's MQTT
+  section.
+
 ## [1.14.1] — 2026-10-18
 
 ### Changed

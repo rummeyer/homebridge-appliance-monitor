@@ -331,6 +331,24 @@
         "maximum": 65535,
         "placeholder": "8582",
         "description": "The port of the dashboard; 8582 if empty."
+      },
+      "mqtt": {
+        "title": "MQTT",
+        "type": "boolean",
+        "default": false,
+        "description": "Each appliance's state as MQTT topics, retained: <prefix>/<name>/state, watts, reachable, phase/<phase>, overtime and idle. For a display, Node-RED or Home Assistant. Needs a broker, such as Mosquitto."
+      },
+      "mqttUrl": {
+        "title": "MQTT broker",
+        "type": "string",
+        "placeholder": "mqtt://localhost:1883",
+        "description": "The broker's address; mqtt://localhost:1883 if empty. A login goes in it: mqtt://user:password@host:1883."
+      },
+      "mqttPrefix": {
+        "title": "MQTT topic prefix",
+        "type": "string",
+        "placeholder": "appliance-monitor",
+        "description": "The first level of every topic; appliance-monitor if empty."
       }
     }
   },
