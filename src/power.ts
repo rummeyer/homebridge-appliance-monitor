@@ -20,6 +20,12 @@ export const isActivePower = (clusterId: number, attributeId: number): boolean =
  * switched on. A meter without one, like the Shelly Plug PM Gen3, has no
  * such cluster.
  */
+/**
+ * At or below this a plug draws nothing: what is plugged in is off, not at
+ * a level of its own, and a plug drawing it is not asked for readings.
+ */
+export const OFF_WATTS = 0.5;
+
 export const ON_OFF = 0x0006;
 export const ON_OFF_STATE = 0x0000;
 

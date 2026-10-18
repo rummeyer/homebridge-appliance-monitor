@@ -293,7 +293,7 @@ export function usableIdleOnFrom(device: DeviceConfig, phases: PhaseConfig[]): {
   return { from };
 }
 
-/** The sensors that turn on after a time: running too long, or drawing power too long without running. */
+/** The sensors that turn on after a time: running too long, or not running for long. */
 export type TimedSensor = 'overtime' | 'idleOn';
 
 export const TIMED_SENSORS: Record<TimedSensor, { key: 'overtimeMinutes' | 'idleOnMinutes'; label: string }> = {

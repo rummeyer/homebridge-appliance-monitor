@@ -11,6 +11,7 @@
  * follows one configured phase at run time.
  */
 import type { Sample } from './learn.ts';
+import { OFF_WATTS } from './power.ts';
 
 export interface PhaseConfig {
   name: string;
@@ -234,8 +235,6 @@ export interface Level {
   seconds: number;
 }
 
-/** Below this the appliance is off, not at a level. */
-const OFF_WATTS = 0.5;
 /** Bins a tenth of a decade wide: 1.0, 1.26, 1.58, … W. */
 const BINS_PER_DECADE = 10;
 /** A level has to hold the draw this long in all; less is a transition passing through. */

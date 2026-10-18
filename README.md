@@ -665,8 +665,8 @@ config it writes looks like this:
 | `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals, and draws nothing while that one is off. See [Statistics](#statistics). |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
 | `devices[].overtimeMinutes` | none | An Overtime occupancy sensor, on once the appliance has been running this many minutes in one go. Read from `leftOnMinutes` too. See [In the Home app](#in-the-home-app). |
-| `devices[].idleOnMinutes` | none | An Idle occupancy sensor, on once the appliance has drawn power this many minutes without running. See [In the Home app](#in-the-home-app). |
-| `devices[].idleOnFrom` | none | A phase's name: Idle counts from the end of the last time that phase ran instead, while the plug draws power. For an appliance that keeps itself warm. |
+| `devices[].idleOnMinutes` | none | An Idle occupancy sensor, on once the appliance has not run for this many minutes, whatever it draws; off when it runs again or the plug's relay is switched off. See [In the Home app](#in-the-home-app). |
+| `devices[].idleOnFrom` | none | A phase's name: Idle counts from the end of the last time that phase ran instead. For an appliance that keeps itself warm. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |

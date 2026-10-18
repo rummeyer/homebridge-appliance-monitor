@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.14.1] — 2026-10-18
+
+### Changed
+
+- The README's configuration table and the code's comments describe Idle
+  as 1.14.0 counts it: from not running, whatever the plug draws.
+- One threshold for a plug drawing nothing, shared by everything that
+  needs it; nothing changes in what it does.
+
 ## [1.14.0] — 2026-10-18
 
 ### Changed
@@ -880,7 +889,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.1...HEAD
+[1.14.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.12.3...v1.13.0

@@ -36,7 +36,7 @@ const SUBTYPES: Record<TimedSensor, string> = { overtime: 'left-on', idleOn: 'id
  * - one switch per phase, on while the phase lasts, or for a moment once
  *   it is over, for one that is told apart by being short;
  * - if asked for, an Overtime sensor, on once it has been running for long,
- *   and an Idle sensor, on once it has drawn power for long without running.
+ *   and an Idle sensor, on once it has not run for long, whatever it draws.
  *
  * Switches rather than sensors, at the owner's choice: an occupancy sensor
  * "detecting" a coffee being drawn read oddly, and the Home app tucks

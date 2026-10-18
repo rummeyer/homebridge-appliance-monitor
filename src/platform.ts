@@ -40,7 +40,7 @@ import { dataDir } from './data-dir.ts';
 import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker, RECALL_MS } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
-import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff } from './power.ts';
+import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, OFF_WATTS } from './power.ts';
 import { PowerRecorder, readSamples } from './recorder.ts';
 import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
@@ -80,7 +80,7 @@ interface Appliance {
   reachable?: boolean;
   /** Which of Overtime and Idle are on. */
   timed: Partial<Record<TimedSensor, boolean>>;
-  /** Since when it has drawn power without running; see #idleSince. */
+  /** Since when it has not run, for Idle; see #idleSince. */
   idleSince?: number;
   /**
    * The endpoints whose readings are this appliance's: all of them for a
@@ -89,9 +89,6 @@ interface Appliance {
    */
   accept: Set<number> | 'all';
 }
-
-/** At or below this a plug draws nothing, and is not asked; see #poll. */
-const IDLE_WATTS = 0.5;
 
 /**
  * Pairs the configured plugs, watches their power draw, and shows each
@@ -375,7 +372,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
             appliance.accessory?.setInfo(node.basicInformation ?? {});
             const { accept } = appliance;
             const watts = current
-              .filter(({ endpointId, clusterId, attributeId }) => (accept === 'all' || accept.has(endpointId)) && isActivePower(clusterId, attributeId))
+              .filter(({ clusterId, attributeId }) => isActivePower(clusterId, attributeId))
+              .filter(({ endpointId }) => accept === 'all' || accept.has(endpointId))
               .map(({ value }) => activePowerWatts(value))
               .find((value) => value !== undefined);
             const { name, pollSeconds } = appliance.device;
@@ -460,7 +458,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       if (busy || this.#stopping || !node.isConnected) {
         return;
       }
-      if (appliance.watts !== undefined && appliance.watts <= IDLE_WATTS) {
+      if (appliance.watts !== undefined && appliance.watts <= OFF_WATTS) {
         return;
       }
       busy = true;
@@ -722,7 +720,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   #unpowered(appliance: Appliance): boolean {
     const whole = wholeOf(appliance.device, this.#devices);
     const of = whole === undefined ? undefined : this.#appliances.get(whole);
-    return of !== undefined && (of.relayOff === true || (of.watts !== undefined && of.watts <= IDLE_WATTS));
+    return of !== undefined && (of.relayOff === true || (of.watts !== undefined && of.watts <= OFF_WATTS));
   }
 
   /**
@@ -769,10 +767,10 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   /**
    * Overtime: on once the appliance has been running for its overtimeMinutes
-   * in one go, off when it finishes. Idle: on once it has drawn power for
-   * its idleOnMinutes without running, off when it runs again or draws
-   * nothing. Looked at on every tick, as nothing else happens while a TV
-   * runs on all night.
+   * in one go, off when it finishes. Idle: on once it has not run for its
+   * idleOnMinutes, off when it runs again or its relay is switched off.
+   * Looked at on every tick, as nothing else happens while a TV runs on all
+   * night.
    */
   #checkTimed(appliance: Appliance, now: number): void {
     this.#setTimed(appliance, 'overtime', now, appliance.monitor.progress(now)?.startedAt, 'running');
