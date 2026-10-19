@@ -290,12 +290,16 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   }
 
   async #setUp(controller: MatterController, registry: NodeRegistry, device: DeviceConfig, sharing: DeviceConfig[] = []): Promise<void> {
-    let nodeId = registry.get(device.name);
     // While shutting down, the closing controller reports every node as
     // unknown; forgetting the pairings then would orphan the plugs.
     if (this.#stopping) {
       return;
     }
+    if (device.pairingCode) {
+      this.#takeOverRename(registry, device.name, device.pairingCode);
+      registry.learnPairingCode(device.name, device.pairingCode);
+    }
+    let nodeId = registry.get(device.name);
     if (nodeId !== undefined && !controller.isCommissioned(nodeId)) {
       this.log.warn(`${device.name}: was paired as node ${nodeId}, but the controller no longer knows it.`);
       registry.delete(device.name);
@@ -320,8 +324,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
             'and, for a device on Thread, does this machine have a route to the Thread network (see the README)?',
         );
       }
-      registry.set(device.name, nodeId);
-      this.log.info(`${device.name}: paired as node ${nodeId}. The pairing code can now be removed from the config.`);
+      registry.set(device.name, nodeId, device.pairingCode);
+      this.log.info(`${device.name}: paired as node ${nodeId}. Keep the pairing code in the config, and the plug can be renamed later.`);
     }
 
     const appliances = [device, ...sharing].map((each) => this.#appliance(each));
@@ -437,6 +441,33 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
           `Choose one on the settings page, or set deviceId: ${list}.`,
       );
     }
+  }
+
+  /**
+   * A plug renamed in the config is not known by its new name, but by its
+   * pairing code if that is still there: it keeps its pairing, statistics and
+   * what was learned. The power recordings stay under the old name.
+   */
+  #takeOverRename(registry: NodeRegistry, name: string, pairingCode: string): void {
+    const old = registry.nameFor(pairingCode);
+    if (registry.get(name) !== undefined || old === undefined || this.#devices.some((device) => device.name === old)) {
+      return;
+    }
+    registry.rename(old, name);
+    this.#store?.rename(old, name);
+    if (old in this.#ledger) {
+      this.#ledger[name] = this.#ledger[old]!;
+      delete this.#ledger[old];
+      this.#saveEnergy(true);
+    }
+    const path = join(this.#dataPath, 'endpoints.json');
+    const metered = readJson(path) as Record<string, MeteredDevice[]> | null;
+    if (metered?.[old]) {
+      metered[name] = metered[old];
+      delete metered[old];
+      writeJson(path, metered);
+    }
+    this.log.info(`${name}: renamed from ${old}, which was paired with the same code`);
   }
 
   /** What measures power behind each pairing, for the settings page to choose from; see bridged.ts. */

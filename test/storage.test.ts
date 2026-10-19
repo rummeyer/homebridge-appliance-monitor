@@ -23,6 +23,31 @@ test('node IDs survive a restart at full 64-bit width', () => {
   assert.equal(new NodeRegistry(path).get('Washer'), undefined);
 });
 
+test('a plug is found by its pairing code under its old name, and renamed', () => {
+  const path = join(dir, 'renamed', 'nodes.json');
+  writeFileSync(join(dir, 'legacy.json'), '{"Office": "13"}');
+  const legacy = new NodeRegistry(join(dir, 'legacy.json'));
+  assert.equal(legacy.get('Office'), 13n);
+  assert.equal(legacy.nameFor('3497-011-2332'), undefined);
+
+  new NodeRegistry(path).set('Office', 13n, '3497-011-2332');
+  const reloaded = new NodeRegistry(path);
+  assert.equal(reloaded.nameFor('34970112332'), 'Office');
+  reloaded.rename('Office', 'Server');
+  assert.deepEqual(new NodeRegistry(path).entries(), [['Server', 13n]]);
+  assert.equal(new NodeRegistry(path).nameFor('3497 011 2332'), 'Server');
+});
+
+test('a pairing code is learned only for a plug that has none yet', () => {
+  const path = join(dir, 'learn', 'nodes.json');
+  const registry = new NodeRegistry(path);
+  registry.set('Office', 13n);
+  registry.learnPairingCode('Office', '3497-011-2332');
+  registry.learnPairingCode('Office', '1111-111-1111');
+  registry.learnPairingCode('Nope', '2222-222-2222');
+  assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), { Office: { node: '13', pairingCode: '34970112332' } });
+});
+
 test('a missing registry file is an empty registry', () => {
   assert.deepEqual(new NodeRegistry(join(dir, 'nope.json')).entries(), []);
 });

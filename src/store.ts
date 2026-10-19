@@ -66,6 +66,14 @@ export class DeviceStore {
     writeJson(this.#path, this.#records);
   }
 
+  rename(from: string, to: string): void {
+    if (from in this.#records) {
+      this.#records[to] = this.#records[from]!;
+      delete this.#records[from];
+      writeJson(this.#path, this.#records);
+    }
+  }
+
   /** Counts one more of something, starting the count if it is the first. */
   increment(name: string, key: string, at: number): void {
     const counts = { ...this.get(name).counts };

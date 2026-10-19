@@ -690,7 +690,7 @@ config it writes looks like this:
 | Option | Default | |
 | --- | --- | --- |
 | `devices[].name` | — | The appliance. Its accessory is called "<name> Monitor", and its Running switch "<name> Running"; also the name in the log and the recordings. |
-| `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Only needed until paired. |
+| `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Needed to pair; kept, it lets the plug be renamed later. |
 | `devices[].runningSwitch` | `true` | Running in HomeKit, on while the appliance runs. |
 | `devices[].pairedWith` | | Another appliance whose pairing this one shares: a device behind a Matter bridge. See [Behind a Matter bridge](#behind-a-matter-bridge). |
 | `devices[].deviceId` | | Which device behind the bridge it follows, by UniqueID. Without it, every reading of the node counts. |
@@ -721,7 +721,8 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
 
 - `matter/`: the controller's fabric, certificates and what it knows about
   the plugs. Deleting it unpairs everything, as far as the plugin is concerned.
-- `nodes.json`: which configured name is which Matter node.
+- `nodes.json`: which configured name is which Matter node, and the pairing
+  code it was paired with.
 - `endpoints.json`: what measures power behind each pairing, for choosing a
   device behind a bridge.
 - `devices.json`: what each appliance has learned, the state it is in, so that
@@ -757,11 +758,14 @@ controller like this one, so it only shows with Homebridge's debug logging.
   Pairing Mode**; get a fresh one and restart the child bridge. For a plug on
   Thread, check the route to the Thread network (see
   [Requirements](#requirements)).
-- **`not paired yet` in the log.** There is no pairing code in the settings,
-  or the plug was renamed: a paired plug is remembered by its name.
-- **`Paired but not configured: node …`.** A plug was renamed or removed from
-  the settings. Remove the plugin's pairing from the plug in the Home app,
-  under its connected services.
+- **`not paired yet` in the log, or pairing fails after a rename.** A paired
+  plug is remembered by its name, and by its pairing code if that was still in
+  the settings when it was renamed: then it keeps its pairing and statistics
+  under the new name. Without the code, give it its old name back, or pair it
+  again.
+- **`Paired but not configured: node …`.** A plug was renamed without its
+  pairing code, or removed from the settings. Remove the plugin's pairing from
+  the plug in the Home app, under its connected services.
 - **Finished comes half an hour late.** Nothing has been learned yet: run the
   appliance once, or mark a cycle on the Power tab.
 - **Finished never comes.** The appliance rests above the running level.

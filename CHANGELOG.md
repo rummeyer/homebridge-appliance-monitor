@@ -14,6 +14,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A plug renamed in the settings is no longer lost: as long as its pairing
+  code is still there, it keeps its pairing, statistics and what was learned
+  under the new name. Before, it tried to pair again and failed, as the plug
+  was paired already. `nodes.json` now remembers each plug's pairing code.
 - An appliance's cached accessory is renamed with `updateDisplayName`,
   as Homebridge means it to be.
 
