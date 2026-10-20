@@ -15,6 +15,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - MQTT topics for counting down on a display: `<name>/since`, when the
   state began, and `<name>/overtime/at` and `<name>/idle/at`, when those
   turn on, all in Unix seconds.
+- `extras/awtrix-ng`: an app for an AWTRIX NG clock showing a coffee
+  machine — heating up, time on, time until it is switched off, and a shot
+  timer.
 
 ### Changed
 

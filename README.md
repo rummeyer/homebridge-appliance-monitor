@@ -684,6 +684,13 @@ MQTT prefix is `awtrix`, a notification of how long the pump ran:
 Messages are sent once and not retained, and are lost while the broker is
 away. They need MQTT switched on.
 
+### A coffee machine on an AWTRIX NG clock
+
+[extras/awtrix-ng](extras/awtrix-ng) has an app for an AWTRIX NG clock that
+puts the topics above together for a coffee machine: heating up, how long
+it has been on, when it is switched off, and a shot timer that counts while
+the pump runs.
+
 ## Plugs that report seldom
 
 A plug decides itself how often it reports its power. The Shelly Plug PM
