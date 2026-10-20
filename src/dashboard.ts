@@ -40,6 +40,10 @@ export interface LiveAppliance {
   overtime?: boolean;
   /** Not running for longer than its idleOnMinutes. */
   idleOn?: boolean;
+  /** When Overtime turns on, or did, in ms: while it runs, if overtimeMinutes is set. */
+  overtimeAt?: number;
+  /** When Idle turns on, or did, in ms: while it counts, if idleOnMinutes is set. */
+  idleOnAt?: number;
   /** The appliance whose plug measures this one too, so the total leaves it out. */
   partOf?: string;
   /** The icon its tile shows, if one was picked; see homebridge-ui/public/icons.js. */

@@ -6,11 +6,14 @@
  *
  *     <prefix>/status                  online, or offline once the plugin is gone
  *     <prefix>/<name>/state            running | idle
+ *     <prefix>/<name>/since            1792481234, Unix time in seconds the state began
  *     <prefix>/<name>/watts            14.9
  *     <prefix>/<name>/reachable        true | false
  *     <prefix>/<name>/phase/<phase>    ON | OFF; a short phase is ON for a moment
  *     <prefix>/<name>/overtime         ON | OFF, if Overtime is set
+ *     <prefix>/<name>/overtime/at      Unix seconds it turns on, or did; empty while not counting
  *     <prefix>/<name>/idle             ON | OFF, if Idle is set
+ *     <prefix>/<name>/idle/at          the same for Idle
  *
  * Besides, each appliance may have messages of its own, sent to any topic
  * when one of its phases starts or ends — a command to a display — not
@@ -83,6 +86,9 @@ export function stateTopics(prefix: string, device: DeviceConfig, live: LiveAppl
   if (live.state !== undefined) {
     topics.set(`${base}/state`, live.state);
   }
+  if (live.since !== undefined) {
+    topics.set(`${base}/since`, unixSeconds(live.since));
+  }
   // Tenths of a watt: the plugs read finer than that, and every change is a message.
   if (live.watts !== undefined) {
     topics.set(`${base}/watts`, String(Math.round(live.watts * 10) / 10));
@@ -93,14 +99,20 @@ export function stateTopics(prefix: string, device: DeviceConfig, live: LiveAppl
   for (const { name } of device.phases ?? []) {
     topics.set(phaseTopic(prefix, device.name, name), live.phases.includes(name) ? ON : OFF);
   }
+  // An empty retained message clears the topic: nothing counting.
   if (usableMinutes(device, 'overtime').minutes !== undefined) {
     topics.set(`${base}/overtime`, live.overtime ? ON : OFF);
+    topics.set(`${base}/overtime/at`, live.overtimeAt === undefined ? '' : unixSeconds(live.overtimeAt));
   }
   if (usableMinutes(device, 'idleOn').minutes !== undefined) {
     topics.set(`${base}/idle`, live.idleOn ? ON : OFF);
+    topics.set(`${base}/idle/at`, live.idleOnAt === undefined ? '' : unixSeconds(live.idleOnAt));
   }
   return topics;
 }
+
+/** Whole seconds: what a small display can count with, where milliseconds overflow its integers. */
+const unixSeconds = (ms: number): string => String(Math.round(ms / 1000));
 
 /**
  * The connection to the broker. Without one — not there yet, or gone — the

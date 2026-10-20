@@ -632,11 +632,14 @@ nothing sent to it changes anything.
 |---|---|
 | `appliance-monitor/status` | `online`, or `offline` once the plugin is gone |
 | `appliance-monitor/<name>/state` | `running` or `idle` |
+| `appliance-monitor/<name>/since` | when that state began, in Unix seconds: `1792481235` |
 | `appliance-monitor/<name>/watts` | what it draws, to a tenth of a watt: `14.9` |
 | `appliance-monitor/<name>/reachable` | `true` or `false`; while `false`, `watts` is the last reading |
 | `appliance-monitor/<name>/phase/<phase>` | `ON` or `OFF`, for each phase; a phase with "shorter than" is `ON` for a moment once it is over |
 | `appliance-monitor/<name>/overtime` | `ON` or `OFF`, if Overtime is set |
+| `appliance-monitor/<name>/overtime/at` | when Overtime turns on (or did), in Unix seconds; empty while it is not counting |
 | `appliance-monitor/<name>/idle` | `ON` or `OFF`, if Idle is set |
+| `appliance-monitor/<name>/idle/at` | the same for Idle: with a Home automation switching the plug off on Idle, when it goes off |
 
 Every value is retained, so a listener that connects later has the current
 ones at once, and sent only when it changes. `<name>` is the appliance's

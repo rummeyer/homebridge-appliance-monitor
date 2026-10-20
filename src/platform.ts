@@ -582,6 +582,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       ...(typical === undefined ? {} : { typicalSeconds: typical }),
       ...(appliance.timed.overtime ? { overtime: true } : {}),
       ...(appliance.timed.idleOn ? { idleOn: true } : {}),
+      // As #checkTimed counts them.
+      ...(device.overtimeMinutes !== undefined && cycle ? { overtimeAt: cycle.startedAt + device.overtimeMinutes * 60_000 } : {}),
+      ...(device.idleOnMinutes !== undefined && appliance.idleSince !== undefined
+        ? { idleOnAt: appliance.idleSince + device.idleOnMinutes * 60_000 }
+        : {}),
     };
   }
 

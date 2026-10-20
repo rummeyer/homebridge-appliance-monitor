@@ -12,6 +12,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   with the appliance, the phase and how long it lasted filled in — a
   notification on a pixel clock, say. Set up on the **Power** tab, below the
   phases.
+- MQTT topics for counting down on a display: `<name>/since`, when the
+  state began, and `<name>/overtime/at` and `<name>/idle/at`, when those
+  turn on, all in Unix seconds.
 
 ### Changed
 
