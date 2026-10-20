@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 2.9
+# @version 3.0
 # @display 52x16
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
@@ -67,7 +67,7 @@ class ShotTimer
       2, 4, 0x6E6E6E, 3, 4, 0xE6E6E6, 4, 4, 0x6E3412, 5, 4, 0x6E3412, 6, 4, 0x6E3412, 7, 4, 0x6E3412, 8, 4, 0x6E3412, 9, 4, 0x6E3412, 10, 4, 0x6E3412, 11, 4, 0x6E3412, 12, 4, 0xE6E6E6, 13, 4, 0x6E6E6E,
       2, 5, 0xE6E6E6, 3, 5, 0x6E3412, 4, 5, 0x6E3412, 5, 5, 0x95501E, 6, 5, 0x95501E, 7, 5, 0xC88A4E, 8, 5, 0x95501E, 9, 5, 0x95501E, 10, 5, 0x6E3412, 11, 5, 0x6E3412, 12, 5, 0x6E3412, 13, 5, 0xE6E6E6,
       2, 6, 0xFFFFFF, 3, 6, 0xE6E6E6, 4, 6, 0x6E3412, 5, 6, 0x6E3412, 6, 6, 0x95501E, 7, 6, 0x95501E, 8, 6, 0x95501E, 9, 6, 0x6E3412, 10, 6, 0x6E3412, 11, 6, 0x6E3412, 12, 6, 0xE6E6E6, 13, 6, 0xE6E6E6, 14, 6, 0xE6E6E6,
-      2, 7, 0xFFFFFF, 3, 7, 0xE6E6E6, 4, 7, 0xE6E6E6, 5, 7, 0xE6E6E6, 6, 7, 0x6E3412, 7, 7, 0x6E3412, 8, 7, 0x6E3412, 9, 7, 0x6E3412, 10, 7, 0xE6E6E6, 11, 7, 0xE6E6E6, 12, 7, 0xE6E6E6, 13, 7, 0xA8A8A8, 15, 7, 0xE6E6E6,
+      2, 7, 0xFFFFFF, 3, 7, 0xE6E6E6, 4, 7, 0xE6E6E6, 5, 7, 0xE6E6E6, 6, 7, 0xE6E6E6, 7, 7, 0xE6E6E6, 8, 7, 0xE6E6E6, 9, 7, 0xE6E6E6, 10, 7, 0xE6E6E6, 11, 7, 0xE6E6E6, 12, 7, 0xE6E6E6, 13, 7, 0xA8A8A8, 15, 7, 0xE6E6E6,
       2, 8, 0xFFFFFF, 3, 8, 0xE6E6E6, 4, 8, 0xE6E6E6, 5, 8, 0xE6E6E6, 6, 8, 0xE6E6E6, 7, 8, 0xE6E6E6, 8, 8, 0xE6E6E6, 9, 8, 0xE6E6E6, 10, 8, 0xE6E6E6, 11, 8, 0xE6E6E6, 12, 8, 0xE6E6E6, 13, 8, 0xA8A8A8, 15, 8, 0xE6E6E6,
       2, 9, 0xFFFFFF, 3, 9, 0xE6E6E6, 4, 9, 0xE6E6E6, 5, 9, 0xE6E6E6, 6, 9, 0xE6E6E6, 7, 9, 0xE6E6E6, 8, 9, 0xE6E6E6, 9, 9, 0xE6E6E6, 10, 9, 0xE6E6E6, 11, 9, 0xE6E6E6, 12, 9, 0xA8A8A8, 13, 9, 0xE6E6E6, 14, 9, 0xE6E6E6,
       3, 10, 0xFFFFFF, 4, 10, 0xE6E6E6, 5, 10, 0xE6E6E6, 6, 10, 0xE6E6E6, 7, 10, 0xE6E6E6, 8, 10, 0xE6E6E6, 9, 10, 0xE6E6E6, 10, 10, 0xE6E6E6, 11, 10, 0xA8A8A8, 12, 10, 0xA8A8A8,
