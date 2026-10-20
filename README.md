@@ -690,6 +690,7 @@ away. They need MQTT switched on.
 puts the topics above together for a coffee machine: heating up, how long
 it has been on, when it is switched off, and a shot timer that counts while
 the pump runs.
+It is also on the [AWTRIX Hub](https://awtrix.de/script/n4Zx4bmvrpw8).
 
 ## Plugs that report seldom
 

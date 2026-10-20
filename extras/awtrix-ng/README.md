@@ -50,10 +50,17 @@ ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 
 ## Installing
 
+From the AWTRIX Hub: open [ShotTimer on the Hub](https://awtrix.de/script/n4Zx4bmvrpw8),
+sign in, and press **Send to AWTRIX**. The clock's web UI then offers each
+new version as an update.
+
+By hand:
+
 1. Open the clock's web UI, go to **Scripts**, and create a script called
    `ShotTimer`.
 2. Paste [`ShotTimer.be`](ShotTimer.be) in and save.
-3. Under **Apps**, press ⚙ on ShotTimer for its settings.
+
+Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 
 ## Settings
 
