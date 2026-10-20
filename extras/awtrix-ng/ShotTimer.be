@@ -1,15 +1,14 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 2.7
+# @version 2.8
 # @display 52x16
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Appliance Monitor sends <topic>/start and <topic>/end with the seconds"
 # @config  heat   text   "Heating phase"    default="Aufheizen"
 # @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that turns out to be this phase is shown as RINSE"
-# @config  below  number "Pump from"        default=30 min=0 max=3000 unit=W
-# @config  above  number "Pump below"       default=100 min=0 max=3000 unit=W
+# @config  below  number "Pump off below"   default=30 min=0 max=3000 unit=W help="The count stops when the plug reads less"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="The Eve Energy reports a 6 s average, so the pump started this much earlier"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="Empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C
@@ -25,7 +24,7 @@ class ShotTimer
   var rinse_topic, rinsed
   var temp_topic, ready, temp   # the temperature, nil until one came
   var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
-  var below, above, lead_ms, hold_ms, pin
+  var below, lead_ms, hold_ms, pin
   var cup, coffee, done, hot, red, white, grey, warn
   var shot         # "idle", "run" or "done"
   var t0           # now_ms() when the pump started
@@ -60,7 +59,6 @@ class ShotTimer
     self.temp = nil
     self.heat_done = false
     self.below = store.get("below")
-    self.above = store.get("above")
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
     self.pin = store.get("pin")
@@ -196,13 +194,13 @@ class ShotTimer
     end
   end
 
-  # Frozen while the plug reads outside the pump's range: it stopped, or the
-  # heater hides it. Back in the range, it counts on from the start.
+  # Frozen while the plug reads below the pump: nothing runs. The heater runs
+  # beside the pump during a coffee, so a reading above it counts on.
   def watts(w)
     if self.shot != "run" || w == nil
       return
     end
-    if w < self.below || w >= self.above
+    if w < self.below
       if self.stopped == nil
         self.stopped = now_ms()
       end

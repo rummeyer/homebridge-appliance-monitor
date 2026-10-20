@@ -65,7 +65,7 @@ ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
 | Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
 | Preheated from | 38 °C | |
-| Pump from, Pump below | 30 W, 100 W | The pump's range: the count stops as soon as the plug reads outside it. |
+| Pump off below | 30 W | The count stops as soon as the plug reads less: neither pump nor heater runs. |
 | Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |
 | Show result for | 20 s | |
 | Stay on screen while on | off | On: the app holds the display the whole time the machine is on. |
@@ -75,8 +75,11 @@ ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 
 The count runs on the clock, every second. It starts when the plugin
 first sees the pump, set back by the plug delay, and stops as soon as the
-plug reads outside the pump's range. When the phase ends, the plugin's own
-count — from the draw entering the range to it last leaving it — replaces
-it. When the heater runs during a coffee, the plug reads heater and pump
-together, about 1200 W, and the pump cannot be told apart: the count then
-stops early, and the result is the time the pump could be seen.
+plug reads less than **Pump off below**. When the phase ends, the plugin's
+own count — from the draw entering the pump's range to it last leaving it
+— replaces it.
+
+The heater often runs beside the pump during a coffee; the plug then reads
+both together, about 1200 W, so the count goes on through it. A rinse right
+before the heater starts looks the same, and its count runs on until the
+phase ends and the plugin's shorter result replaces it.
