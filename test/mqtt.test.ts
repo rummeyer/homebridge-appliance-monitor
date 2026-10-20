@@ -61,6 +61,10 @@ test('when the state began and when Overtime and Idle turn on are Unix seconds, 
   assert.equal(topics.get('am/Kaffeemaschine/since'), '1792481235');
   assert.equal(topics.get('am/Kaffeemaschine/overtime/at'), '1792484835');
   assert.equal(topics.get('am/Kaffeemaschine/idle/at'), '1792481534');
+  const started = stateTopics('am', coffee, live({
+    state: 'running', since: 1_792_481_234_567, cycle: { startedAt: 1_792_481_174_000, wattHours: 1, peakWatts: 1200 },
+  }));
+  assert.equal(started.get('am/Kaffeemaschine/since'), '1792481174', 'running since the draw rose, not since that was clear');
 });
 
 test('what is not known yet is left out rather than guessed, and an unpaired appliance has nothing', () => {

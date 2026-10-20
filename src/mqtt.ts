@@ -6,7 +6,8 @@
  *
  *     <prefix>/status                  online, or offline once the plugin is gone
  *     <prefix>/<name>/state            running | idle
- *     <prefix>/<name>/since            1792481234, Unix time in seconds the state began
+ *     <prefix>/<name>/since            1792481234, Unix time in seconds the state began;
+ *                                      running, when the draw rose
  *     <prefix>/<name>/watts            14.9
  *     <prefix>/<name>/reachable        true | false
  *     <prefix>/<name>/phase/<phase>    ON | OFF; a short phase is ON for a moment
@@ -86,8 +87,10 @@ export function stateTopics(prefix: string, device: DeviceConfig, live: LiveAppl
   if (live.state !== undefined) {
     topics.set(`${base}/state`, live.state);
   }
-  if (live.since !== undefined) {
-    topics.set(`${base}/since`, unixSeconds(live.since));
+  // Running began when the draw rose, as Overtime counts, not once that was clear a minute later.
+  const since = live.state === 'running' && live.cycle ? live.cycle.startedAt : live.since;
+  if (since !== undefined) {
+    topics.set(`${base}/since`, unixSeconds(since));
   }
   // Tenths of a watt: the plugs read finer than that, and every change is a message.
   if (live.watts !== undefined) {

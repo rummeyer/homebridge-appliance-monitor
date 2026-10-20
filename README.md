@@ -632,7 +632,7 @@ nothing sent to it changes anything.
 |---|---|
 | `appliance-monitor/status` | `online`, or `offline` once the plugin is gone |
 | `appliance-monitor/<name>/state` | `running` or `idle` |
-| `appliance-monitor/<name>/since` | when that state began, in Unix seconds: `1792481235` |
+| `appliance-monitor/<name>/since` | when that state began, in Unix seconds: `1792481235`; running, when the draw rose |
 | `appliance-monitor/<name>/watts` | what it draws, to a tenth of a watt: `14.9` |
 | `appliance-monitor/<name>/reachable` | `true` or `false`; while `false`, `watts` is the last reading |
 | `appliance-monitor/<name>/phase/<phase>` | `ON` or `OFF`, for each phase; a phase with "shorter than" is `ON` for a moment once it is over |
