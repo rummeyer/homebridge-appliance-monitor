@@ -8,8 +8,7 @@ topics:
 | When | Line 1 | Line 2 |
 |---|---|---|
 | Heating up | **HEATING**, heat waves over the cup | how long it has been on |
-| Warm enough | **HEATED** in red, for a minute | when it is switched off |
-| Ready | how long it has been on (**ON**), every three seconds how long heating took (**HEAT**) | when it is switched off (**OFF**), yellow in the last minute |
+| Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
 
@@ -44,11 +43,8 @@ automation on either. With Idle counted from the end of Pumpe, OFF shows
 5:00 after each coffee and counts down; Overtime is the latest it can be.
 
 **Optional: a thermometer** on the machine makes HEATED exact — heated is
-when it is warm enough, not when the heating phase ends. A sensor
-still warm from the last time cools far slower than the machine, so when
-it is warm already as the machine is switched on, the heating phase's end
-counts instead. Any topic with
-degrees works; for a Zigbee sensor on a deCONZ gateway,
+whenever it is at least **Preheated from**, not once the heating phase has
+ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
 
