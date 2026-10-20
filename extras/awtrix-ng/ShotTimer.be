@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 2.5
+# @version 2.6
 # @display 52x16
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
@@ -25,6 +25,7 @@ class ShotTimer
   var rinse_topic, rinsed
   var temp_topic, ready, temp   # the temperature, nil until one came
   var heated_at    # Unix seconds it became preheated, for HEATED a minute long
+  var by_temp      # heated is told by the temperature: it was cold when switched on
   var below, above, lead_ms, hold_ms, pin
   var cup, coffee, done, hot, red, white, grey, warn
   var shot         # "idle", "run" or "done"
@@ -35,7 +36,7 @@ class ShotTimer
   var known        # a state has come at all; the first is the retained one, not a change
   var since_s      # Unix seconds it has been in its state since, 0 if not known
   var heating      # the heating phase is on
-  var heat_s       # how long heating up took; -1 not heated yet, -2 heated but not known how long
+  var heat_s       # how long heating up took; -1 not heated yet
   var idle_at, over_at   # Unix seconds Idle / Overtime turn on, 0 for none
   var built        # the second the lines were built for
   var shown        # the shot's seconds the lines were built for
@@ -60,6 +61,7 @@ class ShotTimer
     self.ready = store.get("ready")
     self.temp = nil
     self.heated_at = 0
+    self.by_temp = true
     self.below = store.get("below")
     self.above = store.get("above")
     self.lead_ms = int(store.get("lead") * 1000)
@@ -104,19 +106,20 @@ class ShotTimer
     end
   end
 
-  # Preheated once it gets warm enough. Rising past it while on is when; warm
-  # already when switched on, or when this app started, is heated, how long unknown.
+  # Preheated once it gets warm enough. A sensor still warm from the last
+  # time cools far slower than the machine, so warm already when switched on
+  # tells nothing: then the heating phase's end says it, as without a sensor.
   def temperature(v)
     if v == nil
       return
     end
     var before = self.temp
     self.temp = v
-    if v >= self.ready && self.running && self.heat_s == -1
-      if before != nil && before < self.ready && self.since_s > 0
+    if self.running && self.heat_s == -1
+      if before == nil
+        self.by_temp = v < self.ready
+      elif self.by_temp && before < self.ready && v >= self.ready && self.since_s > 0
         self.heated(epoch_ms() / 1000)
-      else
-        self.heat_s = -2
       end
     end
     self.built = -1
@@ -127,9 +130,9 @@ class ShotTimer
     self.heated_at = unix
   end
 
-  # Heating up: until warm enough where there is a thermometer, else while the heating phase is on.
+  # Heating up: until warm enough where the thermometer tells, else while the heating phase is on.
   def warming()
-    return self.running && self.heat_s == -1 && (self.temp != nil || self.heating)
+    return self.running && self.heat_s == -1 && ((self.by_temp && self.temp != nil) || self.heating)
   end
 
   def machine(t, p)
@@ -139,8 +142,9 @@ class ShotTimer
       var was = self.running
       self.running = p == "running"
       if self.running != was
-        self.heat_s = self.running && self.temp != nil && self.temp >= self.ready ? -2 : -1
+        self.heat_s = -1
         self.heated_at = 0
+        self.by_temp = self.temp == nil || self.temp < self.ready
         # The since that came before is the old state's; the new one follows right after.
         if self.known
           self.since_s = 0
@@ -158,7 +162,7 @@ class ShotTimer
     elif t == self.heat_topic
       var on = p == "ON"
       # The first heating of the morning; a reheat later is not "heating up".
-      if self.temp == nil && self.heating && !on && self.heat_s == -1 && self.running && self.since_s > 0
+      if !(self.by_temp && self.temp != nil) && self.heating && !on && self.heat_s == -1 && self.running && self.since_s > 0
         self.heated(epoch_ms() / 1000)
       end
       self.heating = on

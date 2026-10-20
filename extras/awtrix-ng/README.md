@@ -44,7 +44,10 @@ automation on either. With Idle counted from the end of Pumpe, OFF shows
 5:00 after each coffee and counts down; Overtime is the latest it can be.
 
 **Optional: a thermometer** on the machine makes HEATED exact — heated is
-when it is warm enough, not when the heating phase ends. Any topic with
+when it is warm enough, not when the heating phase ends. A sensor
+still warm from the last time cools far slower than the machine, so when
+it is warm already as the machine is switched on, the heating phase's end
+counts instead. Any topic with
 degrees works; for a Zigbee sensor on a deCONZ gateway,
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
