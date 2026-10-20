@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- MQTT messages of your own: sent to any topic when a phase starts or ends,
+  with the appliance, the phase and how long it lasted filled in — a
+  notification on a pixel clock, say. Set up on the **Power** tab, below the
+  phases.
+
 ### Changed
 
 - Verified by Homebridge; the README says so.

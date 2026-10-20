@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { DEFAULT_MQTT_PREFIX, DEFAULT_MQTT_URL, usableMqtt } from '../src/config.ts';
+import { DEFAULT_MQTT_PREFIX, DEFAULT_MQTT_URL, usableMessages, usableMqtt } from '../src/config.ts';
 import type { DeviceConfig } from '../src/config.ts';
 import type { LiveAppliance } from '../src/dashboard.ts';
-import { phaseTopic, stateTopics, topicLevel, withoutLogin } from '../src/mqtt.ts';
+import { clockDuration, fillMessage, phaseTopic, stateTopics, topicLevel, withoutLogin } from '../src/mqtt.ts';
 
 const coffee: DeviceConfig = {
   name: 'Kaffeemaschine',
@@ -63,4 +63,46 @@ test('a name is one level of a topic, whatever it holds', () => {
   assert.equal(topicLevel('Licht/Flur'), 'Licht_Flur');
   assert.equal(topicLevel('A+B #1'), 'A_B _1');
   assert.equal(phaseTopic('am', 'Kaffeemaschine', 'Bezug/Spülen'), 'am/Kaffeemaschine/phase/Bezug_Spülen');
+});
+
+test('a duration reads like a clock, short enough for a pixel display', () => {
+  assert.equal(clockDuration(0), '0:00');
+  assert.equal(clockDuration(23.4), '0:23');
+  assert.equal(clockDuration(725), '12:05');
+  assert.equal(clockDuration(3725), '1:02:05');
+  assert.equal(clockDuration(-3), '0:00');
+});
+
+test('a message gets its placeholders filled in, and a JSON payload keeps its own braces', () => {
+  const values = { appliance: 'Kaffeemaschine', phase: 'Pumpe', seconds: 23.4 };
+  assert.equal(fillMessage('{"text":"{phase} {duration}","durationMs":5000}', values), '{"text":"Pumpe 0:23","durationMs":5000}');
+  assert.equal(fillMessage('{appliance}: {seconds} s {unknown}', values), 'Kaffeemaschine: 23 s {unknown}');
+  assert.equal(fillMessage('', values), '');
+});
+
+test('messages are kept for a phase the appliance has, sent at its start or end, to a topic without wildcards', () => {
+  const device = (messages: unknown): DeviceConfig => ({ ...coffee, messages: messages as DeviceConfig['messages'] });
+  const phases = coffee.phases!;
+  const good = { phase: 'Bezug', when: 'end', topic: 'awtrix/cmd/notify', payload: '{"text":"{duration}"}' };
+  assert.deepEqual(usableMessages(device([good]), phases, true), { messages: [good], problems: [] });
+  assert.deepEqual(usableMessages(device([{ ...good, phase: ' Bezug ', topic: ' awtrix/cmd/notify ' }]), phases, true).messages, [good]);
+  assert.deepEqual(usableMessages(device([{ phase: 'Bezug', when: 'end', topic: '', payload: '' }]), phases, true), { messages: [], problems: [] },
+    'an empty line from the settings page is skipped without a word');
+  const { messages, problems } = usableMessages(device([
+    good,
+    { ...good, phase: 'Spülen' },
+    { ...good, when: 'later' },
+    { ...good, topic: 'awtrix/#' },
+  ]), phases, true);
+  assert.deepEqual(messages, [good], 'a wrong message costs only itself');
+  assert.equal(problems.length, 3);
+  assert.match(problems[0]!, /Spülen, which is none of its phases/);
+  assert.match(problems[1]!, /neither at the start nor at the end/);
+  assert.match(problems[2]!, /wildcard/);
+});
+
+test('messages without MQTT are none, and said so', () => {
+  const { messages, problems } = usableMessages({ ...coffee, messages: [{ phase: 'Bezug', when: 'start', topic: 'x/y' }] }, coffee.phases!, false);
+  assert.deepEqual(messages, []);
+  assert.match(problems[0]!, /MQTT is off/);
 });

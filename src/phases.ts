@@ -81,6 +81,12 @@ export interface PhaseChange {
    * the draw was from `since` to `until`.
    */
   short?: boolean;
+  /**
+   * When the draw first entered the band, and — on the change that turns it
+   * off, or on a short one — when it last left it: how long it really
+   * lasted, without the hold and with the time it took to come on.
+   */
+  from?: number;
   until?: number;
 }
 
@@ -199,16 +205,16 @@ export class PhaseTracker {
       if (this.#phase.maxSeconds === undefined && this.#inMs >= minMs) {
         this.#active = true;
         this.#since = at;
-        return { active: true, at };
+        return { active: true, at, from: this.#firstIn };
       }
       return undefined;
     }
     if (outLong) {
       this.#active = false;
-      const inBandMs = this.#inMs;
+      const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#outSince };
       this.#inMs = 0;
       this.#firstIn = undefined;
-      return { active: false, at, since: this.#since, inBandMs };
+      return change;
     }
     return undefined;
   }
@@ -221,7 +227,7 @@ export class PhaseTracker {
     if (this.#inMs < minMs || this.#inMs >= maxSeconds * 1000) {
       return undefined;
     }
-    return { active: true, at, short: true, since: this.#firstIn, until: this.#outSince, inBandMs: this.#inMs };
+    return { active: true, at, short: true, since: this.#firstIn, from: this.#firstIn, until: this.#outSince, inBandMs: this.#inMs };
   }
 }
 

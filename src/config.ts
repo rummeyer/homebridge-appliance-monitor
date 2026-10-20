@@ -80,6 +80,11 @@ export interface DeviceConfig {
    * phase runs again or the plug's relay is switched off.
    */
   idleOnFrom?: string;
+  /**
+   * MQTT messages sent when one of its phases starts or ends, to any topic:
+   * a command to a display, say. Needs MQTT switched on.
+   */
+  messages?: PhaseMessage[];
   /** What runningSwitch was called while it was a sensor. */
   runningSensor?: boolean;
   /**
@@ -321,6 +326,66 @@ export function usableIdleOnFrom(device: DeviceConfig, phases: PhaseConfig[]): {
     return { from: undefined, problem: `"${name}" has an idleOnFrom that is none of its phases; Idle counts from when it stops running` };
   }
   return { from };
+}
+
+export interface PhaseMessage {
+  /** One of the appliance's phases, by name. */
+  phase: string;
+  when: 'start' | 'end';
+  topic: string;
+  /** Sent as written, with {appliance}, {phase}, {duration} and {seconds} filled in; see fillMessage in mqtt.ts. */
+  payload?: string;
+}
+
+/**
+ * The MQTT messages of a device that can be sent, and why any others
+ * cannot. A message that is wrong costs that message; an empty line, as the
+ * settings page may save one, is skipped without a word.
+ */
+export function usableMessages(device: DeviceConfig, phases: PhaseConfig[], mqtt: boolean): { messages: PhaseMessage[]; problems: string[] } {
+  const messages: PhaseMessage[] = [];
+  const problems: string[] = [];
+  const list: unknown = device.messages;
+  if (list === undefined || list === null) {
+    return { messages, problems };
+  }
+  if (!Array.isArray(list)) {
+    return { messages, problems: [`"${device.name}" has messages that are not a list`] };
+  }
+  for (const [index, entry] of list.entries()) {
+    const { phase, when, topic, payload } = (entry ?? {}) as Partial<Record<keyof PhaseMessage, unknown>>;
+    const name = typeof phase === 'string' ? phase.trim() : '';
+    const to = typeof topic === 'string' ? topic.trim() : '';
+    if (!to && (payload === undefined || payload === null || payload === '')) {
+      continue;
+    }
+    const what = `"${device.name}" message ${index + 1}${to ? ` to ${to}` : ''}`;
+    const wrong: string[] = [];
+    if (!phases.some((p) => p.name.trim() === name)) {
+      wrong.push(name ? `is for ${name}, which is none of its phases` : 'has no phase');
+    }
+    if (when !== 'start' && when !== 'end') {
+      wrong.push('is sent neither at the start nor at the end');
+    }
+    if (!to) {
+      wrong.push('has no topic');
+    } else if (/[+#\0]/.test(to)) {
+      wrong.push('has a wildcard in its topic');
+    }
+    if (payload !== undefined && payload !== null && typeof payload !== 'string') {
+      wrong.push('has a payload that is not text');
+    }
+    if (wrong.length > 0) {
+      problems.push(`${what} ${wrong.join(', and ')}`);
+      continue;
+    }
+    messages.push({ phase: name, when: when as PhaseMessage['when'], topic: to, ...(typeof payload === 'string' ? { payload } : {}) });
+  }
+  if (messages.length > 0 && !mqtt) {
+    problems.push(`"${device.name}" has MQTT messages, but MQTT is off; none are sent`);
+    return { messages: [], problems };
+  }
+  return { messages, problems };
 }
 
 /** The sensors that turn on after a time: running too long, or not running for long. */

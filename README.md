@@ -650,6 +650,37 @@ unless **MQTT broker** says otherwise; a login goes in the address,
 **MQTT topic prefix** replaces `appliance-monitor`. If the broker is not
 there, the plugin runs on, says so once, and tries again every 10 seconds.
 
+### Messages of your own
+
+The plugin can also send a message of your own, to any topic, when a phase
+starts or ends: a notification on a pixel clock when the coffee is done, say.
+Add them on the **Power** tab, under **MQTT messages** below the phases, one
+line each: the phase, whether it starts or ends, the topic, and the payload.
+In the payload, these are filled in:
+
+| Placeholder | |
+|---|---|
+| `{appliance}` | the appliance's name |
+| `{phase}` | the phase's name |
+| `{duration}` | how long the draw was in the range, as on a clock: `0:23`, `12:05`, `1:02:05` |
+| `{seconds}` | the same in seconds: `23` |
+
+The duration runs from the draw entering the range to it last leaving it:
+without the "off after" the phase waits before going off, and with any
+moment out of the range in between. At the start it is the time so far,
+which is the "on after". A phase with "shorter than" is known only once it
+is over, so its start and end messages go out together then.
+
+For an [AWTRIX NG](https://blueforcer.github.io/awtrix-ng/) clock whose
+MQTT prefix is `awtrix`, a notification of how long the pump ran:
+
+| Phase | When | Topic | Payload |
+|---|---|---|---|
+| Pumpe | Ends | `awtrix/cmd/notify` | `{"text":"Pumpe {duration}","durationMs":5000}` |
+
+Messages are sent once and not retained, and are lost while the broker is
+away. They need MQTT switched on.
+
 ## Plugs that report seldom
 
 A plug decides itself how often it reports its power. The Shelly Plug PM
@@ -705,6 +736,7 @@ config it writes looks like this:
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see [Phases](#phases)), `onDown` (only when the draw falls into the range, not when it rises into it; `false`) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].messages` | none | MQTT messages of your own: `phase`, `when` (`start` or `end`), `topic` and `payload`, with `{appliance}`, `{phase}`, `{duration}` and `{seconds}` filled in. See [Messages of your own](#messages-of-your-own). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
 | `recordDays` | `14` | How many days of those files to keep, for the Power tab. The statistics do not need them. |

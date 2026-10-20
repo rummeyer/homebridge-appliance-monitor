@@ -183,7 +183,7 @@ test('after a restart, the recording tells where the draw came from', () => {
 test('a plug gone unreachable or switched off ends a phase after its hold, as nothing is known to be drawn, and a dropout does not', () => {
   const standby = new PhaseTracker({ name: 'Standby', minWatts: 0, maxWatts: 1.3 });
   assert.equal(standby.reading(0, 0.8), undefined);
-  assert.deepEqual(standby.tick(10 * S), { active: true, at: 10 * S });
+  assert.deepEqual(standby.tick(10 * S), { active: true, at: 10 * S, from: 0 });
   // Back within the hold: still the same standby.
   assert.equal(standby.none(100 * S), undefined);
   assert.equal(standby.reading(110 * S, 0.8), undefined);
@@ -192,6 +192,20 @@ test('a plug gone unreachable or switched off ends a phase after its hold, as no
   // Gone for good: over half a minute later, however long the last reading was in the band.
   assert.equal(standby.none(300 * S), undefined);
   assert.equal(standby.tick(320 * S), undefined);
-  assert.deepEqual(standby.tick(330 * S), { active: false, at: 330 * S, since: 10 * S, inBandMs: 290 * S }, 'the dropout not counted as in the band');
+  assert.deepEqual(standby.tick(330 * S), { active: false, at: 330 * S, since: 10 * S, inBandMs: 290 * S, from: 0, until: 300 * S }, 'the dropout not counted as in the band');
   assert.equal(standby.tick(3600 * S), undefined, 'and stays off while unreachable');
+});
+
+test('a phase says when the draw entered and left its range, for how long it really lasted', () => {
+  // A coffee: pump at 55 W with a heater burst in the middle, as the Eve reads it.
+  const tracker = new PhaseTracker({ name: 'Pumpe', minWatts: 30, maxWatts: 100, minSeconds: 1, holdSeconds: 15 });
+  const changes = track(tracker, [[0, 2], [10, 55], [16, 1200], [22, 55], [34, 2]], 80);
+  assert.equal(changes.length, 2);
+  const [on, off] = changes;
+  assert.equal(on!.active, true);
+  assert.equal(on!.from, 10 * S, 'the draw entered the range at 10 s');
+  assert.equal(off!.active, false);
+  assert.equal(off!.from, 10 * S);
+  assert.equal(off!.until, 34 * S, 'left it at 34 s, the hold not counted, the heater burst inside');
+  assert.equal(off!.at, 49 * S, 'though the phase went off only after the hold');
 });

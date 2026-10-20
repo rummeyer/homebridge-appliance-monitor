@@ -166,6 +166,45 @@
               "placeholder": "not running",
               "description": "Count Idle from the end of this phase instead. Empty: from when it stops running."
             },
+            "messages": {
+              "title": "MQTT messages",
+              "type": "array",
+              "listItems": 0,
+              "description": "Sent once to any topic when a phase starts or ends: a command to a display, say. Needs MQTT. In the payload, {appliance}, {phase}, {duration} (0:23) and {seconds} (23) are filled in.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "phase",
+                  "when",
+                  "topic"
+                ],
+                "properties": {
+                  "phase": {
+                    "title": "Phase",
+                    "type": "string"
+                  },
+                  "when": {
+                    "title": "When",
+                    "type": "string",
+                    "default": "end",
+                    "oneOf": [
+                      { "title": "Starts", "enum": ["start"] },
+                      { "title": "Ends", "enum": ["end"] }
+                    ]
+                  },
+                  "topic": {
+                    "title": "Topic",
+                    "type": "string",
+                    "placeholder": "awtrix/cmd/notify"
+                  },
+                  "payload": {
+                    "title": "Payload",
+                    "type": "string",
+                    "placeholder": "{\"text\":\"{phase} {duration}\"}"
+                  }
+                }
+              }
+            },
             "pollSeconds": {
               "title": "Polling interval (seconds)",
               "type": "integer",

@@ -74,9 +74,13 @@
   .om-set-x { width: 1.4rem !important; height: 1.4rem !important; padding: 0 !important;
               display: inline-flex !important; align-items: center !important; justify-content: center !important; }
   .om-set-x svg { display: block; width: .55rem; height: .55rem; }
+  .om-set-message { display: grid; grid-template-columns: minmax(7.125rem, 1fr) 6.5rem minmax(0, 2fr) minmax(0, 3fr) 1.4rem;
+                    gap: .4rem; align-items: center; padding: .3rem 0; }
+  .om-set-message .form-control { padding-left: .4rem; padding-right: .4rem; }
+  .om-set-message.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
   @media (max-width: 760px) {
-    .om-set-phase { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
-    .om-set-phase.om-set-head { display: none; }
+    .om-set-phase, .om-set-message { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
+    .om-set-phase.om-set-head, .om-set-message.om-set-head { display: none; }
   }
   .om-set-poll { margin-bottom: 0; }
   .om-set-poll input { max-width: 13rem; }
@@ -588,7 +592,10 @@
       return el('div', { class: 'om-set-section' },
         el('h6', {}, 'Phases'),
         phases.length ? table : null,
-        el('div', { class: 'om-set-help' }, phases.length ? 'Changed on the Power tab.' : 'None yet. They are set up on the Power tab.'));
+        el('div', { class: 'om-set-help' }, phases.length ? 'Changed on the Power tab.' : 'None yet. They are set up on the Power tab.'),
+        Array.isArray(device.messages) && device.messages.length
+          ? el('div', { class: 'om-set-help' }, `MQTT messages: ${device.messages.length}, also on the Power tab.`)
+          : null);
     }
 
     const deviceNamed = (name) => config.devices.find((d) => String(d.name ?? '').trim() === name);
@@ -599,7 +606,13 @@
         return;
       }
       const device = deviceNamed(phaseView.name);
-      phaseView.target.replaceChildren(device ? phasesSection(device) : '');
+      phaseView.target.replaceChildren(...(device ? [phasesSection(device), messagesSection(device)] : []));
+    }
+
+    /** Draws the MQTT messages again, for a phase renamed, added or removed, without touching the phase being typed in. */
+    function drawMessages() {
+      const device = phaseView && deviceNamed(phaseView.name);
+      phaseView?.target.querySelector('.om-set-messages')?.replaceWith(device ? messagesSection(device) : '');
     }
 
     /** A phase changed: to Homebridge, and the chart redrawn with it. */
@@ -619,7 +632,17 @@
           return input;
         };
         return el('div', { class: 'om-set-phase' },
-          labelled(text(phase.name, 'Heating', (value) => update((p) => { p.name = value; })), 'Name'),
+          labelled(text(phase.name, 'Heating', (value) => {
+            // Its messages go with it: they name the phase.
+            const before = (phase.name ?? '').trim();
+            for (const message of Array.isArray(device.messages) ? device.messages : []) {
+              if (before && message.phase === before) {
+                message.phase = value.trim();
+              }
+            }
+            update((p) => { p.name = value; });
+            drawMessages();
+          }), 'Name'),
           labelled(number(phase.minWatts, '', (value) => update((p) => setOrDrop(p, 'minWatts', numberOrUndefined(value)))), 'From (W)'),
           labelled(number(phase.maxWatts, 'none', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'Below (W)'),
           labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
@@ -651,6 +674,61 @@
             rows)
           : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
         el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));
+    }
+
+    /**
+     * MQTT messages sent when a phase starts or ends, one line each, apart
+     * from the phases, whose line has no room left.
+     */
+    function messagesSection(device) {
+      const names = phaseNames(device);
+      const messages = Array.isArray(device.messages) ? device.messages : [];
+      const rows = messages.map((message, index) => {
+        const update = (mutate) => { mutate(message); changed(); };
+        const labelled = (input, label) => {
+          input.setAttribute('aria-label', label);
+          input.title = label;
+          return input;
+        };
+        // A phase since removed stays chosen, so that the line does not quietly change.
+        const phases = names.includes(message.phase) || !message.phase ? names : [message.phase, ...names];
+        return el('div', { class: 'om-set-message' },
+          labelled(choice(message.phase ?? '', phases.map((name) => [name, names.includes(name) ? name : `${name} (gone)`]),
+            (value) => update((m) => { m.phase = value; })), 'Phase'),
+          labelled(choice(message.when ?? 'start', [['start', 'Starts'], ['end', 'Ends']], (value) => update((m) => { m.when = value; })), 'When'),
+          labelled(text(message.topic, 'awtrix/cmd/notify', (value) => update((m) => { m.topic = value; })), 'Topic'),
+          labelled(text(message.payload, '{"text":"{phase} {duration}"}', (value) => update((m) => setOrDrop(m, 'payload', value))), 'Payload'),
+          el('button', {
+            type: 'button', class: 'btn btn-sm btn-outline-danger om-set-x', title: 'Remove this message', 'aria-label': 'Remove this message',
+            onclick: () => {
+              messages.splice(index, 1);
+              setOrDrop(device, 'messages', messages.length ? messages : undefined);
+              changed();
+              drawMessages();
+            },
+          }, cross()));
+      });
+      return el('div', { class: 'om-set-section om-set-messages' },
+        el('h6', {}, 'MQTT messages'),
+        config.mqtt === true ? null : el('div', { class: 'om-set-error mb-2' }, 'MQTT is off: switch it on under General on the Settings tab, or none are sent.'),
+        rows.length
+          ? el('div', {},
+            el('div', { class: 'om-set-message om-set-head' },
+              el('span', {}, 'Phase'), el('span', {}, 'When'), el('span', {}, 'Topic'), el('span', {}, 'Payload'), el('span', {})),
+            rows)
+          : null,
+        el('div', { class: 'om-set-help' },
+          'Sent once to any topic when a phase starts or ends — a command to a display, say. In the payload, {appliance}, {phase}, ',
+          '{duration} (0:23) and {seconds} (23) are filled in: how long the draw was in the range, so far at the start.'),
+        el('button', {
+          type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', disabled: !names.length,
+          onclick: () => {
+            device.messages = [...messages, { phase: names[0], when: 'end', topic: '', payload: '' }];
+            changed();
+            drawMessages();
+            [...phaseView.target.querySelectorAll('.om-set-message:not(.om-set-head)')].at(-1)?.querySelectorAll('input')[0]?.focus();
+          },
+        }, '+ Add message'));
     }
 
     /** A new line at the end of the phases, ready for its name. */

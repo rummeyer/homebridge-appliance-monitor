@@ -12,6 +12,10 @@
  *     <prefix>/<name>/overtime         ON | OFF, if Overtime is set
  *     <prefix>/<name>/idle             ON | OFF, if Idle is set
  *
+ * Besides, each appliance may have messages of its own, sent to any topic
+ * when one of its phases starts or ends — a command to a display — not
+ * retained, as they are events rather than states.
+ *
  * Only ever publishes: nothing sent to the plugin changes anything, as it
  * only measures.
  */
@@ -40,6 +44,31 @@ export const applianceTopic = (prefix: string, name: string): string => `${prefi
 
 export const phaseTopic = (prefix: string, name: string, phase: string): string =>
   `${applianceTopic(prefix, name)}/phase/${topicLevel(phase)}`;
+
+/** "0:23", "12:05", "1:02:05": short enough for a pixel display. */
+export function clockDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(total % 60)}` : `${minutes}:${pad(total % 60)}`;
+}
+
+/**
+ * A message's payload with its placeholders filled in: {appliance},
+ * {phase}, {duration} ("0:23") and {seconds} ("23"), the time from the draw
+ * entering the range to it leaving it — so far, at the start. Anything else
+ * in braces, a JSON object's, stays as it is.
+ */
+export function fillMessage(payload: string, values: { appliance: string; phase: string; seconds: number }): string {
+  const filled: Record<string, string> = {
+    appliance: values.appliance,
+    phase: values.phase,
+    duration: clockDuration(values.seconds),
+    seconds: String(Math.max(0, Math.round(values.seconds))),
+  };
+  return payload.replace(/\{(appliance|phase|duration|seconds)\}/g, (_, key: string) => filled[key]!);
+}
 
 /**
  * An appliance's topics and their values now. Nothing for one not yet
@@ -138,6 +167,13 @@ export class MqttPublisher {
     this.#client.publish(topic, ON);
     this.#client.publish(topic, OFF, { retain: true });
     this.#sent.set(topic, OFF);
+  }
+
+  /** One of an appliance's own messages: once, not retained, and lost if the broker is away. */
+  send(topic: string, payload: string): void {
+    if (this.#client.connected) {
+      this.#client.publish(topic, payload);
+    }
   }
 
   /** Says goodbye, so that listeners see the plugin gone rather than the values frozen. */

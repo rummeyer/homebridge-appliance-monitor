@@ -14,6 +14,7 @@ import {
   usableMqtt,
   TIMED_SENSORS,
   usableIdleOnFrom,
+  usableMessages,
   usableMinutes,
   usablePhases,
   usablePollSeconds,
@@ -42,7 +43,7 @@ import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker, RECALL_MS } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, OFF_WATTS } from './power.ts';
-import { MqttPublisher, phaseTopic, stateTopics } from './mqtt.ts';
+import { fillMessage, MqttPublisher, phaseTopic, stateTopics } from './mqtt.ts';
 import { PowerRecorder, readSamples } from './recorder.ts';
 import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
@@ -261,10 +262,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         const { minutes: overtimeMinutes, problem: overtimeProblem } = usableMinutes(named, 'overtime');
         const { minutes: idleOnMinutes, problem: idleOnProblem } = usableMinutes(named, 'idleOn');
         const { from: idleOnFrom, problem: fromProblem } = usableIdleOnFrom(named, phases);
-        for (const problem of [overtimeProblem, idleOnProblem, fromProblem].filter(Boolean)) {
+        const { messages, problems: messageProblems } = usableMessages(named, phases, usableMqtt(this.config).url !== undefined);
+        for (const problem of [overtimeProblem, idleOnProblem, fromProblem, ...messageProblems].filter(Boolean)) {
           this.log.warn(problem!);
         }
-        valid.push({ ...named, phases, pollSeconds, overtimeMinutes, idleOnMinutes, idleOnFrom, leftOnMinutes: undefined });
+        valid.push({ ...named, phases, pollSeconds, overtimeMinutes, idleOnMinutes, idleOnFrom, messages, leftOnMinutes: undefined });
       }
     }
     for (const name of duplicateNames(valid)) {
@@ -905,6 +907,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     if (device.idleOnMinutes !== undefined && device.idleOnFrom === tracker.name.trim() && !appliance.relayOff) {
       this.#setIdleSince(appliance, change.active && !change.short ? undefined : change.at);
     }
+    this.#sendMessages(device, tracker.name, change);
     if (change.short) {
       appliance.accessory?.phaseHappened(tracker.name);
       this.#mqtt?.pulse(phaseTopic(this.#mqttPrefix, device.name, tracker.name));
@@ -919,6 +922,27 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
       const lasted = change.since === undefined ? '' : ` after ${formatDuration((change.at - change.since) / 1000)}`;
       this.log.info(`${device.name}: ${tracker.name} ended${lasted}`);
+    }
+  }
+
+  /**
+   * The appliance's own MQTT messages for this phase starting or ending. A
+   * short phase, known only once it is over, starts and ends at once.
+   */
+  #sendMessages(device: DeviceConfig, phase: string, change: PhaseChange): void {
+    if (!this.#mqtt || !device.messages?.length) {
+      return;
+    }
+    const name = phase.trim();
+    const from = change.from ?? change.since ?? change.at;
+    const ended = change.until ?? change.at;
+    const moments: ['start' | 'end', number][] = change.short
+      ? [['start', ended - from], ['end', ended - from]]
+      : [[change.active ? 'start' : 'end', (change.active ? change.at : ended) - from]];
+    for (const [when, ms] of moments) {
+      for (const message of device.messages.filter((m) => m.phase === name && m.when === when)) {
+        this.#mqtt.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: name, seconds: ms / 1000 }));
+      }
     }
   }
 
