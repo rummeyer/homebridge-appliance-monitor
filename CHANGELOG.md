@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-10-20
+
 ### Added
 
 - MQTT messages of your own: sent to any topic when a phase starts or ends,
@@ -929,7 +931,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.1...v1.15.0
 [1.14.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.13.1...v1.14.0
