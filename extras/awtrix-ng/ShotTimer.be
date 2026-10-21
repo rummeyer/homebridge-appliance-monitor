@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 3.2
+# @version 3.3
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Appliance Monitor sends <topic>/start and <topic>/end with the seconds"
@@ -23,7 +23,7 @@ class ShotTimer
   var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
   var pumped       # the pump has run since it was switched on: in use, not heating up any more
   var below, lead_ms, hold_ms, pin
-  var cup          # x, y, colour of each pixel of the cup and saucer, one after the other
+  var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
   var x0           # where the text starts: past the 16×16 cup, or the 8×8 one 8 rows high
   var done, hot, red, white, grey, warn
   var shot         # "idle", "run" or "done"
@@ -66,28 +66,24 @@ class ShotTimer
     # A white cup with coffee and crema, seen from a little above, on a saucer; 8 rows high, as on
     # the TC001, the cup of LaMetric icon 14199, its steam drawn here.
     self.x0 = height() > 8 ? 17 : 9
-    if height() <= 8
-      self.cup = [
-        0, 3, 0xFCFAFC, 1, 3, 0xA4726C, 2, 3, 0xA4726C, 3, 3, 0xA4726C, 4, 3, 0xA4726C, 5, 3, 0xFCFAFC, 6, 3, 0xFCFAFC, 7, 3, 0xFCFAFC,
-        0, 4, 0xFCFAFC, 1, 4, 0xFCFAFC, 2, 4, 0xFCFAFC, 3, 4, 0xFCFAFC, 4, 4, 0xFCFAFC, 5, 4, 0xFCFAFC, 7, 4, 0xFCFAFC,
-        0, 5, 0xFCFAFC, 1, 5, 0xFCFAFC, 2, 5, 0xFCFAFC, 3, 5, 0xFCFAFC, 4, 5, 0xFCFAFC, 5, 5, 0xFCFAFC, 6, 5, 0xFCFAFC, 7, 5, 0xFCFAFC,
-        1, 6, 0xFCFAFC, 2, 6, 0xFCFAFC, 3, 6, 0xFCFAFC, 4, 6, 0xFCFAFC,
-        2, 7, 0xFCFAFC, 3, 7, 0xFCFAFC]
-    else
-      self.cup = [
-        4, 3, 0x6E6E6E, 5, 3, 0xE6E6E6, 6, 3, 0xE6E6E6, 7, 3, 0xE6E6E6, 8, 3, 0xE6E6E6, 9, 3, 0xE6E6E6, 10, 3, 0xE6E6E6, 11, 3, 0x6E6E6E,
-        2, 4, 0x6E6E6E, 3, 4, 0xE6E6E6, 4, 4, 0x6E3412, 5, 4, 0x6E3412, 6, 4, 0x6E3412, 7, 4, 0x6E3412, 8, 4, 0x6E3412, 9, 4, 0x6E3412, 10, 4, 0x6E3412, 11, 4, 0x6E3412, 12, 4, 0xE6E6E6, 13, 4, 0x6E6E6E,
-        2, 5, 0xE6E6E6, 3, 5, 0x6E3412, 4, 5, 0x6E3412, 5, 5, 0x95501E, 6, 5, 0x95501E, 7, 5, 0xC88A4E, 8, 5, 0x95501E, 9, 5, 0x95501E, 10, 5, 0x6E3412, 11, 5, 0x6E3412, 12, 5, 0x6E3412, 13, 5, 0xE6E6E6,
-        2, 6, 0xFFFFFF, 3, 6, 0xE6E6E6, 4, 6, 0x6E3412, 5, 6, 0x6E3412, 6, 6, 0x95501E, 7, 6, 0x95501E, 8, 6, 0x95501E, 9, 6, 0x6E3412, 10, 6, 0x6E3412, 11, 6, 0x6E3412, 12, 6, 0xE6E6E6, 13, 6, 0xE6E6E6, 14, 6, 0xE6E6E6,
-        2, 7, 0xFFFFFF, 3, 7, 0xE6E6E6, 4, 7, 0xE6E6E6, 5, 7, 0xE6E6E6, 6, 7, 0xE6E6E6, 7, 7, 0xE6E6E6, 8, 7, 0xE6E6E6, 9, 7, 0xE6E6E6, 10, 7, 0xE6E6E6, 11, 7, 0xE6E6E6, 12, 7, 0xE6E6E6, 13, 7, 0xA8A8A8, 15, 7, 0xE6E6E6,
-        2, 8, 0xFFFFFF, 3, 8, 0xE6E6E6, 4, 8, 0xE6E6E6, 5, 8, 0xE6E6E6, 6, 8, 0xE6E6E6, 7, 8, 0xE6E6E6, 8, 8, 0xE6E6E6, 9, 8, 0xE6E6E6, 10, 8, 0xE6E6E6, 11, 8, 0xE6E6E6, 12, 8, 0xE6E6E6, 13, 8, 0xA8A8A8, 15, 8, 0xE6E6E6,
-        2, 9, 0xFFFFFF, 3, 9, 0xE6E6E6, 4, 9, 0xE6E6E6, 5, 9, 0xE6E6E6, 6, 9, 0xE6E6E6, 7, 9, 0xE6E6E6, 8, 9, 0xE6E6E6, 9, 9, 0xE6E6E6, 10, 9, 0xE6E6E6, 11, 9, 0xE6E6E6, 12, 9, 0xA8A8A8, 13, 9, 0xE6E6E6, 14, 9, 0xE6E6E6,
-        3, 10, 0xFFFFFF, 4, 10, 0xE6E6E6, 5, 10, 0xE6E6E6, 6, 10, 0xE6E6E6, 7, 10, 0xE6E6E6, 8, 10, 0xE6E6E6, 9, 10, 0xE6E6E6, 10, 10, 0xE6E6E6, 11, 10, 0xA8A8A8, 12, 10, 0xA8A8A8,
-        4, 11, 0xA8A8A8, 5, 11, 0xE6E6E6, 6, 11, 0xE6E6E6, 7, 11, 0xE6E6E6, 8, 11, 0xE6E6E6, 9, 11, 0xE6E6E6, 10, 11, 0xA8A8A8, 11, 11, 0xA8A8A8,
-        2, 12, 0xA6A6A6, 3, 12, 0xA6A6A6, 4, 12, 0x2A2A2A, 5, 12, 0x2A2A2A, 6, 12, 0x2A2A2A, 7, 12, 0x2A2A2A, 8, 12, 0x2A2A2A, 9, 12, 0x2A2A2A, 10, 12, 0x2A2A2A, 11, 12, 0x2A2A2A, 12, 12, 0xA6A6A6, 13, 12, 0xA6A6A6,
-        1, 13, 0xA6A6A6, 2, 13, 0xA6A6A6, 3, 13, 0xA6A6A6, 4, 13, 0xA6A6A6, 5, 13, 0xA6A6A6, 6, 13, 0xA6A6A6, 7, 13, 0xA6A6A6, 8, 13, 0xA6A6A6, 9, 13, 0xA6A6A6, 10, 13, 0xA6A6A6, 11, 13, 0xA6A6A6, 12, 13, 0xA6A6A6, 13, 13, 0xA6A6A6, 14, 13, 0xA6A6A6,
-        2, 14, 0x5C5C5C, 3, 14, 0x5C5C5C, 4, 14, 0x5C5C5C, 5, 14, 0x5C5C5C, 6, 14, 0x5C5C5C, 7, 14, 0x5C5C5C, 8, 14, 0x5C5C5C, 9, 14, 0x5C5C5C, 10, 14, 0x5C5C5C, 11, 14, 0x5C5C5C, 12, 14, 0x5C5C5C, 13, 14, 0x5C5C5C]
-    end
+    self.cup = bytes(height() <= 8 ?
+      "0003FCFAFC0103A4726C0203A4726C0303A4726C0403A4726C0503FCFAFC0603FCFAFC0703FCFAFC0004FCFAFC0104FCFAFC"
+      "0204FCFAFC0304FCFAFC0404FCFAFC0504FCFAFC0704FCFAFC0005FCFAFC0105FCFAFC0205FCFAFC0305FCFAFC0405FCFAFC"
+      "0505FCFAFC0605FCFAFC0705FCFAFC0106FCFAFC0206FCFAFC0306FCFAFC0406FCFAFC0207FCFAFC0307FCFAFC" :
+      "04036E6E6E0503E6E6E60603E6E6E60703E6E6E60803E6E6E60903E6E6E60A03E6E6E60B036E6E6E02046E6E6E0304E6E6E6"
+      "04046E341205046E341206046E341207046E341208046E341209046E34120A046E34120B046E34120C04E6E6E60D046E6E6E"
+      "0205E6E6E603056E341204056E3412050595501E060595501E0705C88A4E080595501E090595501E0A056E34120B056E3412"
+      "0C056E34120D05E6E6E60206FFFFFF0306E6E6E604066E341205066E3412060695501E070695501E080695501E09066E3412"
+      "0A066E34120B066E34120C06E6E6E60D06E6E6E60E06E6E6E60207FFFFFF0307E6E6E60407E6E6E60507E6E6E60607E6E6E6"
+      "0707E6E6E60807E6E6E60907E6E6E60A07E6E6E60B07E6E6E60C07E6E6E60D07A8A8A80F07E6E6E60208FFFFFF0308E6E6E6"
+      "0408E6E6E60508E6E6E60608E6E6E60708E6E6E60808E6E6E60908E6E6E60A08E6E6E60B08E6E6E60C08E6E6E60D08A8A8A8"
+      "0F08E6E6E60209FFFFFF0309E6E6E60409E6E6E60509E6E6E60609E6E6E60709E6E6E60809E6E6E60909E6E6E60A09E6E6E6"
+      "0B09E6E6E60C09A8A8A80D09E6E6E60E09E6E6E6030AFFFFFF040AE6E6E6050AE6E6E6060AE6E6E6070AE6E6E6080AE6E6E6"
+      "090AE6E6E60A0AE6E6E60B0AA8A8A80C0AA8A8A8040BA8A8A8050BE6E6E6060BE6E6E6070BE6E6E6080BE6E6E6090BE6E6E6"
+      "0A0BA8A8A80B0BA8A8A8020CA6A6A6030CA6A6A6040C2A2A2A050C2A2A2A060C2A2A2A070C2A2A2A080C2A2A2A090C2A2A2A"
+      "0A0C2A2A2A0B0C2A2A2A0C0CA6A6A60D0CA6A6A6010DA6A6A6020DA6A6A6030DA6A6A6040DA6A6A6050DA6A6A6060DA6A6A6"
+      "070DA6A6A6080DA6A6A6090DA6A6A60A0DA6A6A60B0DA6A6A60C0DA6A6A60D0DA6A6A60E0DA6A6A6020E5C5C5C030E5C5C5C"
+      "040E5C5C5C050E5C5C5C060E5C5C5C070E5C5C5C080E5C5C5C090E5C5C5C0A0E5C5C5C0B0E5C5C5C0C0E5C5C5C0D0E5C5C5C")
     self.done = store.get("done")
     self.hot = store.get("hot")
     self.red = store.get("red")
@@ -350,11 +346,12 @@ class ShotTimer
     var now = now_ms()
     self.build(now)
     var heating = self.shot != "run" && self.warming()
+    var c = self.cup
     var i = 0
-    var n = size(self.cup)
+    var n = size(c)
     while i < n
-      pixel(self.cup[i], self.cup[i + 1], self.cup[i + 2])
-      i += 3
+      pixel(c[i], c[i + 1], (c[i + 2] << 16) | (c[i + 3] << 8) | c[i + 4])
+      i += 5
     end
     # Heat waves while heating up, steam while it is hot or the pump runs: three wisps over the big
     # cup, two over the small one, where the icon has them.
