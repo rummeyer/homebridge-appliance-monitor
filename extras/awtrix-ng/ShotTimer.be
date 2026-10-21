@@ -3,18 +3,18 @@
 # @author  Oliver Rummeyer
 # @version 3.4
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
-# @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
-# @config  shot   text   "Shot topic"       default="shot-timer" help="Appliance Monitor sends <topic>/start and <topic>/end with the seconds; empty: the pump phase instead"
-# @config  pump   text   "Pump phase"       default="Pumpe" help="Its ON and OFF start and end the shot when the shot topic is empty"
-# @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after, when the shot topic is empty"
-# @config  heat   text   "Heating phase"    default="Aufheizen"
-# @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that turns out to be this phase is shown as RINSE"
-# @config  below  number "Pump off below"   default=30 min=0 max=3000 unit=W help="The count stops when the plug reads less"
-# @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="The Eve Energy reports a 6 s average, so the pump started this much earlier"
-# @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="Empty: heated once the heating phase ends"
-# @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C
+# @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
+# @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
+# @config  pump   text   "Pump phase"       default="Pumpe" help="Used when the shot topic is empty"
+# @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after"
+# @config  heat   text   "Heating phase"    default="Aufheizen" help="The phase while the machine heats up"
+# @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that is this phase shows as RINSE"
+# @config  below  number "Pump off below"   default=30 min=0 max=3000 unit=W help="The shot's count stops when the plug reads less"
+# @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
+# @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
+# @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
-# @config  pin    bool   "Stay on screen while on" default=false help="Off: shown in the rotation, and only the shot takes over"
+# @config  pin    bool   "Stay on screen while on" default=false help="Off: in the rotation, with only the shot taking over"
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
