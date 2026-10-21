@@ -1,19 +1,26 @@
 # A coffee machine on an AWTRIX NG clock
 
 `ShotTimer.be` is an app for an [AWTRIX NG](https://blueforcer.github.io/awtrix-ng/)
-clock with a 52 × 16 panel (Ulanzi TC002). It shows what Appliance Monitor
+clock, a 52 × 16 Ulanzi TC002 or a 32 × 8 TC001. It shows what Appliance Monitor
 knows about a coffee machine, from the plugin's [MQTT](../../README.md#mqtt)
 topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up | **HEATING**, heat waves over the cup | how long it has been on |
+| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how long it has been on |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
 
 The shot takes over the display while it runs; the rest takes its turn in
-the clock's rotation, and only while the machine is on.
+the clock's rotation, and only while the machine is on. A coffee made while
+it is still heating up ends the heating up: from then on line 2 is the
+countdown to switching off.
+
+On a TC001 the cup is 8 × 8 and there is one line beside it: the shot while
+it runs and its result after, else the two lines taking turns every four
+seconds, the one sliding down and the other coming up. Where a label and its
+value do not both fit, the value stands alone.
 
 ## What it needs
 

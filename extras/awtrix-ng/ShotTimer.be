@@ -1,8 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 3.0
-# @display 52x16
+# @version 3.1
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Appliance Monitor sends <topic>/start and <topic>/end with the seconds"
@@ -22,8 +21,10 @@ class ShotTimer
   var rinse_topic, rinsed
   var temp_topic, ready, temp   # the temperature, nil until one came
   var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
+  var pumped       # the pump has run since it was switched on: in use, not heating up any more
   var below, lead_ms, hold_ms, pin
   var cup          # x, y, colour of each pixel of the cup and saucer, one after the other
+  var x0           # where the text starts: past the 16×16 cup, or the 8×8 one 8 rows high
   var done, hot, red, white, grey, warn
   var shot         # "idle", "run" or "done"
   var t0           # now_ms() when the pump started
@@ -57,24 +58,37 @@ class ShotTimer
     self.ready = store.get("ready")
     self.temp = nil
     self.heat_done = false
+    self.pumped = false
     self.below = store.get("below")
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
     self.pin = store.get("pin")
-    # A white cup with coffee and crema, seen from a little above, on a saucer.
-    self.cup = [
-      4, 3, 0x6E6E6E, 5, 3, 0xE6E6E6, 6, 3, 0xE6E6E6, 7, 3, 0xE6E6E6, 8, 3, 0xE6E6E6, 9, 3, 0xE6E6E6, 10, 3, 0xE6E6E6, 11, 3, 0x6E6E6E,
-      2, 4, 0x6E6E6E, 3, 4, 0xE6E6E6, 4, 4, 0x6E3412, 5, 4, 0x6E3412, 6, 4, 0x6E3412, 7, 4, 0x6E3412, 8, 4, 0x6E3412, 9, 4, 0x6E3412, 10, 4, 0x6E3412, 11, 4, 0x6E3412, 12, 4, 0xE6E6E6, 13, 4, 0x6E6E6E,
-      2, 5, 0xE6E6E6, 3, 5, 0x6E3412, 4, 5, 0x6E3412, 5, 5, 0x95501E, 6, 5, 0x95501E, 7, 5, 0xC88A4E, 8, 5, 0x95501E, 9, 5, 0x95501E, 10, 5, 0x6E3412, 11, 5, 0x6E3412, 12, 5, 0x6E3412, 13, 5, 0xE6E6E6,
-      2, 6, 0xFFFFFF, 3, 6, 0xE6E6E6, 4, 6, 0x6E3412, 5, 6, 0x6E3412, 6, 6, 0x95501E, 7, 6, 0x95501E, 8, 6, 0x95501E, 9, 6, 0x6E3412, 10, 6, 0x6E3412, 11, 6, 0x6E3412, 12, 6, 0xE6E6E6, 13, 6, 0xE6E6E6, 14, 6, 0xE6E6E6,
-      2, 7, 0xFFFFFF, 3, 7, 0xE6E6E6, 4, 7, 0xE6E6E6, 5, 7, 0xE6E6E6, 6, 7, 0xE6E6E6, 7, 7, 0xE6E6E6, 8, 7, 0xE6E6E6, 9, 7, 0xE6E6E6, 10, 7, 0xE6E6E6, 11, 7, 0xE6E6E6, 12, 7, 0xE6E6E6, 13, 7, 0xA8A8A8, 15, 7, 0xE6E6E6,
-      2, 8, 0xFFFFFF, 3, 8, 0xE6E6E6, 4, 8, 0xE6E6E6, 5, 8, 0xE6E6E6, 6, 8, 0xE6E6E6, 7, 8, 0xE6E6E6, 8, 8, 0xE6E6E6, 9, 8, 0xE6E6E6, 10, 8, 0xE6E6E6, 11, 8, 0xE6E6E6, 12, 8, 0xE6E6E6, 13, 8, 0xA8A8A8, 15, 8, 0xE6E6E6,
-      2, 9, 0xFFFFFF, 3, 9, 0xE6E6E6, 4, 9, 0xE6E6E6, 5, 9, 0xE6E6E6, 6, 9, 0xE6E6E6, 7, 9, 0xE6E6E6, 8, 9, 0xE6E6E6, 9, 9, 0xE6E6E6, 10, 9, 0xE6E6E6, 11, 9, 0xE6E6E6, 12, 9, 0xA8A8A8, 13, 9, 0xE6E6E6, 14, 9, 0xE6E6E6,
-      3, 10, 0xFFFFFF, 4, 10, 0xE6E6E6, 5, 10, 0xE6E6E6, 6, 10, 0xE6E6E6, 7, 10, 0xE6E6E6, 8, 10, 0xE6E6E6, 9, 10, 0xE6E6E6, 10, 10, 0xE6E6E6, 11, 10, 0xA8A8A8, 12, 10, 0xA8A8A8,
-      4, 11, 0xA8A8A8, 5, 11, 0xE6E6E6, 6, 11, 0xE6E6E6, 7, 11, 0xE6E6E6, 8, 11, 0xE6E6E6, 9, 11, 0xE6E6E6, 10, 11, 0xA8A8A8, 11, 11, 0xA8A8A8,
-      2, 12, 0xA6A6A6, 3, 12, 0xA6A6A6, 4, 12, 0x2A2A2A, 5, 12, 0x2A2A2A, 6, 12, 0x2A2A2A, 7, 12, 0x2A2A2A, 8, 12, 0x2A2A2A, 9, 12, 0x2A2A2A, 10, 12, 0x2A2A2A, 11, 12, 0x2A2A2A, 12, 12, 0xA6A6A6, 13, 12, 0xA6A6A6,
-      1, 13, 0xA6A6A6, 2, 13, 0xA6A6A6, 3, 13, 0xA6A6A6, 4, 13, 0xA6A6A6, 5, 13, 0xA6A6A6, 6, 13, 0xA6A6A6, 7, 13, 0xA6A6A6, 8, 13, 0xA6A6A6, 9, 13, 0xA6A6A6, 10, 13, 0xA6A6A6, 11, 13, 0xA6A6A6, 12, 13, 0xA6A6A6, 13, 13, 0xA6A6A6, 14, 13, 0xA6A6A6,
-      2, 14, 0x5C5C5C, 3, 14, 0x5C5C5C, 4, 14, 0x5C5C5C, 5, 14, 0x5C5C5C, 6, 14, 0x5C5C5C, 7, 14, 0x5C5C5C, 8, 14, 0x5C5C5C, 9, 14, 0x5C5C5C, 10, 14, 0x5C5C5C, 11, 14, 0x5C5C5C, 12, 14, 0x5C5C5C, 13, 14, 0x5C5C5C]
+    # A white cup with coffee and crema, seen from a little above, on a saucer; 8 rows high, as on
+    # the TC001, a small one from the side.
+    self.x0 = height() > 8 ? 17 : 9
+    if height() <= 8
+      self.cup = [
+        0, 2, 0xE6E6E6, 1, 2, 0x6E3412, 2, 2, 0xC88A4E, 3, 2, 0x95501E, 4, 2, 0x6E3412, 5, 2, 0xE6E6E6,
+        0, 3, 0xE6E6E6, 1, 3, 0xE6E6E6, 2, 3, 0xE6E6E6, 3, 3, 0xE6E6E6, 4, 3, 0xE6E6E6, 5, 3, 0xE6E6E6, 6, 3, 0xA8A8A8,
+        0, 4, 0xE6E6E6, 1, 4, 0xE6E6E6, 2, 4, 0xE6E6E6, 3, 4, 0xE6E6E6, 4, 4, 0xE6E6E6, 5, 4, 0xA8A8A8, 6, 4, 0xA8A8A8,
+        1, 5, 0xE6E6E6, 2, 5, 0xE6E6E6, 3, 5, 0xE6E6E6, 4, 5, 0xA8A8A8,
+        0, 6, 0xA6A6A6, 1, 6, 0xA6A6A6, 2, 6, 0xA6A6A6, 3, 6, 0xA6A6A6, 4, 6, 0xA6A6A6, 5, 6, 0xA6A6A6,
+        1, 7, 0x5C5C5C, 2, 7, 0x5C5C5C, 3, 7, 0x5C5C5C, 4, 7, 0x5C5C5C]
+    else
+      self.cup = [
+        4, 3, 0x6E6E6E, 5, 3, 0xE6E6E6, 6, 3, 0xE6E6E6, 7, 3, 0xE6E6E6, 8, 3, 0xE6E6E6, 9, 3, 0xE6E6E6, 10, 3, 0xE6E6E6, 11, 3, 0x6E6E6E,
+        2, 4, 0x6E6E6E, 3, 4, 0xE6E6E6, 4, 4, 0x6E3412, 5, 4, 0x6E3412, 6, 4, 0x6E3412, 7, 4, 0x6E3412, 8, 4, 0x6E3412, 9, 4, 0x6E3412, 10, 4, 0x6E3412, 11, 4, 0x6E3412, 12, 4, 0xE6E6E6, 13, 4, 0x6E6E6E,
+        2, 5, 0xE6E6E6, 3, 5, 0x6E3412, 4, 5, 0x6E3412, 5, 5, 0x95501E, 6, 5, 0x95501E, 7, 5, 0xC88A4E, 8, 5, 0x95501E, 9, 5, 0x95501E, 10, 5, 0x6E3412, 11, 5, 0x6E3412, 12, 5, 0x6E3412, 13, 5, 0xE6E6E6,
+        2, 6, 0xFFFFFF, 3, 6, 0xE6E6E6, 4, 6, 0x6E3412, 5, 6, 0x6E3412, 6, 6, 0x95501E, 7, 6, 0x95501E, 8, 6, 0x95501E, 9, 6, 0x6E3412, 10, 6, 0x6E3412, 11, 6, 0x6E3412, 12, 6, 0xE6E6E6, 13, 6, 0xE6E6E6, 14, 6, 0xE6E6E6,
+        2, 7, 0xFFFFFF, 3, 7, 0xE6E6E6, 4, 7, 0xE6E6E6, 5, 7, 0xE6E6E6, 6, 7, 0xE6E6E6, 7, 7, 0xE6E6E6, 8, 7, 0xE6E6E6, 9, 7, 0xE6E6E6, 10, 7, 0xE6E6E6, 11, 7, 0xE6E6E6, 12, 7, 0xE6E6E6, 13, 7, 0xA8A8A8, 15, 7, 0xE6E6E6,
+        2, 8, 0xFFFFFF, 3, 8, 0xE6E6E6, 4, 8, 0xE6E6E6, 5, 8, 0xE6E6E6, 6, 8, 0xE6E6E6, 7, 8, 0xE6E6E6, 8, 8, 0xE6E6E6, 9, 8, 0xE6E6E6, 10, 8, 0xE6E6E6, 11, 8, 0xE6E6E6, 12, 8, 0xE6E6E6, 13, 8, 0xA8A8A8, 15, 8, 0xE6E6E6,
+        2, 9, 0xFFFFFF, 3, 9, 0xE6E6E6, 4, 9, 0xE6E6E6, 5, 9, 0xE6E6E6, 6, 9, 0xE6E6E6, 7, 9, 0xE6E6E6, 8, 9, 0xE6E6E6, 9, 9, 0xE6E6E6, 10, 9, 0xE6E6E6, 11, 9, 0xE6E6E6, 12, 9, 0xA8A8A8, 13, 9, 0xE6E6E6, 14, 9, 0xE6E6E6,
+        3, 10, 0xFFFFFF, 4, 10, 0xE6E6E6, 5, 10, 0xE6E6E6, 6, 10, 0xE6E6E6, 7, 10, 0xE6E6E6, 8, 10, 0xE6E6E6, 9, 10, 0xE6E6E6, 10, 10, 0xE6E6E6, 11, 10, 0xA8A8A8, 12, 10, 0xA8A8A8,
+        4, 11, 0xA8A8A8, 5, 11, 0xE6E6E6, 6, 11, 0xE6E6E6, 7, 11, 0xE6E6E6, 8, 11, 0xE6E6E6, 9, 11, 0xE6E6E6, 10, 11, 0xA8A8A8, 11, 11, 0xA8A8A8,
+        2, 12, 0xA6A6A6, 3, 12, 0xA6A6A6, 4, 12, 0x2A2A2A, 5, 12, 0x2A2A2A, 6, 12, 0x2A2A2A, 7, 12, 0x2A2A2A, 8, 12, 0x2A2A2A, 9, 12, 0x2A2A2A, 10, 12, 0x2A2A2A, 11, 12, 0x2A2A2A, 12, 12, 0xA6A6A6, 13, 12, 0xA6A6A6,
+        1, 13, 0xA6A6A6, 2, 13, 0xA6A6A6, 3, 13, 0xA6A6A6, 4, 13, 0xA6A6A6, 5, 13, 0xA6A6A6, 6, 13, 0xA6A6A6, 7, 13, 0xA6A6A6, 8, 13, 0xA6A6A6, 9, 13, 0xA6A6A6, 10, 13, 0xA6A6A6, 11, 13, 0xA6A6A6, 12, 13, 0xA6A6A6, 13, 13, 0xA6A6A6, 14, 13, 0xA6A6A6,
+        2, 14, 0x5C5C5C, 3, 14, 0x5C5C5C, 4, 14, 0x5C5C5C, 5, 14, 0x5C5C5C, 6, 14, 0x5C5C5C, 7, 14, 0x5C5C5C, 8, 14, 0x5C5C5C, 9, 14, 0x5C5C5C, 10, 14, 0x5C5C5C, 11, 14, 0x5C5C5C, 12, 14, 0x5C5C5C, 13, 14, 0x5C5C5C]
+    end
     self.done = store.get("done")
     self.hot = store.get("hot")
     self.red = store.get("red")
@@ -123,9 +137,10 @@ class ShotTimer
     return self.temp != nil ? self.temp >= self.ready : self.heat_done
   end
 
-  # Heating up: until warm enough where the thermometer tells, else while the heating phase is on.
+  # Heating up: until warm enough where the thermometer tells, else while the heating phase is on;
+  # not once a coffee has been made, when its OFF countdown matters more.
   def warming()
-    return self.running && !self.heated() && (self.temp != nil || self.heating)
+    return self.running && !self.pumped && !self.heated() && (self.temp != nil || self.heating)
   end
 
   def machine(t, p)
@@ -136,6 +151,7 @@ class ShotTimer
       self.running = p == "running"
       if self.running != was
         self.heat_done = false
+        self.pumped = false
         # The since that came before is the old state's; the new one follows right after.
         if self.known
           self.since_s = 0
@@ -176,6 +192,7 @@ class ShotTimer
     self.t0 = now_ms() - int(seconds * 1000) - self.lead_ms
     self.stopped = nil
     self.rinsed = false
+    self.pumped = true
     self.shot = "run"
     self.built = -1
     rotation.show()
@@ -265,7 +282,7 @@ class ShotTimer
   # A label and a value on one line, or the value alone where both do not fit.
   def pair(label, value, color)
     var both = [[label + " ", self.grey], [value, color]]
-    return text_width(both) <= 35 ? both : [[value, color]]
+    return text_width(both) <= width() - self.x0 ? both : [[value, color]]
   end
 
   # Seconds as a shot reads them: "23s", from a minute on "1:05".
@@ -340,21 +357,44 @@ class ShotTimer
       pixel(self.cup[i], self.cup[i + 1], self.cup[i + 2])
       i += 3
     end
-    # Heat waves while heating up, steam while it is hot or the pump runs.
+    # Heat waves while heating up, steam while it is hot or the pump runs: three wisps over the big
+    # cup, two over the small one.
     if heating || self.stopped == nil
       var step = now / (heating ? 120 : 200)
       var c = heating ? self.hot : 0x9A9A9A
-      for k : 0 .. 2
-        for y : 0 .. 2
-          pixel(4 + 3 * k + ((y + step + k) % 4 < 2 ? 0 : 1), y, c)
+      var big = height() > 8
+      for k : 0 .. (big ? 2 : 1)
+        for y : 0 .. (big ? 2 : 1)
+          pixel((big ? 4 + 3 * k : 1 + 2 * k) + ((y + step + k) % 4 < 2 ? 0 : 1), y, c)
         end
       end
     end
-    if self.line1 != nil
-      text(17, 6, self.line1)
+    if height() > 8
+      if self.line1 != nil
+        text(17, 6, self.line1)
+      end
+      if self.line2 != nil
+        text(17, 14, self.line2)
+      end
+      return
     end
-    if self.line2 != nil
-      text(17, 14, self.line2)
+    # 8 rows high, one line beside the cup: the shot alone, else the two lines taking turns every
+    # 4 s, the one sliding down out of sight and the other coming up from the bottom.
+    var line = self.line1
+    var off = 0
+    if self.shot == "idle" && self.line1 != nil && self.line2 != nil
+      var p = now % 4000
+      if (now / 4000) % 2 == 1
+        line = self.line2
+      end
+      if p > 3600
+        off = (p - 3600) * 9 / 400
+      elif p < 400
+        off = 8 - p * 8 / 400
+      end
+    end
+    if line != nil
+      text(self.x0 + max(0, (width() - self.x0 - text_width(line) + 1) / 2), 6 + off, line)
     end
   end
 end
