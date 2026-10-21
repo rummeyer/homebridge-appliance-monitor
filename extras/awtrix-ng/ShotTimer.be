@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 3.1
+# @version 3.2
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Appliance Monitor sends <topic>/start and <topic>/end with the seconds"
@@ -64,16 +64,15 @@ class ShotTimer
     self.hold_ms = int(store.get("hold") * 1000)
     self.pin = store.get("pin")
     # A white cup with coffee and crema, seen from a little above, on a saucer; 8 rows high, as on
-    # the TC001, a small one from the side.
+    # the TC001, the cup of LaMetric icon 14199, its steam drawn here.
     self.x0 = height() > 8 ? 17 : 9
     if height() <= 8
       self.cup = [
-        0, 2, 0xE6E6E6, 1, 2, 0x6E3412, 2, 2, 0xC88A4E, 3, 2, 0x95501E, 4, 2, 0x6E3412, 5, 2, 0xE6E6E6,
-        0, 3, 0xE6E6E6, 1, 3, 0xE6E6E6, 2, 3, 0xE6E6E6, 3, 3, 0xE6E6E6, 4, 3, 0xE6E6E6, 5, 3, 0xE6E6E6, 6, 3, 0xA8A8A8,
-        0, 4, 0xE6E6E6, 1, 4, 0xE6E6E6, 2, 4, 0xE6E6E6, 3, 4, 0xE6E6E6, 4, 4, 0xE6E6E6, 5, 4, 0xA8A8A8, 6, 4, 0xA8A8A8,
-        1, 5, 0xE6E6E6, 2, 5, 0xE6E6E6, 3, 5, 0xE6E6E6, 4, 5, 0xA8A8A8,
-        0, 6, 0xA6A6A6, 1, 6, 0xA6A6A6, 2, 6, 0xA6A6A6, 3, 6, 0xA6A6A6, 4, 6, 0xA6A6A6, 5, 6, 0xA6A6A6,
-        1, 7, 0x5C5C5C, 2, 7, 0x5C5C5C, 3, 7, 0x5C5C5C, 4, 7, 0x5C5C5C]
+        0, 3, 0xFCFAFC, 1, 3, 0xA4726C, 2, 3, 0xA4726C, 3, 3, 0xA4726C, 4, 3, 0xA4726C, 5, 3, 0xFCFAFC, 6, 3, 0xFCFAFC, 7, 3, 0xFCFAFC,
+        0, 4, 0xFCFAFC, 1, 4, 0xFCFAFC, 2, 4, 0xFCFAFC, 3, 4, 0xFCFAFC, 4, 4, 0xFCFAFC, 5, 4, 0xFCFAFC, 7, 4, 0xFCFAFC,
+        0, 5, 0xFCFAFC, 1, 5, 0xFCFAFC, 2, 5, 0xFCFAFC, 3, 5, 0xFCFAFC, 4, 5, 0xFCFAFC, 5, 5, 0xFCFAFC, 6, 5, 0xFCFAFC, 7, 5, 0xFCFAFC,
+        1, 6, 0xFCFAFC, 2, 6, 0xFCFAFC, 3, 6, 0xFCFAFC, 4, 6, 0xFCFAFC,
+        2, 7, 0xFCFAFC, 3, 7, 0xFCFAFC]
     else
       self.cup = [
         4, 3, 0x6E6E6E, 5, 3, 0xE6E6E6, 6, 3, 0xE6E6E6, 7, 3, 0xE6E6E6, 8, 3, 0xE6E6E6, 9, 3, 0xE6E6E6, 10, 3, 0xE6E6E6, 11, 3, 0x6E6E6E,
@@ -358,14 +357,14 @@ class ShotTimer
       i += 3
     end
     # Heat waves while heating up, steam while it is hot or the pump runs: three wisps over the big
-    # cup, two over the small one.
+    # cup, two over the small one, where the icon has them.
     if heating || self.stopped == nil
       var step = now / (heating ? 120 : 200)
       var c = heating ? self.hot : 0x9A9A9A
       var big = height() > 8
       for k : 0 .. (big ? 2 : 1)
-        for y : 0 .. (big ? 2 : 1)
-          pixel((big ? 4 + 3 * k : 1 + 2 * k) + ((y + step + k) % 4 < 2 ? 0 : 1), y, c)
+        for y : 0 .. 2
+          pixel((big ? 4 + 3 * k : 1 + 3 * k) + ((y + step + k) % 4 < 2 ? 0 : 1), y, c)
         end
       end
     end
