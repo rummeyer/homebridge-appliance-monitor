@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.16.1] — 2026-10-21
+
+### Changed
+
+- The README links to the coffee machine app for AWTRIX NG on the AWTRIX
+  Hub.
+- `extras/awtrix-ng`, not part of the package: the app runs on a 32×8
+  TC001 too, a coffee made while heating up ends the heating up, it uses
+  less memory, and the two shot timer MQTT messages are optional — without
+  them the pump phase starts and ends the shot.
+
 ## [1.16.0] — 2026-10-20
 
 ### Added
@@ -931,7 +942,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.1...HEAD
+[1.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.1...v1.15.0
 [1.14.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.0...v1.14.1
