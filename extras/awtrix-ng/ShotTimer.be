@@ -1,10 +1,12 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 3.3
+# @version 3.4
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Its state, since, watts, phase and idle/overtime topics"
-# @config  shot   text   "Shot topic"       default="shot-timer" help="Appliance Monitor sends <topic>/start and <topic>/end with the seconds"
+# @config  shot   text   "Shot topic"       default="shot-timer" help="Appliance Monitor sends <topic>/start and <topic>/end with the seconds; empty: the pump phase instead"
+# @config  pump   text   "Pump phase"       default="Pumpe" help="Its ON and OFF start and end the shot when the shot topic is empty"
+# @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after, when the shot topic is empty"
 # @config  heat   text   "Heating phase"    default="Aufheizen"
 # @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that turns out to be this phase is shown as RINSE"
 # @config  below  number "Pump off below"   default=30 min=0 max=3000 unit=W help="The count stops when the plug reads less"
@@ -19,6 +21,7 @@
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, watts_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed
+  var pump_topic, on_after   # the pump phase, when there are no shot messages, and its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
   var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
   var pumped       # the pump has run since it was switched on: in use, not heating up any more
@@ -46,6 +49,9 @@ class ShotTimer
     var shot = store.get("shot")
     self.start_topic = shot + "/start"
     self.end_topic = shot + "/end"
+    # Without shot messages the pump phase's own ON and OFF: the count is then the clock's
+    self.pump_topic = shot == "" ? base + "/phase/" + store.get("pump") : nil
+    self.on_after = store.get("after")
     self.state_topic = base + "/state"
     self.since_topic = base + "/since"
     self.watts_topic = base + "/watts"
@@ -112,8 +118,10 @@ class ShotTimer
   end
 
   def setup()
-    mqtt.subscribe(self.start_topic, / t, p -> self.started(num(p, 0)))
-    mqtt.subscribe(self.end_topic, / t, p -> self.ended(num(p, 0)))
+    if self.pump_topic == nil
+      mqtt.subscribe(self.start_topic, / t, p -> self.started(num(p, 0)))
+      mqtt.subscribe(self.end_topic, / t, p -> self.ended(num(p, 0)))
+    end
     mqtt.subscribe(store.get("base") + "/#", / t, p -> self.machine(t, p))
     if self.temp_topic != ""
       mqtt.subscribe(self.temp_topic, / t, p -> self.temperature(num(p)))
@@ -168,6 +176,14 @@ class ShotTimer
         self.heat_done = true
       end
       self.heating = on
+    elif t == self.pump_topic
+      # The phase is on after its on after, and goes off its off after late: the result is
+      # what the clock counted, frozen when the watts fell.
+      if p == "ON" && self.shot != "run"
+        self.started(self.on_after)
+      elif p == "OFF" && self.shot == "run"
+        self.ended(((self.stopped != nil ? self.stopped : now_ms()) - self.t0) / 1000.0)
+      end
     elif t == self.rinse_topic
       # A rinse is known once it is over: as the pump's end comes, just before or after.
       if p == "ON" && self.shot != "idle"
