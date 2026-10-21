@@ -346,11 +346,11 @@ class ShotTimer
     var now = now_ms()
     self.build(now)
     var heating = self.shot != "run" && self.warming()
-    var c = self.cup
+    var b = self.cup
     var i = 0
-    var n = size(c)
+    var n = size(b)
     while i < n
-      pixel(c[i], c[i + 1], (c[i + 2] << 16) | (c[i + 3] << 8) | c[i + 4])
+      pixel(b[i], b[i + 1], (b[i + 2] << 16) | (b[i + 3] << 8) | b[i + 4])
       i += 5
     end
     # Heat waves while heating up, steam while it is hot or the pump runs: three wisps over the big
