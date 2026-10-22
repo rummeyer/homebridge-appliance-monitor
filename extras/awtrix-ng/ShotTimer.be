@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 3.4
+# @version 3.5
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -349,10 +349,14 @@ class ShotTimer
     if self.over_at > self.since_s && (off == 0 || self.over_at < off)
       off = self.over_at
     end
+    var left = off - unix
     if off == 0
       self.line2 = nil
+    elif left <= 0
+      # Due, and the plug not off yet: a moment as a rule, longer when the pump ran just in time
+      # and the count starts again. Not a 0:00 that stands still.
+      self.line2 = [["OFF", self.warn]]
     else
-      var left = off - unix
       self.line2 = self.pair("OFF", self.clock(left), left < 60 ? self.warn : self.white)
     end
   end

@@ -6,6 +6,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- `extras/awtrix-ng`, not part of the package: once the time until it is
+  switched off is up, the app shows OFF alone rather than a 0:00 that stands
+  still while the plug is not off yet.
+
 ## [1.16.1] — 2026-10-21
 
 ### Changed

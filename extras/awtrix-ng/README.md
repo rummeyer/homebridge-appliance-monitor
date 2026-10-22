@@ -52,6 +52,8 @@ after** to the phase's "on after".
 **Overtime**: set them on the machine, and switch its plug off with a Home
 automation on either. With Idle counted from the end of Pumpe, OFF shows
 5:00 after each coffee and counts down; Overtime is the latest it can be.
+Once the time is up, OFF stands alone in yellow until the plug is off — or
+until the count starts again, when the pump ran just before.
 
 **Optional: a thermometer** on the machine makes HEATED exact — heated is
 whenever it is at least **Preheated from**, not once the heating phase has
