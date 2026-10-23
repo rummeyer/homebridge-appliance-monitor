@@ -584,7 +584,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       ...(appliance.timed.idleOn ? { idleOn: true } : {}),
       // As #checkTimed counts them.
       ...(device.overtimeMinutes !== undefined && cycle ? { overtimeAt: cycle.startedAt + device.overtimeMinutes * 60_000 } : {}),
-      ...(device.idleOnMinutes !== undefined && appliance.idleSince !== undefined
+      ...(device.idleOnMinutes !== undefined && appliance.idleSince !== undefined && !(device.idleOnFrom !== undefined && this.#idleHeld(appliance))
         ? { idleOnAt: appliance.idleSince + device.idleOnMinutes * 60_000 }
         : {}),
     };
@@ -871,12 +871,19 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return appliance.idleSince;
     }
     if (device.idleOnFrom !== undefined) {
-      // Started by the phase ending, and over when it starts again, in #onPhase.
-      return appliance.idleSince;
+      // Started by the phase ending, and over when it starts again, in #onPhase;
+      // held while another phase is on, as heating up after the pump ran at switch-on.
+      return this.#idleHeld(appliance) ? undefined : appliance.idleSince;
     }
     const idle = !this.#runsWithin(appliance);
     this.#setIdleSince(appliance, idle ? appliance.idleSince ?? now : undefined);
     return appliance.idleSince;
+  }
+
+  /** Another phase than the one Idle counts from is on: it is in use, whatever ran before. */
+  #idleHeld(appliance: Appliance): boolean {
+    const { idleOnFrom } = appliance.device;
+    return appliance.phases.some((tracker) => tracker.active && tracker.name.trim() !== idleOnFrom);
   }
 
   #setIdleSince(appliance: Appliance, since: number | undefined): void {
@@ -909,8 +916,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
     const { device } = appliance;
     // Idle counting from this phase: from when it ends, not while it lasts.
-    if (device.idleOnMinutes !== undefined && device.idleOnFrom === tracker.name.trim() && !appliance.relayOff) {
-      this.#setIdleSince(appliance, change.active && !change.short ? undefined : change.at);
+    if (device.idleOnMinutes !== undefined && device.idleOnFrom !== undefined && !appliance.relayOff) {
+      if (device.idleOnFrom === tracker.name.trim()) {
+        this.#setIdleSince(appliance, change.active && !change.short ? undefined : change.at);
+      } else if (appliance.idleSince !== undefined && (!change.active || change.short)) {
+        // Another phase over: the count starts again from its end.
+        this.#setIdleSince(appliance, Math.max(appliance.idleSince, change.at));
+      }
     }
     this.#sendMessages(device, tracker.name, change);
     if (change.short) {

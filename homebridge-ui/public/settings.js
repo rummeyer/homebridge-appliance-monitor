@@ -27,7 +27,7 @@
   /** As usableMinutes in config.ts. */
   /** What Idle counts: from the end of a phase, or from when it stops running. */
   const idleOnHelp = (device) => (device.idleOnFrom
-    ? `This long after the end of ${device.idleOnFrom}.`
+    ? `This long after the end of ${device.idleOnFrom}, or of another phase after it.`
     : 'On this long without running.');
   const minutesError = (minutes) => (minutes !== undefined && !(minutes > 0) ? 'More than 0 minutes, or empty for none.' : '');
   /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */

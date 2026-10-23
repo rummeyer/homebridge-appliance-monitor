@@ -164,7 +164,7 @@
               "title": "Idle counted from (phase)",
               "type": "string",
               "placeholder": "not running",
-              "description": "Count Idle from the end of this phase instead. Empty: from when it stops running."
+              "description": "Count Idle from the end of this phase instead, held while another phase is on and counted again from its end. Empty: from when it stops running."
             },
             "messages": {
               "title": "MQTT messages",

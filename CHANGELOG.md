@@ -8,6 +8,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Idle counted from a phase (`idleOnFrom`) waits while another of the
+  appliance's phases is on, and counts again from when that ends. A coffee
+  machine that pumps for a moment as it is switched on was switched off
+  while it was still heating up.
+
 - `extras/awtrix-ng`, not part of the package: once the time until it is
   switched off is up, the app shows OFF alone rather than a 0:00 that stands
   still while the plug is not off yet.
