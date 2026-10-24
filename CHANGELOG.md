@@ -17,6 +17,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   switched off is up, the app shows OFF alone rather than a 0:00 that stands
   still while the plug is not off yet.
 
+- `extras/awtrix-ng` 4.0: every topic the app listens to is its own setting,
+  in full, under Topics, in place of the appliance topic, the phases' names
+  and the shot topic; an empty one is not listened to. After updating from
+  3.x, set them again where they differ from the defaults.
+
 ## [1.16.1] — 2026-10-21
 
 ### Changed
