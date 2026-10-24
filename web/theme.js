@@ -25,7 +25,7 @@
 
   /** The tab's name and icon go with the look: Home and a house for the Home look. */
   const TAB = {
-    home: { title: 'Home', icon: 'home.svg', type: 'image/svg+xml' },
+    home: { title: 'Home (Appliance Monitor)', icon: 'home.svg', type: 'image/svg+xml' },
     other: { title: 'Appliance Monitor', icon: 'icon.png', type: 'image/png' },
   };
 
