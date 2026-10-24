@@ -28,7 +28,8 @@ value do not both fit, the value stands alone.
 same broker (its web UI, **Settings › MQTT**).
 
 **Phases** on the coffee machine, set up on the Power tab. The app's
-defaults use these names; any others can be set in the app's settings.
+default topics use these names and a machine called `Kaffeemaschine`; every
+topic can be set in the app's settings, under **Topics**.
 
 | Phase | What | Example |
 |---|---|---|
@@ -44,7 +45,7 @@ Power tab, which start and end the shot timer with the plugin's own count:
 | Pumpe | Starts | `shot-timer/start` | `{seconds}` |
 | Pumpe | Ends | `shot-timer/end` | `{seconds}` |
 
-Without them, leave **Shot topic** empty: the pump phase's own topic then
+Without them, leave **Shot start** and **Shot end** empty: the **Pump phase** topic then
 starts and ends the shot, and the result is the clock's count. Set **Pump on
 after** to the phase's "on after".
 
@@ -59,7 +60,7 @@ until the count starts again, when the pump ran just before.
 whenever it is at least **Preheated from**, not once the heating phase has
 ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
-`deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
+`deconz/<name>/temperature`. Without one, leave **Temperature** empty.
 
 ## Installing
 
@@ -77,15 +78,30 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 
 ## Settings
 
+**Topics**: each topic the app listens to, in full, so the machine, the
+phases and the broker's prefix can be called anything. An empty one is not
+listened to. `…` is `appliance-monitor/Kaffeemaschine`.
+
+| Topic | Default | |
+|---|---|---|
+| State | `…/state` | |
+| Since | `…/since` | |
+| Watts | `…/watts` | Empty: the shot's count runs until the pump's end. |
+| Heating phase | `…/phase/Aufheizen` | |
+| Rinse phase | `…/phase/Spülen` | A pump run that turns out to be this phase shows as RINSE. |
+| Idle at | `…/idle/at` | |
+| Overtime at | `…/overtime/at` | |
+| Shot start | `shot-timer/start` | Where the two messages above go. With either empty, the pump phase starts and ends the shot. |
+| Shot end | `shot-timer/end` | |
+| Pump phase | `…/phase/Pumpe` | Used without both shot topics. |
+| Temperature | `deconz/Kaffeemaschine/temperature` | |
+
+Version 4.0 brought these in place of the appliance topic and the phases'
+names: after updating from an earlier one, set them again where yours differ.
+
 | Setting | Default | |
 |---|---|---|
-| Appliance topic | `appliance-monitor/Kaffeemaschine` | The machine's topics: the plugin's prefix and its name. |
-| Shot topic | `shot-timer` | Where the two messages above go. Empty: the pump phase starts and ends the shot. |
-| Pump phase | `Pumpe` | Used when the shot topic is empty. |
-| Pump on after | 1 s | The pump phase's "on after", used when the shot topic is empty. |
-| Heating phase | `Aufheizen` | |
-| Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
-| Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
+| Pump on after | 1 s | The pump phase's "on after", used without both shot topics. |
 | Preheated from | 38 °C | |
 | Pump off below | 30 W | The count stops as soon as the plug reads less: neither pump nor heater runs. |
 | Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |
