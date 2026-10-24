@@ -83,8 +83,11 @@ export interface PhaseChange {
   short?: boolean;
   /**
    * When the draw first entered the band, and — on the change that turns it
-   * off, or on a short one — when it last left it: how long it really
-   * lasted, without the hold and with the time it took to come on.
+   * off, or on a short one — when it last fell below it: how long it really
+   * lasted, without the hold and with the time it took to come on. A moment
+   * above the band before the fall belongs to it, as a coffee machine's
+   * heater coming on beside the pump; a draw that stayed above until the
+   * phase ended, when it last left the band.
    */
   from?: number;
   until?: number;
@@ -100,6 +103,8 @@ export class PhaseTracker {
   /** Time spent in the band since the draw first entered it, through to the phase's end. */
   #inMs = 0;
   #outSince: number | undefined;
+  /** When the draw fell below the band, or none came, since it was last at or above it. */
+  #belowSince: number | undefined;
   /** When the draw first entered the band, for a phase on or in the making. */
   #firstIn: number | undefined;
   /** Where the last reading out of the band was, if any. */
@@ -144,6 +149,11 @@ export class PhaseTracker {
     } else {
       this.#outSince ??= at;
     }
+    if (watts < this.#phase.minWatts) {
+      this.#belowSince ??= at;
+    } else {
+      this.#belowSince = undefined;
+    }
     return this.#check(at);
   }
 
@@ -156,6 +166,7 @@ export class PhaseTracker {
     this.#advance(at);
     this.#watts = undefined;
     this.#outSince ??= at;
+    this.#belowSince ??= at;
     return this.#check(at);
   }
 
@@ -211,7 +222,7 @@ export class PhaseTracker {
     }
     if (outLong) {
       this.#active = false;
-      const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#outSince };
+      const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
       this.#inMs = 0;
       this.#firstIn = undefined;
       return change;
@@ -227,7 +238,12 @@ export class PhaseTracker {
     if (this.#inMs < minMs || this.#inMs >= maxSeconds * 1000) {
       return undefined;
     }
-    return { active: true, at, short: true, since: this.#firstIn, from: this.#firstIn, until: this.#outSince, inBandMs: this.#inMs };
+    return { active: true, at, short: true, since: this.#firstIn, from: this.#firstIn, until: this.#until(), inBandMs: this.#inMs };
+  }
+
+  /** Where the draw ended, once it is over: see PhaseChange.until. */
+  #until(): number | undefined {
+    return this.#belowSince ?? this.#outSince;
   }
 }
 

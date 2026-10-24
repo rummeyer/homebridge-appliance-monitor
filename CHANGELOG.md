@@ -13,6 +13,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   machine that pumps for a moment as it is switched on was switched off
   while it was still heating up.
 
+### Fixed
+
+- The `{duration}` and `{seconds}` of a phase's end run until the draw fell
+  below the phase's range, not until it last left it. A coffee whose heater
+  came on beside the pump for its last seconds, above the pump's range, was
+  sent as 36 s though the pump ran 50.
+
 - `extras/awtrix-ng`, not part of the package: once the time until it is
   switched off is up, the app shows OFF alone rather than a 0:00 that stands
   still while the plug is not off yet.

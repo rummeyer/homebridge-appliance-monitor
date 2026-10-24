@@ -671,9 +671,11 @@ In the payload, these are filled in:
 | `{duration}` | how long the draw was in the range, as on a clock: `0:23`, `12:05`, `1:02:05` |
 | `{seconds}` | the same in seconds: `23` |
 
-The duration runs from the draw entering the range to it last leaving it:
+The duration runs from the draw entering the range to it falling below it:
 without the "off after" the phase waits before going off, and with any
-moment out of the range in between. At the start it is the time so far,
+moment out of the range in between. A draw above the range at the end
+still counts, as a coffee machine's heater coming on beside the pump; one
+that stays above until the phase goes off ends where it left the range. At the start it is the time so far,
 which is the "on after". A phase with "shorter than" is known only once it
 is over, so its start and end messages go out together then.
 
