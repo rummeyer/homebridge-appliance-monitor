@@ -7,7 +7,7 @@ topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how long it has been on |
+| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at (0 %) to **Preheated from** (100 %), every three seconds taking turns with how long until then at the rate it has risen so far; without a thermometer, how long it has been on |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |

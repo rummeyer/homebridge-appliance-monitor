@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.0
+# @version 4.1
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  tstate text   "State"            default="appliance-monitor/Kaffeemaschine/state" group="Topics" help="running or idle"
 # @config  tsince text   "Since"            default="appliance-monitor/Kaffeemaschine/since" group="Topics" help="Unix seconds the state began"
@@ -23,11 +23,15 @@
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
+import string
+
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, watts_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed
   var pump_topic, on_after   # the pump phase, when there are no shot messages, and its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
+  var temp0        # the temperature when it was switched on, the heating up's 0 %; nil while off
+  var temp0_s, temp_s   # Unix seconds of temp0 and of the latest reading
   var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
   var pumped       # the pump has run since it was switched on: in use, not heating up any more
   var below, lead_ms, hold_ms, pin
@@ -71,6 +75,9 @@ class ShotTimer
     self.temp_topic = store.get("temp")
     self.ready = store.get("ready")
     self.temp = nil
+    self.temp0 = nil
+    self.temp0_s = 0
+    self.temp_s = 0
     self.heat_done = false
     self.pumped = false
     self.below = store.get("below")
@@ -125,25 +132,52 @@ class ShotTimer
     self.visible = false
   end
 
+  # An app may hold eight subscriptions and the rest are dropped without a word, so topics
+  # three levels deep or more share one for their first two, <prefix>/<name>/#, and each
+  # message goes where its own topic says.
   def setup()
-    if self.start_topic != ""
-      mqtt.subscribe(self.start_topic, / t, p -> self.started(num(p, 0)))
-      mqtt.subscribe(self.end_topic, / t, p -> self.ended(num(p, 0)))
-    end
-    for topic : [self.state_topic, self.since_topic, self.watts_topic, self.heat_topic, self.pump_topic,
-                 self.rinse_topic, self.idle_topic, self.over_topic]
+    var filters = []
+    for topic : [self.start_topic, self.end_topic, self.state_topic, self.since_topic, self.watts_topic,
+                 self.heat_topic, self.pump_topic, self.rinse_topic, self.idle_topic, self.over_topic,
+                 self.temp_topic]
       if topic != ""
-        mqtt.subscribe(topic, / t, p -> self.machine(t, p))
+        var levels = string.split(topic, "/")
+        var filter = size(levels) > 2 ? levels[0] + "/" + levels[1] + "/#" : topic
+        if filters.find(filter) == nil
+          filters.push(filter)
+        end
       end
     end
-    if self.temp_topic != ""
-      mqtt.subscribe(self.temp_topic, / t, p -> self.temperature(num(p)))
+    for filter : filters
+      # "a/b/#" takes in "a/b" as well: not twice.
+      if filters.find(filter + "/#") == nil
+        mqtt.subscribe(filter, / t, p -> self.message(t, p))
+      end
+    end
+  end
+
+  def message(t, p)
+    if t == self.start_topic
+      self.started(num(p, 0))
+    elif t == self.end_topic
+      self.ended(num(p, 0))
+    elif t == self.temp_topic
+      self.temperature(num(p))
+    elif [self.state_topic, self.since_topic, self.watts_topic, self.heat_topic, self.pump_topic,
+          self.rinse_topic, self.idle_topic, self.over_topic].find(t) != nil
+      self.machine(t, p)
     end
   end
 
   def temperature(v)
     if v != nil
       self.temp = v
+      self.temp_s = epoch_ms() / 1000
+      # Switched on before the first reading came: that one is where it started.
+      if self.running && self.temp0 == nil
+        self.temp0 = v
+        self.temp0_s = self.temp_s
+      end
       self.built = -1
     end
   end
@@ -168,6 +202,8 @@ class ShotTimer
       if self.running != was
         self.heat_done = false
         self.pumped = false
+        self.temp0 = self.running ? self.temp : nil
+        self.temp0_s = epoch_ms() / 1000
         # The since that came before is the old state's; the new one follows right after.
         if self.known
           self.since_s = 0
@@ -348,11 +384,23 @@ class ShotTimer
     else
       self.line1 = self.pair("ON", self.clock(on_s), self.white)
     end
-    # Line 2: while heating up, how long it has been on; else when it is
-    # switched off, by whichever comes first. One from before it was switched
-    # on is stale.
+    # Line 2: while heating up, how far, from the temperature it was switched
+    # on at as 0 % to Preheated from as 100 %, every three seconds the other
+    # one of that and how long until then, at the rate it has risen so far;
+    # how long it has been on without a thermometer. Else when it is switched
+    # off, by whichever comes first. One from before it was switched on is stale.
     if heating
-      self.line2 = [[self.clock(on_s), self.white]]
+      if self.temp != nil && self.temp0 != nil && self.ready > self.temp0
+        var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
+        self.line2 = [[str(pct < 0 ? 0 : (pct > 100 ? 100 : pct)) + "%", self.white]]
+        var rise = self.temp - self.temp0
+        if rise > 0 && self.temp_s > self.temp0_s && (unix / 3) % 2 == 1
+          var at = self.temp_s + int((self.ready - self.temp) * (self.temp_s - self.temp0_s) / rise)
+          self.line2 = [[self.clock(at - unix), self.white]]
+        end
+      else
+        self.line2 = [[self.clock(on_s), self.white]]
+      end
       return
     end
     var off = 0

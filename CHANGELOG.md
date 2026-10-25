@@ -29,6 +29,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   and the shot topic; an empty one is not listened to. After updating from
   3.x, set them again where they differ from the defaults.
 
+- `extras/awtrix-ng` 4.1: the topics share one subscription per
+  `<prefix>/<name>/#`. AWTRIX NG holds eight for an app and drops the rest
+  without a word, so 4.0 never heard the thermometer — HEATED came when the
+  heating phase ended — nor Overtime, and line 2 was empty while a coffee
+  held Idle. While it heats up, line 2 shows how far, from the temperature
+  it was switched on at as 0 % to **Preheated from** as 100 %, taking turns
+  every three seconds with how long until then at the rate it has risen so
+  far; without a thermometer, how long it has been on as before.
+
 ## [1.16.1] — 2026-10-21
 
 ### Changed
