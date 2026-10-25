@@ -24,21 +24,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   switched off is up, the app shows OFF alone rather than a 0:00 that stands
   still while the plug is not off yet.
 
-- `extras/awtrix-ng` 4.0: every topic the app listens to is its own setting,
-  in full, under Topics, in place of the appliance topic, the phases' names
-  and the shot topic; an empty one is not listened to. After updating from
-  3.x, set them again where they differ from the defaults.
-
-- `extras/awtrix-ng` 4.1: the topics share one subscription per
-  `<prefix>/<name>/#`. AWTRIX NG holds eight for an app and drops the rest
-  without a word, so 4.0 never heard the thermometer — HEATED came when the
-  heating phase ended — nor Overtime, and line 2 was empty while a coffee
-  held Idle. While it heats up, line 2 shows how far, from the temperature
-  it was switched on at as 0 % to **Preheated from** as 100 %, taking turns
-  every three seconds with how long until then at the rate it has risen so
-  far; without a thermometer, how long it has been on as before. While a
-  coffee, a rinse or the heater holds Idle, OFF stands still at Idle's full
-  time rather than showing Overtime's, an hour away.
+- `extras/awtrix-ng` 4.2: while it heats up, line 2 shows how far, from
+  the temperature it was switched on at as 0 % to **Preheated from** as
+  100 %, taking turns every three seconds with how long until then at the
+  rate it has risen so far; without a thermometer, how long it has been on
+  as before. While a coffee, a rinse or the heater holds Idle, OFF stands
+  still at Idle's full time rather than showing Overtime's, an hour away.
+  4.0 and 4.1, a setting for every topic, are gone again: 4.0 asked for
+  more subscriptions than AWTRIX NG holds for an app, and never heard the
+  thermometer or Overtime. After 4.0 or 4.1, set the settings again where
+  yours differ from the defaults.
 
 ## [1.16.1] — 2026-10-21
 

@@ -1,30 +1,23 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.1
+# @version 4.2
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
-# @config  tstate text   "State"            default="appliance-monitor/Kaffeemaschine/state" group="Topics" help="running or idle"
-# @config  tsince text   "Since"            default="appliance-monitor/Kaffeemaschine/since" group="Topics" help="Unix seconds the state began"
-# @config  twatts text   "Watts"            default="appliance-monitor/Kaffeemaschine/watts" group="Topics" help="The plug's reading; empty: the shot's count never stops early"
-# @config  theat  text   "Heating phase"    default="appliance-monitor/Kaffeemaschine/phase/Aufheizen" group="Topics" help="ON while the machine heats up; empty for none"
-# @config  trinse text   "Rinse phase"      default="appliance-monitor/Kaffeemaschine/phase/Spülen" group="Topics" help="A pump run that is this phase shows as RINSE; empty for none"
-# @config  tidle  text   "Idle at"          default="appliance-monitor/Kaffeemaschine/idle/at" group="Topics" help="Unix seconds it is switched off for idling; empty for none"
-# @config  tover  text   "Overtime at"      default="appliance-monitor/Kaffeemaschine/overtime/at" group="Topics" help="Unix seconds it is switched off at the latest; empty for none"
-# @config  tstart text   "Shot start"       default="shot-timer/start" group="Topics" help="The pump's seconds so far when it starts; empty: the pump phase starts and ends the shot"
-# @config  tend   text   "Shot end"         default="shot-timer/end" group="Topics" help="The pump's seconds when it ends; empty: the pump phase starts and ends the shot"
-# @config  tpump  text   "Pump phase"       default="appliance-monitor/Kaffeemaschine/phase/Pumpe" group="Topics" help="ON and OFF of the pump, used without both shot topics"
-# @config  temp   text   "Temperature"      default="deconz/Kaffeemaschine/temperature" group="Topics" help="A thermometer on the machine; empty: heated once the heating phase ends"
-# @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after, used without both shot topics"
+# @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
+# @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
+# @config  pump   text   "Pump phase"       default="Pumpe" help="Used when the shot topic is empty"
+# @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after"
+# @config  heat   text   "Heating phase"    default="Aufheizen" help="The phase while the machine heats up"
+# @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that is this phase shows as RINSE"
 # @config  below  number "Pump off below"   default=30 min=0 max=3000 unit=W help="The shot's count stops when the plug reads less"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
+# @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  pin    bool   "Stay on screen while on" default=false help="Off: in the rotation, with only the shot taking over"
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
-import string
-
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, watts_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed
@@ -55,23 +48,20 @@ class ShotTimer
   var visible      # on the display now
 
   def init()
-    # Each topic as set, any broker's; an empty one is not listened to
-    self.start_topic = store.get("tstart")
-    self.end_topic = store.get("tend")
-    # Without both shot messages the pump phase's own ON and OFF: the count is then the clock's
-    if self.start_topic == "" || self.end_topic == ""
-      self.start_topic = ""
-      self.end_topic = ""
-    end
-    self.pump_topic = self.start_topic == "" ? store.get("tpump") : ""
+    var base = store.get("base")
+    var shot = store.get("shot")
+    self.start_topic = shot + "/start"
+    self.end_topic = shot + "/end"
+    # Without shot messages the pump phase's own ON and OFF: the count is then the clock's
+    self.pump_topic = shot == "" ? base + "/phase/" + store.get("pump") : nil
     self.on_after = store.get("after")
-    self.state_topic = store.get("tstate")
-    self.since_topic = store.get("tsince")
-    self.watts_topic = store.get("twatts")
-    self.heat_topic = store.get("theat")
-    self.idle_topic = store.get("tidle")
-    self.over_topic = store.get("tover")
-    self.rinse_topic = store.get("trinse")
+    self.state_topic = base + "/state"
+    self.since_topic = base + "/since"
+    self.watts_topic = base + "/watts"
+    self.heat_topic = base + "/phase/" + store.get("heat")
+    self.idle_topic = base + "/idle/at"
+    self.over_topic = base + "/overtime/at"
+    self.rinse_topic = base + "/phase/" + store.get("rinse")
     self.rinsed = false
     self.temp_topic = store.get("temp")
     self.ready = store.get("ready")
@@ -134,40 +124,15 @@ class ShotTimer
     self.visible = false
   end
 
-  # An app may hold eight subscriptions and the rest are dropped without a word, so topics
-  # three levels deep or more share one for their first two, <prefix>/<name>/#, and each
-  # message goes where its own topic says.
+  # Four subscriptions: an app may hold eight, and the rest are dropped without a word.
   def setup()
-    var filters = []
-    for topic : [self.start_topic, self.end_topic, self.state_topic, self.since_topic, self.watts_topic,
-                 self.heat_topic, self.pump_topic, self.rinse_topic, self.idle_topic, self.over_topic,
-                 self.temp_topic]
-      if topic != ""
-        var levels = string.split(topic, "/")
-        var filter = size(levels) > 2 ? levels[0] + "/" + levels[1] + "/#" : topic
-        if filters.find(filter) == nil
-          filters.push(filter)
-        end
-      end
+    if self.pump_topic == nil
+      mqtt.subscribe(self.start_topic, / t, p -> self.started(num(p, 0)))
+      mqtt.subscribe(self.end_topic, / t, p -> self.ended(num(p, 0)))
     end
-    for filter : filters
-      # "a/b/#" takes in "a/b" as well: not twice.
-      if filters.find(filter + "/#") == nil
-        mqtt.subscribe(filter, / t, p -> self.message(t, p))
-      end
-    end
-  end
-
-  def message(t, p)
-    if t == self.start_topic
-      self.started(num(p, 0))
-    elif t == self.end_topic
-      self.ended(num(p, 0))
-    elif t == self.temp_topic
-      self.temperature(num(p))
-    elif [self.state_topic, self.since_topic, self.watts_topic, self.heat_topic, self.pump_topic,
-          self.rinse_topic, self.idle_topic, self.over_topic].find(t) != nil
-      self.machine(t, p)
+    mqtt.subscribe(store.get("base") + "/#", / t, p -> self.machine(t, p))
+    if self.temp_topic != ""
+      mqtt.subscribe(self.temp_topic, / t, p -> self.temperature(num(p)))
     end
   end
 
