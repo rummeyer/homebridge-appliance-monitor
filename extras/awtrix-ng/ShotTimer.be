@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.2
+# @version 4.3
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -14,7 +14,7 @@
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
-# @config  pin    bool   "Stay on screen while on" default=false help="Off: in the rotation, with only the shot taking over"
+# @config  pin    bool   "Stay on screen while on" default=false help="Off: in the rotation, with only the shot and being preheated taking over"
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
@@ -147,8 +147,9 @@ class ShotTimer
         self.temp0 = v
         self.temp0_s = self.temp_s
       end
-      if self.running && v >= self.ready
+      if self.running && v >= self.ready && !self.warm
         self.warm = true
+        self.come()
       end
       self.built = -1
     end
@@ -183,9 +184,9 @@ class ShotTimer
         if self.known
           self.since_s = 0
         end
-        if self.running && self.pin
-          rotation.show()
-          rotation.pause()
+        # Up once its since has come, as there is nothing to show before.
+        if self.running && self.pin && self.since_s > 0
+          self.come()
         elif !self.running && self.shot == "idle"
           self.leave()
         end
@@ -193,11 +194,17 @@ class ShotTimer
       self.known = true
     elif t == self.since_topic
       self.since_s = num(p, 0)
+      if self.running && self.pin && !self.visible && self.since_s > 0
+        self.come()
+      end
     elif t == self.heat_topic
       var on = p == "ON"
       # The first heating of the morning; a reheat later is not "heating up".
-      if self.heating && !on && self.running
+      if self.heating && !on && self.running && !self.heat_done
         self.heat_done = true
+        if self.temp == nil
+          self.come()
+        end
       end
       self.heating = on
     elif t == self.pump_topic
@@ -287,6 +294,14 @@ class ShotTimer
   def loop()
     if self.shot == "run" && now_ms() - self.t0 > 600000
       self.finish()
+    end
+  end
+
+  # On the display: held there while pinned, else for its turn in the rotation.
+  def come()
+    rotation.show()
+    if self.pin
+      rotation.pause()
     end
   end
 

@@ -38,6 +38,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   thermometer or Overtime. After 4.0 or 4.1, set the settings again where
   yours differ from the defaults.
 
+- `extras/awtrix-ng` 4.3: with **Stay on screen while on**, the app comes
+  up when the machine is switched on rather than waiting for its turn in
+  the rotation; it was brought up before the time it was switched on had
+  come, found nothing to show and went on to the next app. Once the machine
+  is preheated, the app comes up too, also without that setting.
+
 ## [1.16.1] — 2026-10-21
 
 ### Changed

@@ -92,7 +92,7 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 | Pump off below | 30 W | The count stops as soon as the plug reads less: neither pump nor heater runs. |
 | Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |
 | Show result for | 20 s | |
-| Stay on screen while on | off | On: the app holds the display the whole time the machine is on. |
+| Stay on screen while on | off | On: the app holds the display the whole time the machine is on. Off: it comes up for a shot and once the machine is preheated, and is in the rotation otherwise. |
 | Colours | | Result, heating, heated. The cup is drawn as it is. |
 
 ## How exact it is
