@@ -100,11 +100,14 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 The count runs on the clock, every second. It starts when the plugin
 first sees the pump, set back by the plug delay, and stops as soon as the
 plug reads less than **Pump off below**. When the phase ends, the plugin's
-own count — from the draw entering the pump's range to it last leaving it
-— replaces it. Without the two messages the clock's count stays: it hangs on
+own count — from the draw entering the pump's range to it falling below
+it — replaces it. Without the two messages the clock's count stays: it hangs on
 when the plug's readings come, so it can be a few seconds off.
 
 The heater often runs beside the pump during a coffee; the plug then reads
-both together, about 1200 W, so the count goes on through it. A rinse right
-before the heater starts looks the same, and its count runs on until the
-phase ends and the plugin's shorter result replaces it.
+both together, about 1200 W, so the count goes on through it. Once the
+plug has read less than the pump, the count stays stopped: the heater
+coming on alone a few seconds later is not the pump again. A rinse right
+before the heater starts, with no reading below between them, looks like
+the pump and heater together, and its count runs on until the phase ends
+and the plugin's shorter result replaces it.

@@ -219,6 +219,16 @@ test('a phase that ends above its range lasts until the draw falls below it', ()
   assert.equal(off!.until, 54 * S, 'the pump ran until the draw fell to 2 W, not until it last left the range at 42 s');
 });
 
+test('the heater coming on after the pump has stopped is not the pump', () => {
+  // The coffee of 25 October, 20 s: the pump with the heater beside it, then the pump
+  // alone, then down to 6 W, and the heater alone six seconds later.
+  const tracker = new PhaseTracker({ name: 'Pumpe', minWatts: 30, maxWatts: 100, minSeconds: 1, holdSeconds: 15 });
+  const curve: [number, number][] = [[0, 6], [6, 59], [12, 1260], [18, 1246], [24, 56], [30, 6], [36, 1206], [42, 6]];
+  const off = track(tracker, curve, 120).find(({ active }) => !active);
+  assert.equal(off!.from, 6 * S);
+  assert.equal(off!.until, 30 * S, 'the pump stopped when the draw fell to 6 W, not when the heater did at 42 s');
+});
+
 test('a draw that stays above the range until the phase ends: the phase lasted until it left it', () => {
   const tracker = new PhaseTracker({ name: 'Pumpe', minWatts: 30, maxWatts: 100, minSeconds: 1, holdSeconds: 15 });
   const off = track(tracker, [[0, 2], [10, 55], [20, 1200], [60, 2]], 120).find(({ active }) => !active);

@@ -86,8 +86,8 @@ export interface PhaseChange {
    * off, or on a short one — when it last fell below it: how long it really
    * lasted, without the hold and with the time it took to come on. A moment
    * above the band before the fall belongs to it, as a coffee machine's
-   * heater coming on beside the pump; a draw that stayed above until the
-   * phase ended, when it last left the band.
+   * heater coming on beside the pump, but not one after it; a draw that
+   * stayed above until the phase ended, when it last left the band.
    */
   from?: number;
   until?: number;
@@ -103,7 +103,7 @@ export class PhaseTracker {
   /** Time spent in the band since the draw first entered it, through to the phase's end. */
   #inMs = 0;
   #outSince: number | undefined;
-  /** When the draw fell below the band, or none came, since it was last at or above it. */
+  /** When the draw fell below the band, or none came, since it was last in it. */
   #belowSince: number | undefined;
   /** When the draw first entered the band, for a phase on or in the making. */
   #firstIn: number | undefined;
@@ -149,9 +149,11 @@ export class PhaseTracker {
     } else {
       this.#outSince ??= at;
     }
+    // Once below, the draw is over until it is back in the band: the heater
+    // alone a few seconds later is not the pump again.
     if (watts < this.#phase.minWatts) {
       this.#belowSince ??= at;
-    } else {
+    } else if (this.#inBand(watts)) {
       this.#belowSince = undefined;
     }
     return this.#check(at);

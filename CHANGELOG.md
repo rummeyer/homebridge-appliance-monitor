@@ -20,6 +20,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   came on beside the pump for its last seconds, above the pump's range, was
   sent as 36 s though the pump ran 50.
 
+- A phase's end is where the draw fell below its range, even when it rose
+  above it again a few seconds later: a coffee machine's heater coming on
+  after the pump had stopped made a 20 s coffee 36 s, and a 5 s rinse 18.
+
 - `extras/awtrix-ng`, not part of the package: once the time until it is
   switched off is up, the app shows OFF alone rather than a 0:00 that stands
   still while the plug is not off yet.
@@ -43,6 +47,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   the rotation; it was brought up before the time it was switched on had
   come, found nothing to show and went on to the next app. Once the machine
   is preheated, the app comes up too, also without that setting.
+
+- `extras/awtrix-ng` 4.4: once the plug has read less than **Pump off
+  below**, the shot's count stays stopped; the heater coming on after the
+  pump went on counting.
 
 ## [1.16.1] — 2026-10-21
 

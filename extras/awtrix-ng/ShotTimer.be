@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.3
+# @version 4.4
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -194,7 +194,7 @@ class ShotTimer
       self.known = true
     elif t == self.since_topic
       self.since_s = num(p, 0)
-      if self.running && self.pin && !self.visible && self.since_s > 0
+      if self.running && self.pin && self.since_s > 0
         self.come()
       end
     elif t == self.heat_topic
@@ -275,18 +275,15 @@ class ShotTimer
     end
   end
 
-  # Frozen while the plug reads below the pump: nothing runs. The heater runs
-  # beside the pump during a coffee, so a reading above it counts on.
+  # Frozen once the plug reads below the pump: nothing runs. The heater runs
+  # beside the pump during a coffee, so a reading above it counts on, but the
+  # heater coming on alone after the pump stopped does not start it again.
   def watts(w)
     if self.shot != "run" || w == nil
       return
     end
-    if w < self.below
-      if self.stopped == nil
-        self.stopped = now_ms()
-      end
-    else
-      self.stopped = nil
+    if w < self.below && self.stopped == nil
+      self.stopped = now_ms()
     end
   end
 
