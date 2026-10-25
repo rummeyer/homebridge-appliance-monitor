@@ -47,6 +47,7 @@ class ShotTimer
   var since_s      # Unix seconds it has been in its state since, 0 if not known
   var heating      # the heating phase is on
   var idle_at, over_at   # Unix seconds Idle / Overtime turn on, 0 for none
+  var idle_len     # how long Idle counts, in whole minutes' seconds, from the last idle at; 0 if not known
   var built        # the second the lines were built for
   var shown        # the shot's seconds the lines were built for
   var line1, line2 # lists of [text, colour], or nil
@@ -123,6 +124,7 @@ class ShotTimer
     self.since_s = 0
     self.heating = false
     self.idle_at = 0
+    self.idle_len = 0
     self.over_at = 0
     self.built = -1
     self.shown = -1
@@ -203,6 +205,7 @@ class ShotTimer
         self.heat_done = false
         self.pumped = false
         self.temp0 = self.running ? self.temp : nil
+        self.idle_len = 0
         self.temp0_s = epoch_ms() / 1000
         # The since that came before is the old state's; the new one follows right after.
         if self.known
@@ -240,6 +243,12 @@ class ShotTimer
       end
     elif t == self.idle_topic
       self.idle_at = num(p, 0)
+      # Sent when the phase it counts from has ended, a little after the pump stopped: up to the
+      # minute. The longest since it was switched on, as a retained one may be partly counted down.
+      var left = (self.idle_at - epoch_ms() / 1000 + 59) / 60 * 60
+      if left > self.idle_len
+        self.idle_len = left
+      end
     elif t == self.over_topic
       self.over_at = num(p, 0)
     end
@@ -388,7 +397,8 @@ class ShotTimer
     # on at as 0 % to Preheated from as 100 %, every three seconds the other
     # one of that and how long until then, at the rate it has risen so far;
     # how long it has been on without a thermometer. Else when it is switched
-    # off, by whichever comes first. One from before it was switched on is stale.
+    # off, by whichever comes first, Idle standing still at its full time while
+    # it is held. One from before it was switched on is stale.
     if heating
       if self.temp != nil && self.temp0 != nil && self.ready > self.temp0
         var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
@@ -406,6 +416,10 @@ class ShotTimer
     var off = 0
     if self.idle_at > self.since_s
       off = self.idle_at
+    elif self.idle_at == 0 && self.idle_len > 0
+      # Held while a coffee, a rinse or the heater runs, and counted again in full from its end:
+      # the full time, standing still, not Overtime's an hour away.
+      off = unix + self.idle_len
     end
     if self.over_at > self.since_s && (off == 0 || self.over_at < off)
       off = self.over_at

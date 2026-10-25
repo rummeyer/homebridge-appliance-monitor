@@ -36,7 +36,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   held Idle. While it heats up, line 2 shows how far, from the temperature
   it was switched on at as 0 % to **Preheated from** as 100 %, taking turns
   every three seconds with how long until then at the rate it has risen so
-  far; without a thermometer, how long it has been on as before.
+  far; without a thermometer, how long it has been on as before. While a
+  coffee, a rinse or the heater holds Idle, OFF stands still at Idle's full
+  time rather than showing Overtime's, an hour away.
 
 ## [1.16.1] — 2026-10-21
 
