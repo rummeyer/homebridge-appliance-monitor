@@ -57,6 +57,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   Reloaded or reconnected while the machine was on, it went on at once and
   came back a moment later, flashing the next app for half a second.
 
+- `extras/awtrix-ng` 4.6: a coffee made while heating up shows the time
+  until it is switched off below its result, not how far heating up is.
+  Connecting again after the machine was switched on or off meanwhile, the
+  time it was switched on is kept when it came just before its state, rather
+  than read as the old state's and shown as 0:00.
+
 ## [1.16.1] — 2026-10-21
 
 ### Changed

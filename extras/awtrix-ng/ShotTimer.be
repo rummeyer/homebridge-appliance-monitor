@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.5
+# @version 4.6
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -39,6 +39,7 @@ class ShotTimer
   var running      # the machine is on
   var known        # a state has come at all; the first is the retained one, not a change
   var since_s      # Unix seconds it has been in its state since, 0 if not known
+  var since_ms     # now_ms() when the since came
   var heating      # the heating phase is on
   var idle_at, over_at   # Unix seconds Idle / Overtime turn on, 0 for none
   var idle_len     # how long Idle counts, in whole minutes' seconds, from the last idle at; 0 if not known
@@ -115,6 +116,7 @@ class ShotTimer
     self.running = false
     self.known = false
     self.since_s = 0
+    self.since_ms = 0
     self.heating = false
     self.idle_at = 0
     self.idle_len = 0
@@ -164,9 +166,10 @@ class ShotTimer
   end
 
   # Heating up: until warm enough where the thermometer tells, else while the heating phase is on;
-  # not once a coffee has been made, when its OFF countdown matters more.
+  # not once a coffee has been made, when its OFF countdown matters more, nor while it is shown.
   def warming()
-    return self.running && !self.pumped && !self.heated() && (self.temp != nil || self.heating)
+    return self.running && !self.pumped && !(self.shot == "done" && !self.rinsed) &&
+      !self.heated() && (self.temp != nil || self.heating)
   end
 
   def machine(t, p)
@@ -182,8 +185,9 @@ class ShotTimer
         self.warm = self.running && self.temp != nil && self.temp >= self.ready
         self.idle_len = 0
         self.temp0_s = epoch_ms() / 1000
-        # The since that came before is the old state's; the new one follows right after.
-        if self.known
+        # The since that came before is the old state's, and the new one follows right after; but
+        # on connecting again the retained ones come in any order, and one a moment before is new.
+        if self.known && now_ms() - self.since_ms > 2000
           self.since_s = 0
         end
         # Up once its since has come, as there is nothing to show before.
@@ -196,6 +200,7 @@ class ShotTimer
       self.known = true
     elif t == self.since_topic
       self.since_s = num(p, 0)
+      self.since_ms = now_ms()
       if self.running && self.pin && self.since_s > 0
         self.come()
       end
