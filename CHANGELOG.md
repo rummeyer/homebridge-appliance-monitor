@@ -52,8 +52,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   below**, the shot's count stays stopped; the heater coming on after the
   pump went on counting.
 
-- `extras/awtrix-ng` 4.5: brought up with nothing to show yet, the app waits
-  three seconds for the machine's topics before going on to the next app.
+- `extras/awtrix-ng` 4.5: brought up with nothing to show yet, the app waits a
+  second for the machine's topics before going on to the next app.
   Reloaded or reconnected while the machine was on, it went on at once and
   came back a moment later, flashing the next app for half a second.
 

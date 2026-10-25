@@ -319,7 +319,7 @@ class ShotTimer
     self.visible = true
     if !self.should_show()
       timer.cancel(self.wait_id)
-      self.wait_id = timer.after(3000, / -> self.waited())
+      self.wait_id = timer.after(1000, / -> self.waited())
     end
   end
 
