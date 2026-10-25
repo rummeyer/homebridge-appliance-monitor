@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.4
+# @version 4.5
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -46,6 +46,7 @@ class ShotTimer
   var shown        # the shot's seconds the lines were built for
   var line1, line2 # lists of [text, colour], or nil
   var timer_id
+  var wait_id      # a moment's grace on being shown with nothing yet
   var visible      # on the display now
 
   def init()
@@ -123,6 +124,7 @@ class ShotTimer
     self.line1 = nil
     self.line2 = nil
     self.timer_id = nil
+    self.wait_id = nil
     self.visible = false
   end
 
@@ -310,10 +312,20 @@ class ShotTimer
     end
   end
 
-  # Brought up while there is nothing to show — a hold from before, or by hand: on to the next.
+  # Brought up while there is nothing to show — a hold from before, or by hand: on to the next,
+  # but not at once. Just loaded or reconnected, the machine's retained topics come a moment
+  # later, and leaving before them flashes the next app for half a second.
   def on_show()
     self.visible = true
     if !self.should_show()
+      timer.cancel(self.wait_id)
+      self.wait_id = timer.after(3000, / -> self.waited())
+    end
+  end
+
+  def waited()
+    self.wait_id = nil
+    if self.visible && !self.should_show()
       self.leave()
     end
   end
