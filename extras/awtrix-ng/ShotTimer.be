@@ -243,9 +243,10 @@ class ShotTimer
       end
     elif t == self.idle_topic
       self.idle_at = num(p, 0)
-      # Sent when the phase it counts from has ended, a little after the pump stopped: up to the
-      # minute. The longest since it was switched on, as a retained one may be partly counted down.
-      var left = (self.idle_at - epoch_ms() / 1000 + 59) / 60 * 60
+      # Sent when the phase it counts from has ended, a little after the pump stopped, and the
+      # clocks a moment apart: to the nearest minute. The longest since it was switched on, as a
+      # retained one may be partly counted down.
+      var left = (self.idle_at - epoch_ms() / 1000 + 30) / 60 * 60
       if left > self.idle_len
         self.idle_len = left
       end
@@ -406,7 +407,10 @@ class ShotTimer
         var rise = self.temp - self.temp0
         if rise > 0 && self.temp_s > self.temp0_s && (unix / 3) % 2 == 1
           var at = self.temp_s + int((self.ready - self.temp) * (self.temp_s - self.temp0_s) / rise)
-          self.line2 = [[self.clock(at - unix), self.white]]
+          # Not a 0:00 that stands still when it rises slower than so far: the percentage then.
+          if at > unix
+            self.line2 = [[self.clock(at - unix), self.white]]
+          end
         end
       else
         self.line2 = [[self.clock(on_s), self.white]]
