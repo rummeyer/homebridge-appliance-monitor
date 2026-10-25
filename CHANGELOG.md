@@ -30,6 +30,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   rate it has risen so far; without a thermometer, how long it has been on
   as before. While a coffee, a rinse or the heater holds Idle, OFF stands
   still at Idle's full time rather than showing Overtime's, an hour away.
+  A rinse no longer ends the heating up, as a pump a moment long when the
+  machine is switched on did, and once heated it stays so when a reading
+  dips below **Preheated from**.
   4.0 and 4.1, a setting for every topic, are gone again: 4.0 asked for
   more subscriptions than AWTRIX NG holds for an app, and never heard the
   thermometer or Overtime. After 4.0 or 4.1, set the settings again where

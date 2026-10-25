@@ -15,7 +15,9 @@ topics:
 The shot takes over the display while it runs; the rest takes its turn in
 the clock's rotation, and only while the machine is on. A coffee made while
 it is still heating up ends the heating up: from then on line 2 is the
-countdown to switching off.
+countdown to switching off. A rinse does not, as a pump a moment long when
+it is switched on, and neither does a reading that dips below **Preheated
+from** once it was reached.
 
 On a TC001 the cup is 8 × 8 and there is one line beside it: the shot while
 it runs and its result after, else the two lines taking turns every four

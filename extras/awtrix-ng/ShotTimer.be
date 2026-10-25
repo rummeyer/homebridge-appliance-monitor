@@ -26,7 +26,8 @@ class ShotTimer
   var temp0        # the temperature when it was switched on, the heating up's 0 %; nil while off
   var temp0_s, temp_s   # Unix seconds of temp0 and of the latest reading
   var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
-  var pumped       # the pump has run since it was switched on: in use, not heating up any more
+  var pumped       # a coffee has been made since it was switched on: in use, not heating up any more
+  var warm         # the thermometer has said heated since it was switched on, whatever it says now
   var below, lead_ms, hold_ms, pin
   var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
   var x0           # where the text starts: past the 16×16 cup, or the 8×8 one 8 rows high
@@ -71,6 +72,7 @@ class ShotTimer
     self.temp_s = 0
     self.heat_done = false
     self.pumped = false
+    self.warm = false
     self.below = store.get("below")
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
@@ -145,13 +147,17 @@ class ShotTimer
         self.temp0 = v
         self.temp0_s = self.temp_s
       end
+      if self.running && v >= self.ready
+        self.warm = true
+      end
       self.built = -1
     end
   end
 
-  # Preheated: warm enough where there is a thermometer, else once the heating phase has ended.
+  # Preheated: warm enough where there is a thermometer, and still when a reading dips below,
+  # else once the heating phase has ended.
   def heated()
-    return self.temp != nil ? self.temp >= self.ready : self.heat_done
+    return self.warm || (self.temp != nil ? self.temp >= self.ready : self.heat_done)
   end
 
   # Heating up: until warm enough where the thermometer tells, else while the heating phase is on;
@@ -170,6 +176,7 @@ class ShotTimer
         self.heat_done = false
         self.pumped = false
         self.temp0 = self.running ? self.temp : nil
+        self.warm = self.running && self.temp != nil && self.temp >= self.ready
         self.idle_len = 0
         self.temp0_s = epoch_ms() / 1000
         # The since that came before is the old state's; the new one follows right after.
@@ -227,7 +234,6 @@ class ShotTimer
     self.t0 = now_ms() - int(seconds * 1000) - self.lead_ms
     self.stopped = nil
     self.rinsed = false
-    self.pumped = true
     self.shot = "run"
     self.built = -1
     rotation.show()
@@ -248,6 +254,11 @@ class ShotTimer
   end
 
   def finish()
+    # A coffee ends the heating up, a rinse does not: some machines pump a moment as they are
+    # switched on. Which it was is known by now.
+    if !self.rinsed
+      self.pumped = true
+    end
     self.shot = "idle"
     self.stopped = nil
     self.timer_id = nil
