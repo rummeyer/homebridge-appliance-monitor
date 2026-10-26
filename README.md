@@ -127,7 +127,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with its pairing, its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle time and what it counts from, and under More its polling interval, its phases and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with where its readings come from (here an MQTT topic, with its online topic and keys), its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle time and what it counts from, and under More its phases and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -163,8 +163,8 @@ appliance chooses its device.
    warning that all of it counts as one appliance until a device is chosen.
 3. **Choose the devices.** Reopen the plugin settings: the appliance now
    has a **Device** field listing them. Choose its own. For each further
-   device, **+ Add** an appliance, set **Pairing** to *Shared with* the
-   first one — no code of its own — and choose its **Device**. Save, and
+   device, **+ Add** an appliance, set **Readings from** to *Matter via*
+   the first one — no code of its own — and choose its **Device**. Save, and
    restart the child bridge once more.
 4. The log now says, for each, `follows <device> (endpoint …, id …)`. An
    appliance whose device is not found says so, with the list to choose

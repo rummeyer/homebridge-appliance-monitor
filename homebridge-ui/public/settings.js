@@ -366,23 +366,6 @@
       // while chosen and not filled in yet.
       const viaMqtt = typeof device.mqttTopic === 'string';
       const topicError = (value) => (typeof value === 'string' && /[+#]/.test(value) ? 'One topic exactly: no + or #.' : '');
-      const readingsField = field('Readings from',
-        choice(viaMqtt ? 'mqtt' : 'matter', [['matter', 'Matter pairing'], ['mqtt', 'MQTT topic']], (value) => {
-          if (value === 'mqtt') {
-            device.mqttTopic = device.mqttTopic ?? '';
-            // A bridge's device is Matter's; the code stays, for going back.
-            for (const key of ['pairedWith', 'deviceId', 'endpoint']) {
-              delete device[key];
-            }
-          } else {
-            for (const key of ['mqttTopic', 'mqttOnlineTopic', 'mqttPowerKey', 'mqttRelayKey']) {
-              delete device[key];
-            }
-          }
-          changed();
-          render();
-        }),
-        viaMqtt && config.mqtt !== true ? 'MQTT is off: switch it on under General.' : 'A Shelly can publish its own.');
       const mqttFields = viaMqtt
         ? [
           field('Topic', text(device.mqttTopic, 'shellyplugsg3-…/status/switch:0', (value, input) => {
@@ -412,18 +395,41 @@
       const owners = config.devices
         .filter((d) => d !== device && d.name && !d.pairedWith && typeof d.mqttTopic !== 'string' && (metered[d.name]?.length ?? 0) > 1)
         .map((d) => d.name).sort(byName);
-      const pairingField = !viaMqtt && (owners.length || device.pairedWith)
-        ? field('Pairing',
-          choice(device.pairedWith ?? '', [['', 'Its own pairing code'], ...owners.map((name) => [name, `Shared with ${name} (a bridge)`])], (value) => {
-            setOrDrop(device, 'pairedWith', value);
-            if (value) {
-              delete device.pairingCode;
+      // Where its readings come from, in one list: its own Matter pairing, a
+      // bridge's it shares — offered only where more than one device
+      // measures, so a house of plain plugs sees nothing of it — or a topic.
+      const sources = [['own', 'Matter pairing'],
+        ...owners.map((name) => [`with:${name}`, `Matter via ${name}`])];
+      if (device.pairedWith && !owners.includes(device.pairedWith)) {
+        sources.push([`with:${device.pairedWith}`, `Matter via ${device.pairedWith} (not found)`]);
+      }
+      sources.push(['mqtt', 'MQTT topic']);
+      const readingsField = field('Readings from',
+        choice(viaMqtt ? 'mqtt' : device.pairedWith ? `with:${device.pairedWith}` : 'own', sources, (value) => {
+          if (value === 'mqtt') {
+            device.mqttTopic = device.mqttTopic ?? '';
+          } else {
+            for (const key of ['mqttTopic', 'mqttOnlineTopic', 'mqttPowerKey', 'mqttRelayKey']) {
+              delete device[key];
             }
-            changed();
-            render();
-          }),
-          'A bridge is paired once; the devices behind it share that pairing.')
-        : null;
+          }
+          // A bridge's device is the bridge's; the code stays, for going back.
+          const owner = value.startsWith('with:') ? value.slice('with:'.length) : '';
+          if (owner !== (device.pairedWith ?? '')) {
+            for (const key of ['deviceId', 'endpoint']) {
+              delete device[key];
+            }
+          }
+          setOrDrop(device, 'pairedWith', owner);
+          if (owner) {
+            delete device.pairingCode;
+          }
+          changed();
+          render();
+        }),
+        viaMqtt ? (config.mqtt === true ? 'Nothing to pair.' : 'MQTT is off: switch it on under General.')
+          : device.pairedWith ? 'A bridge is paired once; the devices behind it share that pairing.'
+            : 'Or a topic a plug publishes to, as a Shelly can.')
       const devices = metered[device.pairedWith || device.name] ?? [];
       const current = device.deviceId ?? (device.endpoint === undefined ? '' : `endpoint:${device.endpoint}`);
       const deviceOptions = [['', 'Every reading (a plug of its own)'],
@@ -493,11 +499,11 @@
           el('div', { class: 'om-set-grid om-set-rows' },
             field('Name', nameInput, viaMqtt ? 'Its statistics go by it.' : 'Renaming means pairing again.', nameError(device.name ?? '')),
             readingsField,
-            pairingField,
-            device.pairedWith ? deviceField : viaMqtt ? null : field('Pairing code', codeInput,
+            device.pairedWith ? deviceField : viaMqtt ? mqttFields[0] : field('Pairing code', codeInput,
               isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
               codeError(device.pairingCode ?? ''))),
-          viaMqtt ? el('div', { class: 'om-set-grid om-set-rows' }, ...mqttFields) : null,
+          // The topic where the code would be; the rest of it on a row of its own.
+          viaMqtt ? el('div', { class: 'om-set-grid om-set-rows' }, ...mqttFields.slice(1)) : null,
           el('div', { class: 'om-set-grid om-set-rows' },
             iconField,
             device.pairedWith || viaMqtt ? null : deviceField,
