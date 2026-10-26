@@ -468,21 +468,20 @@ end
 end
 def draw_bar(top)
 var room = width() - self.x0
-var used = (room + 1) / 3 * 3 - 1
-var start = self.x0 + (room - used) / 2
-var lit = (self.bar * used + 50) / 100
+var n = (room + 1) / 3
+var start = self.x0 + (room - (n * 3 - 1)) / 2
+var full = self.bar * n / 100
 var h = self.hot
 var dim = ((h >> 16 & 0xFF) * 3 / 8 << 16) | ((h >> 8 & 0xFF) * 3 / 8 << 8) | (h & 0xFF) * 3 / 8
-var newest = (now_ms() / 500) % 2 == 1 && lit > 0 ? (lit - 1) / 3 * 3 : used
-var i = 0
-while i < used
-if i % 3 != 2
-var c = i >= lit ? dim : (i >= newest ? self.white : h)
+var blink = (now_ms() / 500) % 2 == 1
+var k = 0
+while k < n
+var c = k < full ? h : (k == full && blink ? self.white : dim)
 for y : top + 1 .. top + 4
-pixel(start + i, y, c)
+pixel(start + k * 3, y, c)
+pixel(start + k * 3 + 1, y, c)
 end
-end
-i += 1
+k += 1
 end
 end
 end
