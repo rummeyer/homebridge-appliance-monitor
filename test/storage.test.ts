@@ -48,6 +48,16 @@ test('a pairing code is learned only for a plug that has none yet', () => {
   assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), { Office: { node: '13', pairingCode: '34970112332' } });
 });
 
+test('another code for a plug known by name is a new plug, the same code in another spelling is not', () => {
+  const registry = new NodeRegistry(join(dir, 'other.json'));
+  registry.set('Coffee', 6n, '3497-011-2332');
+  assert.equal(registry.pairedWithOtherCode('Coffee', '3497 011 2332'), false);
+  assert.equal(registry.pairedWithOtherCode('Coffee', '0150-112-2338'), true);
+  assert.equal(registry.pairedWithOtherCode('Washer', '0150-112-2338'), false, 'not known at all: an ordinary first pairing');
+  registry.set('Kettle', 7n);
+  assert.equal(registry.pairedWithOtherCode('Kettle', '0150-112-2338'), false, 'no code known: learned, not a new plug');
+});
+
 test('a missing registry file is an empty registry', () => {
   assert.deepEqual(new NodeRegistry(join(dir, 'nope.json')).entries(), []);
 });

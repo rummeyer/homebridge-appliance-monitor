@@ -24,6 +24,23 @@ export interface DeviceConfig {
    */
   pairingCode?: string;
   /**
+   * Readings over MQTT instead of a Matter pairing: the topic a plug
+   * publishes its power to, a JSON object or a number of watts — a Shelly's
+   * own `<id>/status/switch:0`, or what a script on it sends more often.
+   * Needs MQTT switched on; a pairing code is then not used.
+   */
+  mqttTopic?: string;
+  /** Where the watts are in a JSON payload, `a.b` for one inside another; `apower`, a Shelly's, if not set. */
+  mqttPowerKey?: string;
+  /** Where the relay is, true when switched on; `output`, a Shelly's, if not set. */
+  mqttRelayKey?: string;
+  /**
+   * A topic saying whether the plug is connected — true or false, online or
+   * offline: a Shelly's `<id>/online`, which the broker sets to false when it
+   * goes. Without one it counts as connected from its first reading.
+   */
+  mqttOnlineTopic?: string;
+  /**
    * Another appliance whose pairing this one shares, instead of a pairing
    * code of its own: for a device behind a Matter bridge, which is paired
    * once and carries many devices. See bridged.ts.
@@ -249,12 +266,20 @@ export function parsePairingCode(code: string): PairingData | undefined {
   }
 }
 
+/** A topic to listen to: one exactly, so no wildcards, and none starting with "/". */
+const isTopic = (topic: unknown): boolean => typeof topic === 'string' && topic.trim() !== '' && !/[+#\0]/.test(topic) && !topic.trim().startsWith('/');
+
+/** The topic an appliance's readings come from over MQTT, if they do. */
+export const readingsTopic = (device: DeviceConfig): string | undefined =>
+  typeof device.mqttTopic === 'string' && device.mqttTopic.trim() ? device.mqttTopic.trim() : undefined;
+
 /** Returns a message per problem, or none when the device can be used. */
 export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (device === null || typeof device !== 'object') {
     return [`devices[${index}] is not an object`];
   }
-  const { name, pairingCode, thresholds, runningAs, pairedWith, deviceId, endpoint } = device as Partial<DeviceConfig>;
+  const { name, pairingCode, thresholds, runningAs, pairedWith, deviceId, endpoint, mqttTopic, mqttOnlineTopic, mqttPowerKey, mqttRelayKey } =
+    device as Partial<DeviceConfig>;
   const label = typeof name === 'string' && name.trim() ? `"${name}"` : `devices[${index}]`;
   const problems: string[] = [];
 
@@ -264,6 +289,16 @@ export function validateDeviceConfig(device: unknown, index: number): string[] {
   if (pairingCode !== undefined && pairingCode !== '') {
     if (typeof pairingCode !== 'string' || parsePairingCode(pairingCode) === undefined) {
       problems.push(`${label} has a pairing code that is not a valid Matter setup code`);
+    }
+  }
+  for (const [key, topic] of [['mqttTopic', mqttTopic], ['mqttOnlineTopic', mqttOnlineTopic]] as const) {
+    if (topic !== undefined && topic !== null && topic !== '' && !isTopic(topic)) {
+      problems.push(`${label} has an ${key} that is no MQTT topic: no wildcards, not starting with /`);
+    }
+  }
+  for (const [key, value] of [['mqttPowerKey', mqttPowerKey], ['mqttRelayKey', mqttRelayKey]] as const) {
+    if (value !== undefined && value !== null && typeof value !== 'string') {
+      problems.push(`${label} has an ${key} that is not text`);
     }
   }
   if (pairedWith !== undefined && pairedWith !== null && (typeof pairedWith !== 'string' || !pairedWith.trim())) {
@@ -513,6 +548,9 @@ export function pairedWithProblem(device: DeviceConfig, devices: DeviceConfig[])
   }
   if (owner.pairedWith) {
     return `"${name}" is paired with "${pairedWith}", which is itself paired with "${owner.pairedWith}"; name that one instead`;
+  }
+  if (readingsTopic(owner)) {
+    return `"${name}" is paired with "${pairedWith}", whose readings come over MQTT rather than from a pairing`;
   }
   return undefined;
 }

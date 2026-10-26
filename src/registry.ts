@@ -46,6 +46,12 @@ export class NodeRegistry {
     }
   }
 
+  /** Whether the plug known by this name was paired with another code: a new plug, given the old one's name. */
+  pairedWithOtherCode(name: string, pairingCode: string): boolean {
+    const known = this.#nodes.get(name)?.pairingCode;
+    return known !== undefined && known !== samePairingCode(pairingCode);
+  }
+
   /** The name a plug was paired under with this code. */
   nameFor(pairingCode: string): string | undefined {
     const code = samePairingCode(pairingCode);

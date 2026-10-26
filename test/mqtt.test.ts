@@ -4,7 +4,7 @@ import test from 'node:test';
 import { DEFAULT_MQTT_PREFIX, DEFAULT_MQTT_URL, usableMessages, usableMqtt } from '../src/config.ts';
 import type { DeviceConfig } from '../src/config.ts';
 import type { LiveAppliance } from '../src/dashboard.ts';
-import { clockDuration, fillMessage, phaseTopic, stateTopics, topicLevel, withoutLogin } from '../src/mqtt.ts';
+import { clockDuration, fillMessage, parseOnline, parseReading, phaseTopic, stateTopics, topicLevel, withoutLogin } from '../src/mqtt.ts';
 
 const coffee: DeviceConfig = {
   name: 'Kaffeemaschine',
@@ -128,4 +128,27 @@ test('messages without MQTT are none, and said so', () => {
   const { messages, problems } = usableMessages({ ...coffee, messages: [{ phase: 'Bezug', when: 'start', topic: 'x/y' }] }, coffee.phases!, false);
   assert.deepEqual(messages, []);
   assert.match(problems[0]!, /MQTT is off/);
+});
+
+test("a plug's readings: a Shelly's status, a number, keys of one's own, and anything else not known", () => {
+  const shelly = '{"id":0,"source":"timer","output":true,"apower":1231.4,"voltage":229.8,"aenergy":{"total":12.3}}';
+  assert.deepEqual(parseReading(shelly), { watts: 1231.4, on: true });
+  assert.deepEqual(parseReading('{"output":false,"apower":0}'), { watts: 0, on: false });
+  assert.deepEqual(parseReading('14.9'), { watts: 14.9 });
+  assert.deepEqual(parseReading('{"power":{"now":5},"relay":"on"}', 'power.now', 'relay'), { watts: 5 }, 'a relay that is no true/false is not known');
+  assert.deepEqual(parseReading(shelly, ' ', ''), { watts: 1231.4, on: true }, 'an empty key is the default');
+  assert.deepEqual(parseReading('{"aenergy":{"total":12.3}}', 'aenergy.total.x'), {});
+  assert.deepEqual(parseReading('-3'), {});
+  assert.deepEqual(parseReading('{"apower":"12"}'), {});
+  assert.deepEqual(parseReading('offline'), {});
+  assert.deepEqual(parseReading('null'), {});
+});
+
+test('whether a plug is connected: true or online, false or offline', () => {
+  assert.equal(parseOnline('true'), true);
+  assert.equal(parseOnline(' Online '), true);
+  assert.equal(parseOnline('false'), false);
+  assert.equal(parseOnline('offline'), false);
+  assert.equal(parseOnline(''), undefined);
+  assert.equal(parseOnline('1'), undefined);
 });

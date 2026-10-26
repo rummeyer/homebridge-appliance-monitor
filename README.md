@@ -628,8 +628,9 @@ internet.
 
 The plugin can also publish each appliance's state to an MQTT broker, such
 as Mosquitto, for whatever else listens on your network: a pixel display
-such as an AWTRIX clock, Node-RED, Home Assistant. It only publishes;
-nothing sent to it changes anything.
+such as an AWTRIX clock, Node-RED, Home Assistant. Nothing sent to it
+changes anything; what it listens to is the readings of a plug that
+publishes them itself, see [Readings over MQTT](#readings-over-mqtt).
 
 | Topic | Value |
 |---|---|
@@ -698,6 +699,31 @@ it has been on, when it is switched off, and a shot timer that counts while
 the pump runs.
 It is also on the [AWTRIX Hub](https://awtrix.de/script/n4Zx4bmvrpw8).
 
+### Readings over MQTT
+
+A plug that publishes its power over MQTT needs no Matter pairing: a
+Shelly, whose Matter side may offer only its relay and no power reading
+(the Plug S Gen3 does). On the **Settings** tab, set **Readings from** to
+**MQTT topic** and give the topic, and the plugin listens to it instead.
+The payload is a number of watts, or a JSON object with them under
+**Watts key** (`apower`, a Shelly's) and the relay under **Relay key**
+(`output`): `{"apower":1231.4,"output":true}`. An **Online topic** saying
+`true`/`false` or `online`/`offline` tells when the plug is gone; a
+Shelly's `<id>/online` does, set by the broker when it drops off. Without
+one it counts as connected from its first reading. It needs MQTT switched
+on, on the same broker.
+
+A Shelly's own status messages, on `<id>/status/switch:0` once **Generic
+status update over MQTT** is on, leave out small changes: a pump of 50 W
+beside a heater of 1200 W never shows. [extras/shelly/power-mqtt.js](extras/shelly/power-mqtt.js)
+is a script for the Shelly that asks every second and sends whatever
+changed to `<id>/power`. In the Shelly's web UI, under **Scripts**, create
+one, paste it in, save, start it and turn on **Run on startup**. Then:
+
+| Readings from | Topic | Online topic |
+|---|---|---|
+| MQTT topic | `shellyplugsg3-…/power` | `shellyplugsg3-…/online` |
+
 ## Plugs that report seldom
 
 A plug decides itself how often it reports its power. The Shelly Plug PM
@@ -739,6 +765,10 @@ config it writes looks like this:
 | --- | --- | --- |
 | `devices[].name` | — | The appliance. Its accessory is called "<name> Monitor", and its Running switch "<name> Running"; also the name in the log and the recordings. |
 | `devices[].pairingCode` | — | Setup code from the Home app, or an `MT:` QR payload. Needed to pair; kept, it lets the plug be renamed later. |
+| `devices[].mqttTopic` | | Readings over MQTT instead of a pairing: the topic with the watts. See [Readings over MQTT](#readings-over-mqtt). |
+| `devices[].mqttPowerKey` | `apower` | Where the watts are in a JSON payload; `a.b` for one inside another. |
+| `devices[].mqttRelayKey` | `output` | Where the relay is, `true` while switched on. |
+| `devices[].mqttOnlineTopic` | | A topic saying whether the plug is connected: `true`/`false` or `online`/`offline`. |
 | `devices[].runningSwitch` | `true` | Running in HomeKit, on while the appliance runs. |
 | `devices[].pairedWith` | | Another appliance whose pairing this one shares: a device behind a Matter bridge. See [Behind a Matter bridge](#behind-a-matter-bridge). |
 | `devices[].deviceId` | | Which device behind the bridge it follows, by UniqueID. Without it, every reading of the node counts. |

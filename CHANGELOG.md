@@ -6,6 +6,22 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Readings over MQTT, instead of a Matter pairing: an appliance can take
+  its watts and relay from a topic a plug publishes to — a number, or JSON
+  with them under `apower` and `output`, a Shelly's keys, or keys of its
+  own — and whether it is connected from an online topic. For a Shelly
+  whose Matter side has no power reading, as the Plug S Gen3's has not.
+  `extras/shelly/power-mqtt.js` is a script for the Shelly that sends every
+  change within a second, where its own status messages leave out small ones.
+
+### Fixed
+
+- A new pairing code for an appliance already paired pairs the plug it
+  belongs to: a new plug given the old one's name was not paired while the
+  old one was known. The old pairing is let go only once the new one works.
+
 ## [1.16.2] — 2026-10-26
 
 ### Added

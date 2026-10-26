@@ -53,6 +53,10 @@ test('a device needs a name; a code is optional but has to be valid', () => {
   assert.equal(validateDeviceConfig({ name: ' ' }, 2).length, 1);
   assert.match(validateDeviceConfig({ name: 'Washer', pairingCode: '123' }, 0)[0]!, /"Washer".*pairing code/);
   assert.match(validateDeviceConfig(null, 3)[0]!, /devices\[3\]/);
+  assert.deepEqual(validateDeviceConfig({ name: 'Coffee', mqttTopic: 'shelly/status/switch:0', mqttOnlineTopic: 'shelly/online', mqttPowerKey: 'apower' }, 0), []);
+  assert.match(validateDeviceConfig({ name: 'Coffee', mqttTopic: 'shelly/#' }, 0)[0]!, /mqttTopic that is no MQTT topic/);
+  assert.match(validateDeviceConfig({ name: 'Coffee', mqttOnlineTopic: '/shelly/online' }, 0)[0]!, /mqttOnlineTopic/);
+  assert.match(validateDeviceConfig({ name: 'Coffee', mqttPowerKey: 3 }, 0)[0]!, /mqttPowerKey that is not text/);
 });
 
 test('duplicate names are reported once each', () => {

@@ -22,8 +22,9 @@
  * when one of its phases starts or ends — a command to a display — not
  * retained, as they are events rather than states.
  *
- * Only ever publishes: nothing sent to the plugin changes anything, as it
- * only measures.
+ * Nothing sent to the plugin changes anything, as it only measures. What it
+ * listens to is a plug's readings, for one that publishes them itself rather
+ * than being paired over Matter: a Shelly, say; see parseReading.
  */
 import { connect } from 'mqtt';
 import type { MqttClient } from 'mqtt';
@@ -119,6 +120,57 @@ export function stateTopics(prefix: string, device: DeviceConfig, live: LiveAppl
   return topics;
 }
 
+/** What a plug's message says, as far as it says it. */
+export interface MqttReading {
+  watts?: number;
+  /** Whether its relay is switched on. */
+  on?: boolean;
+}
+
+/** A Shelly's keys, in its own status messages and a script's alike. */
+export const DEFAULT_POWER_KEY = 'apower';
+export const DEFAULT_RELAY_KEY = 'output';
+
+/**
+ * A plug's message: a number of watts, or a JSON object with them under
+ * the power key and the relay under the relay key — `a.b` for one inside
+ * another. Anything not there, or not a number or true/false, is not known.
+ */
+export function parseReading(payload: string, powerKey = DEFAULT_POWER_KEY, relayKey = DEFAULT_RELAY_KEY): MqttReading {
+  let value: unknown;
+  try {
+    value = JSON.parse(payload);
+  } catch {
+    return {};
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? { watts: value } : {};
+  }
+  const watts = at(value, powerKey.trim() || DEFAULT_POWER_KEY);
+  const on = at(value, relayKey.trim() || DEFAULT_RELAY_KEY);
+  return {
+    ...(typeof watts === 'number' && Number.isFinite(watts) && watts >= 0 ? { watts } : {}),
+    ...(typeof on === 'boolean' ? { on } : {}),
+  };
+}
+
+function at(value: unknown, path: string): unknown {
+  let current = value;
+  for (const key of path.split('.')) {
+    if (current === null || typeof current !== 'object' || !Object.hasOwn(current, key)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
+/** Whether a plug says it is connected: true or online; false or offline. Anything else is not known. */
+export function parseOnline(payload: string): boolean | undefined {
+  const value = payload.trim().toLowerCase();
+  return value === 'true' || value === 'online' ? true : value === 'false' || value === 'offline' ? false : undefined;
+}
+
 /** Whole seconds: what a small display can count with, where milliseconds overflow its integers. */
 const unixSeconds = (ms: number): string => String(Math.round(ms / 1000));
 
@@ -135,6 +187,8 @@ export class MqttPublisher {
   readonly #sent = new Map<string, string>();
   /** Whether a lost connection was logged, so that the retries every few seconds are not. */
   #lost = false;
+  /** The topics listened to, and what each message on them goes to. */
+  readonly #listeners = new Map<string, (payload: string) => void>();
 
   constructor(log: Logging, url: string, prefix: string) {
     this.#log = log;
@@ -149,9 +203,13 @@ export class MqttPublisher {
     this.#client.on('connect', () => {
       this.#sent.clear();
       this.#client.publish(this.#status, 'online', { retain: true });
+      if (this.#listeners.size > 0) {
+        this.#client.subscribe([...this.#listeners.keys()]);
+      }
       this.#log.info(`MQTT: ${this.#lost ? 'connected again to' : 'publishing to'} ${this.#url}`);
       this.#lost = false;
     });
+    this.#client.on('message', (topic, payload) => this.#listeners.get(topic)?.(payload.toString()));
     this.#client.on('error', (error) => this.#lose(error.message));
     this.#client.on('offline', () => this.#lose('no connection'));
   }
@@ -160,6 +218,14 @@ export class MqttPublisher {
     if (!this.#lost) {
       this.#lost = true;
       this.#log.warn(`MQTT: ${this.#url}: ${why}; trying again every ${RECONNECT_MS / 1000} s`);
+    }
+  }
+
+  /** Hands every message on a topic to `listener`, from now and after every reconnect. */
+  listen(topic: string, listener: (payload: string) => void): void {
+    this.#listeners.set(topic, listener);
+    if (this.#client.connected) {
+      this.#client.subscribe(topic);
     }
   }
 

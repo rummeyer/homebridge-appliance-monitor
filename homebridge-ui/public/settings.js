@@ -361,6 +361,46 @@
 
       const isPaired = isPairedDevice(device);
 
+      // A plug that publishes its readings itself, a Shelly say: a topic
+      // instead of a pairing. Kept as '' while chosen and not filled in yet.
+      const viaMqtt = !device.pairedWith && typeof device.mqttTopic === 'string';
+      const topicError = (value) => (typeof value === 'string' && /[+#]/.test(value) ? 'One topic exactly: no + or #.' : '');
+      const readingsField = device.pairedWith ? null : field('Readings from',
+        choice(viaMqtt ? 'mqtt' : 'matter', [['matter', 'Matter pairing'], ['mqtt', 'MQTT topic']], (value) => {
+          if (value === 'mqtt') {
+            device.mqttTopic = device.mqttTopic ?? '';
+          } else {
+            for (const key of ['mqttTopic', 'mqttOnlineTopic', 'mqttPowerKey', 'mqttRelayKey']) {
+              delete device[key];
+            }
+          }
+          changed();
+          render();
+        }),
+        viaMqtt && config.mqtt !== true ? 'MQTT is off: switch it on under General.' : 'A Shelly can publish its own.');
+      const mqttFields = viaMqtt
+        ? [
+          field('Topic', text(device.mqttTopic, 'shellyplugsg3-…/status/switch:0', (value, input) => {
+            device.mqttTopic = value.trim();
+            showError(input, topicError(value));
+            changed();
+          }), 'JSON with the watts, or a number.', topicError(device.mqttTopic)),
+          field('Online topic', text(device.mqttOnlineTopic, 'shellyplugsg3-…/online', (value, input) => {
+            setOrDrop(device, 'mqttOnlineTopic', value.trim());
+            showError(input, topicError(value));
+            changed();
+          }), 'Optional: true/false, online/offline.', topicError(device.mqttOnlineTopic)),
+          field('Watts key', text(device.mqttPowerKey, 'apower', (value) => {
+            setOrDrop(device, 'mqttPowerKey', value.trim());
+            changed();
+          }), 'a.b for one inside another.'),
+          field('Relay key', text(device.mqttRelayKey, 'output', (value) => {
+            setOrDrop(device, 'mqttRelayKey', value.trim());
+            changed();
+          }), 'True while switched on.'),
+        ]
+        : [];
+
       // Behind a Matter bridge, paired once: the others share that pairing,
       // and each follows one device of it. Offered only where more than one
       // device measures, so a house of plain plugs sees nothing of it.
@@ -441,19 +481,21 @@
 
       return el('div', {},
         el('div', { class: 'om-set-section' },
-          el('h6', {}, 'Appliance ', isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
+          el('h6', {}, 'Appliance ', viaMqtt ? el('span', { class: 'om-set-badge' }, 'MQTT') : isPaired ? el('span', { class: 'om-set-badge' }, 'paired') : null),
           // Two rows, so that the icon is always under the name: the
           // pairing first, with the device behind a bridge where no code is
           // needed, then the rest.
           el('div', { class: 'om-set-grid om-set-rows' },
             field('Name', nameInput, 'Renaming means pairing again.', nameError(device.name ?? '')),
             pairingField,
-            device.pairedWith ? deviceField : field('Pairing code', codeInput,
+            readingsField,
+            device.pairedWith ? deviceField : viaMqtt ? null : field('Pairing code', codeInput,
               isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
               codeError(device.pairingCode ?? ''))),
+          viaMqtt ? el('div', { class: 'om-set-grid om-set-rows' }, ...mqttFields) : null,
           el('div', { class: 'om-set-grid om-set-rows' },
             iconField,
-            device.pairedWith ? null : deviceField,
+            device.pairedWith || viaMqtt ? null : deviceField,
             partOfField)),
 
         el('div', { class: 'om-set-section' },

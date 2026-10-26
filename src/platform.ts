@@ -23,6 +23,7 @@ import {
   countsInTotal,
   wholeOf,
   parsePairingCode,
+  readingsTopic,
   validateDeviceConfig,
 } from './config.ts';
 import type { DeviceConfig, MatterLogLevel, ApplianceMonitorPlatformConfig, TimedSensor } from './config.ts';
@@ -43,7 +44,7 @@ import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker, RECALL_MS } from './phases.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, OFF_WATTS } from './power.ts';
-import { fillMessage, MqttPublisher, phaseTopic, stateTopics } from './mqtt.ts';
+import { fillMessage, MqttPublisher, parseOnline, parseReading, phaseTopic, stateTopics } from './mqtt.ts';
 import { PowerRecorder, readSamples } from './recorder.ts';
 import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
@@ -220,13 +221,16 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#energySaver = setInterval(() => this.#saveEnergy(), SAVE_ENERGY_MS);
     await this.#startDashboard();
     this.#startMqtt();
+    for (const device of devices.filter((each) => readingsTopic(each))) {
+      this.#safely(device.name, () => this.#listen(device));
+    }
 
     const registry = new NodeRegistry(join(this.#dataPath, 'nodes.json'));
     // One after the other: commissioning several plugs at once would open
     // several PASE sessions over the same border router for no gain. An
     // appliance paired with another comes along with that one: behind a
     // bridge, which is paired once.
-    for (const device of devices.filter(({ pairedWith }) => !pairedWith)) {
+    for (const device of devices.filter((each) => !each.pairedWith && !readingsTopic(each))) {
       if (this.#stopping) {
         return;
       }
@@ -244,8 +248,12 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   #validDevices(): DeviceConfig[] {
     const valid: DeviceConfig[] = [];
+    const mqttOn = usableMqtt(this.config).url !== undefined;
     for (const [index, device] of (this.config.devices ?? []).entries()) {
       const problems = validateDeviceConfig(device, index);
+      if (problems.length === 0 && readingsTopic(device) && !mqttOn) {
+        problems.push(`"${device.name.trim()}" takes its readings over MQTT, which is not switched on`);
+      }
       for (const problem of problems) {
         this.log.error(`Ignoring plug: ${problem}`);
       }
@@ -262,7 +270,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         const { minutes: overtimeMinutes, problem: overtimeProblem } = usableMinutes(named, 'overtime');
         const { minutes: idleOnMinutes, problem: idleOnProblem } = usableMinutes(named, 'idleOn');
         const { from: idleOnFrom, problem: fromProblem } = usableIdleOnFrom(named, phases);
-        const { messages, problems: messageProblems } = usableMessages(named, phases, usableMqtt(this.config).url !== undefined);
+        const { messages, problems: messageProblems } = usableMessages(named, phases, mqttOn);
         for (const problem of [overtimeProblem, idleOnProblem, fromProblem, ...messageProblems].filter(Boolean)) {
           this.log.warn(problem!);
         }
@@ -306,6 +314,26 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       this.log.warn(`${device.name}: was paired as node ${nodeId}, but the controller no longer knows it.`);
       registry.delete(device.name);
       nodeId = undefined;
+    }
+
+    // Another code for a plug already paired: a new plug under the old one's
+    // name. The old one is let go only once the new one is paired, so that a
+    // code that fails costs nothing.
+    if (nodeId !== undefined && device.pairingCode && registry.pairedWithOtherCode(device.name, device.pairingCode)) {
+      const pairing = parsePairingCode(device.pairingCode);
+      try {
+        this.log.info(`${device.name}: a new pairing code — pairing the plug it belongs to…`);
+        const old = nodeId;
+        nodeId = await controller.commission(pairing!);
+        registry.set(device.name, nodeId, device.pairingCode);
+        this.#store?.update(device.name, { described: false });
+        this.log.info(`${device.name}: paired as node ${nodeId}, instead of node ${old}`);
+      } catch (error) {
+        this.log.warn(
+          `${device.name}: a new pairing code, but pairing with it failed: ${message(error)}. Staying with node ${nodeId}; ` +
+            'to stay with it for good, put its old code back or remove the code.',
+        );
+      }
     }
 
     if (nodeId === undefined) {
@@ -720,19 +748,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return;
     }
     if (isOnOff(report.clusterId, report.attributeId)) {
-      if (typeof report.value === 'boolean') {
-        appliance.relayOff = !report.value;
-      }
-      if (appliance.relayOff) {
-        this.#nothingDrawn(appliance, Date.now());
-      }
-      // A plug with a relay switched off: whatever ran there has finished.
-      if (report.value === false && appliance.monitor.state === 'running') {
-        this.log.debug(`${appliance.device.name}: plug switched off`);
-        appliance.monitor.switchedOff(Date.now());
-      }
-      this.#passOn(appliance, Date.now());
-      this.#publish(appliance);
+      this.#onRelay(appliance, typeof report.value === 'boolean' ? report.value : undefined);
       return;
     }
     if (!isActivePower(report.clusterId, report.attributeId)) {
@@ -748,6 +764,88 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     appliance.last = { endpointId: report.endpointId, value: report.value, at: now };
     appliance.measured = { endpointId: report.endpointId, watts: activePowerWatts(report.value) };
     this.#take(appliance, now);
+  }
+
+  /** The plug's relay switched on or off, or reported without saying which. */
+  #onRelay(appliance: Appliance, on: boolean | undefined): void {
+    if (on !== undefined) {
+      appliance.relayOff = !on;
+    }
+    if (appliance.relayOff) {
+      this.#nothingDrawn(appliance, Date.now());
+    }
+    // A plug with a relay switched off: whatever ran there has finished.
+    if (on === false && appliance.monitor.state === 'running') {
+      this.log.debug(`${appliance.device.name}: plug switched off`);
+      appliance.monitor.switchedOff(Date.now());
+    }
+    this.#passOn(appliance, Date.now());
+    this.#publish(appliance);
+  }
+
+  /**
+   * An appliance whose plug publishes its readings over MQTT: nothing to
+   * pair, only listening. A plug that sends every second sends the same
+   * often; only a change is a new reading, as a Matter plug reports only
+   * changes, so the recording does not grow by a line a second.
+   */
+  #listen(device: DeviceConfig): void {
+    const mqtt = this.#mqtt;
+    const topic = readingsTopic(device);
+    if (!mqtt || !topic) {
+      return;
+    }
+    const appliance = this.#appliance(device);
+    const { name, mqttOnlineTopic } = device;
+    let introduced = false;
+    mqtt.listen(topic, (payload) => this.#safely(name, () => {
+      const { watts, on } = parseReading(payload, device.mqttPowerKey, device.mqttRelayKey);
+      if (watts === undefined && on === undefined) {
+        return;
+      }
+      if (appliance.reachable === undefined && !mqttOnlineTopic) {
+        appliance.reachable = true;
+      }
+      if (on !== undefined && (appliance.relayOff === undefined || on === appliance.relayOff)) {
+        this.#onRelay(appliance, on);
+      }
+      if (watts === undefined) {
+        return;
+      }
+      const now = Date.now();
+      if (appliance.measured?.watts !== watts) {
+        appliance.last = { endpointId: 0, value: watts, at: now };
+        appliance.measured = { endpointId: 0, watts };
+        this.#take(appliance, now);
+      }
+      if (!introduced) {
+        introduced = true;
+        this.log.info(
+          [`${name}: readings from ${topic}`, formatWatts(watts), STATE_NAMES[appliance.monitor.state], this.#learnedSummary(appliance)].join(', '),
+        );
+      }
+    }));
+    if (mqttOnlineTopic) {
+      mqtt.listen(mqttOnlineTopic.trim(), (payload) => this.#safely(name, () => {
+        const connected = parseOnline(payload);
+        if (connected === undefined || connected === appliance.reachable) {
+          return;
+        }
+        // As for a Matter plug: only a change after it was first known.
+        if (appliance.reachable !== undefined && !this.#stopping) {
+          if (connected) {
+            this.log.info(`${name}: reachable again`);
+          } else {
+            this.log.warn(`${name}: unreachable`);
+          }
+        }
+        appliance.reachable = connected;
+        if (!connected) {
+          this.#nothingDrawn(appliance, Date.now());
+        }
+        this.#publish(appliance);
+      }));
+    }
   }
 
   /**

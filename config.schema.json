@@ -108,6 +108,30 @@
               "pattern": "^\\s*((\\d[\\s-]*){11}|(\\d[\\s-]*){21}|MT:[0-9A-Z.\\-]+)\\s*$",
               "description": "In the Home app: the plug's settings → Turn On Pairing Mode. The code is valid for 15 minutes, so save and restart the child bridge straight away. Only needed once; it can be removed after pairing."
             },
+            "mqttTopic": {
+              "title": "Readings over MQTT: topic",
+              "type": "string",
+              "placeholder": "shellyplugsg3-…/status/switch:0",
+              "description": "Instead of a Matter pairing: the topic the plug publishes its power to, a JSON object or a number of watts. A Shelly's own status topic works, or what a script on it sends every second (see the README). Needs MQTT switched on; a pairing code is then not used."
+            },
+            "mqttPowerKey": {
+              "title": "Watts key",
+              "type": "string",
+              "placeholder": "apower",
+              "description": "Where the watts are in the JSON payload, a.b for one inside another. apower, a Shelly's, if empty."
+            },
+            "mqttRelayKey": {
+              "title": "Relay key",
+              "type": "string",
+              "placeholder": "output",
+              "description": "Where the relay is, true when switched on. output, a Shelly's, if empty."
+            },
+            "mqttOnlineTopic": {
+              "title": "Online topic",
+              "type": "string",
+              "placeholder": "shellyplugsg3-…/online",
+              "description": "Optional: a topic saying whether the plug is connected, true/false or online/offline — a Shelly's <id>/online. Without one it counts as connected from its first reading."
+            },
             "pairedWith": {
               "title": "Shares the pairing of",
               "type": "string",
