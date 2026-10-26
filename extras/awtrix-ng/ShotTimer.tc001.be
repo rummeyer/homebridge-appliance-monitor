@@ -161,7 +161,7 @@ if !self.running || self.temp0 == nil || self.temp != self.temp0
 return true
 end
 var on = self.since_s > 0 ? self.since_s : self.temp0_s
-return epoch_ms() / 1000 - on < 300
+return epoch_ms() / 1000 - on < 900
 end
 def heated()
 if self.warm

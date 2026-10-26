@@ -37,7 +37,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
     how long until then at the rate of the last five minutes; a heat
     exchanger's group hardly rises at first. Once heated it stays so when a
     reading dips below. A thermometer that still reads what it did at
-    switching on five minutes later counts as gone quiet, as a Zigbee sensor
+    switching on fifteen minutes later counts as gone quiet, as a Zigbee sensor
     fallen off its network, and the app goes on as without one.
   - Without a thermometer, a machine switched on after being off for **Cold
     after** (45 minutes) is heated once it has been on for **Cold preheat**

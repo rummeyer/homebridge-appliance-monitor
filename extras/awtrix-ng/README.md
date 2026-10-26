@@ -66,7 +66,7 @@ after** counts as cold and is heated once it has been on for **Cold
 preheat**; one switched on sooner, once the heating phase has ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
-One that still reads what it did at switching on five minutes later has
+One that still reads what it did at switching on fifteen minutes later has
 gone quiet, and the app goes on as without one until it reads again.
 
 ## Installing

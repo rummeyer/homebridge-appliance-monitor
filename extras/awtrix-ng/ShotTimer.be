@@ -180,9 +180,10 @@ class ShotTimer
     end
   end
 
-  # The thermometer tells: it has read something, and the same as at switching on for five
+  # The thermometer tells: it has read something, and the same as at switching on for fifteen
   # minutes at the most. One that has gone quiet — a Zigbee sensor fallen off its network —
-  # would hold it at 0 % and HEATING for good; then it is as without one.
+  # would hold it at 0 % and HEATING for good; then it is as without one. A sensor that only
+  # sends a change can say nothing for several minutes while a warm group starts to rise.
   def thermo()
     if self.temp == nil
       return false
@@ -191,7 +192,7 @@ class ShotTimer
       return true
     end
     var on = self.since_s > 0 ? self.since_s : self.temp0_s
-    return epoch_ms() / 1000 - on < 300
+    return epoch_ms() / 1000 - on < 900
   end
 
   # Preheated: warm enough where there is a thermometer, and still when a reading dips below.
