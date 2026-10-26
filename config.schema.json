@@ -2,7 +2,7 @@
   "pluginAlias": "ApplianceMonitor",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, such as the Eve Energy or the Shelly Plug PM Gen3, and shows each appliance in HomeKit with a Running switch that turns off when it is done. It learns each appliance's thresholds from its first cycle. Run it as a child bridge.",
+  "headerDisplay": "Watches the power draw of Matter smart plugs and power meters, or of plugs that publish it over MQTT, and shows each appliance in HomeKit with a Running switch that turns off when it is done. It learns each appliance's thresholds from its first cycle. Run it as a child bridge.",
   "footerDisplay": "The plugs stay in Apple Home: this plugin joins them as a second controller (Matter multi-admin). For devices on Thread, the Raspberry Pi needs a route to the Thread network — on Raspberry Pi OS Bookworm it has one already; the README says how to check.",
   "schema": {
     "type": "object",
@@ -111,26 +111,26 @@
             "mqttTopic": {
               "title": "Readings over MQTT: topic",
               "type": "string",
-              "placeholder": "shellyplugsg3-…/status/switch:0",
-              "description": "Instead of a Matter pairing: the topic the plug publishes its power to, a JSON object or a number of watts. A Shelly's own status topic works, or what a script on it sends every second (see the README). Needs MQTT switched on; a pairing code is then not used."
+              "placeholder": "plug/power",
+              "description": "Instead of a Matter pairing: the topic the plug publishes its power to, a JSON object or a number of watts. Needs MQTT switched on; a pairing code is then not used."
             },
             "mqttPowerKey": {
               "title": "Watts key",
               "type": "string",
               "placeholder": "apower",
-              "description": "Where the watts are in the JSON payload, a.b for one inside another. apower, a Shelly's, if empty."
+              "description": "Where the watts are in the JSON payload, a.b for one inside another. apower if empty."
             },
             "mqttRelayKey": {
               "title": "Relay key",
               "type": "string",
               "placeholder": "output",
-              "description": "Where the relay is, true when switched on. output, a Shelly's, if empty."
+              "description": "Where the relay is, true when switched on. output if empty."
             },
             "mqttOnlineTopic": {
               "title": "Online topic",
               "type": "string",
-              "placeholder": "shellyplugsg3-…/online",
-              "description": "Optional: a topic saying whether the plug is connected, true/false or online/offline — a Shelly's <id>/online. Without one it counts as connected from its first reading."
+              "placeholder": "plug/online",
+              "description": "Optional: a topic saying whether the plug is connected, true/false or online/offline, which the broker can set when the plug goes. Without one it counts as connected from its first reading."
             },
             "pairedWith": {
               "title": "Shares the pairing of",
@@ -234,7 +234,7 @@
               "type": "integer",
               "minimum": 2,
               "placeholder": "only listen",
-              "description": "Some plugs report their power only about once a minute (the Eve Energy does), which can miss something short like a coffee. Set this to ask them more often. Each ask is a message over the network, so keep it to the plugs that need it. A plug that draws nothing is not asked."
+              "description": "Some plugs report their power only about once a minute, which can miss something short like a coffee. Set this to ask them more often. Each ask is a message over the network, so keep it to the plugs that need it. A plug that draws nothing is not asked."
             },
             "thresholds": {
               "title": "Fixed thresholds",

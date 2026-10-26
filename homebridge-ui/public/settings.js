@@ -368,12 +368,12 @@
       const topicError = (value) => (typeof value === 'string' && /[+#]/.test(value) ? 'One topic exactly: no + or #.' : '');
       const mqttFields = viaMqtt
         ? [
-          field('Topic', text(device.mqttTopic, 'shellyplugsg3-…/status/switch:0', (value, input) => {
+          field('Topic', text(device.mqttTopic, 'plug/power', (value, input) => {
             device.mqttTopic = value.trim();
             showError(input, topicError(value));
             changed();
           }), 'JSON with the watts, or a number.', topicError(device.mqttTopic)),
-          field('Online topic', text(device.mqttOnlineTopic, 'shellyplugsg3-…/online', (value, input) => {
+          field('Online topic', text(device.mqttOnlineTopic, 'plug/online', (value, input) => {
             setOrDrop(device, 'mqttOnlineTopic', value.trim());
             showError(input, topicError(value));
             changed();
@@ -429,7 +429,7 @@
         }),
         viaMqtt ? (config.mqtt === true ? 'Nothing to pair.' : 'MQTT is off: switch it on under General.')
           : device.pairedWith ? 'A bridge is paired once; the devices behind it share that pairing.'
-            : 'Or a topic a plug publishes to, as a Shelly can.')
+            : 'Or a topic a plug publishes to.')
       const devices = metered[device.pairedWith || device.name] ?? [];
       const current = device.deviceId ?? (device.endpoint === undefined ? '' : `endpoint:${device.endpoint}`);
       const deviceOptions = [['', 'Every reading (a plug of its own)'],
@@ -553,7 +553,7 @@
                 setOrDrop(device, 'pollSeconds', numberOrUndefined(value));
                 showError(input, pollError(device.pollSeconds));
                 changed();
-              }, MIN_POLL_SECONDS), 'For plugs that report seldom, like the Eve Energy.', pollError(device.pollSeconds)))),
+              }, MIN_POLL_SECONDS), 'For plugs that report seldom.', pollError(device.pollSeconds)))),
           phasesTable(device),
           el('div', { class: 'om-set-section' },
             el('h6', {}, 'Thresholds'),
