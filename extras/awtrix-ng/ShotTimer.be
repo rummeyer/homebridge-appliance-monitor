@@ -571,9 +571,9 @@ class ShotTimer
     end
   end
 
-  # How far heating up is, as AWTRIX NG's boot screen loads: blocks two wide and three high
-  # beside the cup, from `top`, filling up from the left, the newest one blinking; the ones still
-  # to come dim, so that the bar shows how far it goes.
+  # How far heating up is, as AWTRIX NG's boot screen loads: blocks two wide and four high beside
+  # the cup, on the line below `top`'s baseline, filling up from the left, the newest one
+  # blinking; the ones still to come dim, so that the bar shows how far it goes.
   def draw_bar(top)
     var room = width() - self.x0
     var used = (room + 1) / 3 * 3 - 1
@@ -586,7 +586,7 @@ class ShotTimer
     while i < used
       if i % 3 != 2
         var c = i >= lit ? dim : (i >= newest ? self.white : h)
-        for y : top + 1 .. top + 3
+        for y : top + 1 .. top + 4
           pixel(start + i, y, c)
         end
       end
