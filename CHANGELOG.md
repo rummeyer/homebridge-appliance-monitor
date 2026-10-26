@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-26
+
 ### Added
 
 - MQTT: `<name>/phase/<phase>/until`, while a phase is on, when the draw
@@ -15,6 +17,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The dashboard's browser tab in the Home look is titled **Home (Appliance
+  Monitor)**, told apart from Apple's Home in a row of tabs.
 - Idle counted from a phase (`idleOnFrom`) waits while another of the
   appliance's phases is on, and counts again from when that ends. A coffee
   machine that pumps for a moment as it is switched on was switched off
@@ -1008,7 +1012,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.2...HEAD
+[1.16.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.1...v1.16.2
 [1.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.14.1...v1.15.0
