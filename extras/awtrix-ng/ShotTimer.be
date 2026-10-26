@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.7
+# @version 4.8
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -13,6 +13,8 @@
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
+# @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="Without a thermometer: switched on after being off this long, it heats up for Cold preheat; else until the heating phase ends"
+# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="Without a thermometer: how long a cold machine heats up"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  pin    bool   "Stay on screen while on" default=false help="Off: in the rotation, with only the shot and being preheated taking over"
 # @config  done   color  "Result"           default=#30D158
@@ -28,6 +30,10 @@ class ShotTimer
   var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
   var pumped       # a coffee has been made since it was switched on: in use, not heating up any more
   var warm         # the thermometer has said heated since it was switched on, whatever it says now
+  var hist         # [Unix seconds, temperature] of the readings since it was switched on
+  var cold         # switched on after being off for Cold after, or for how long not known
+  var cold_s, coldpre_s
+  var was_heated   # heated, as last looked at: coming up once it is
   var below, lead_ms, hold_ms, pin
   var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
   var x0           # where the text starts: past the 16×16 cup, or the 8×8 one 8 rows high
@@ -75,6 +81,11 @@ class ShotTimer
     self.heat_done = false
     self.pumped = false
     self.warm = false
+    self.hist = []
+    self.cold = true
+    self.was_heated = false
+    self.cold_s = int(store.get("cold") * 60)
+    self.coldpre_s = int(store.get("coldpre") * 60)
     self.below = store.get("below")
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
@@ -151,9 +162,14 @@ class ShotTimer
         self.temp0 = v
         self.temp0_s = self.temp_s
       end
-      if self.running && v >= self.ready && !self.warm
+      if self.running && v >= self.ready
         self.warm = true
-        self.come()
+      end
+      if self.running
+        self.hist.push([self.temp_s, v])
+        if size(self.hist) > 120
+          self.hist.remove(0)
+        end
       end
       self.built = -1
     end
@@ -173,17 +189,24 @@ class ShotTimer
     return epoch_ms() / 1000 - on < 300
   end
 
-  # Preheated: warm enough where there is a thermometer, and still when a reading dips below,
-  # else once the heating phase has ended.
+  # Preheated: warm enough where there is a thermometer, and still when a reading dips below.
+  # Without one, a heat exchanger's boiler is hot long before its group: from cold, once it has
+  # been on for Cold preheat; else once the heating phase has ended.
   def heated()
-    return self.warm || (self.thermo() ? self.temp >= self.ready : self.heat_done)
+    if self.warm
+      return true
+    end
+    if self.thermo()
+      return self.temp >= self.ready
+    end
+    return self.cold ? self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s : self.heat_done
   end
 
   # Heating up: until warm enough where the thermometer tells, else while the heating phase is on;
   # not once a coffee has been made, when its OFF countdown matters more, nor while it is shown.
   def warming()
     return self.running && !self.pumped && !(self.shot == "done" && !self.rinsed) &&
-      !self.heated() && (self.thermo() || self.heating)
+      !self.heated() && (self.thermo() || self.heating || self.cold)
   end
 
   def machine(t, p)
@@ -193,6 +216,12 @@ class ShotTimer
       var was = self.running
       self.running = p == "running"
       if self.running != was
+        # Off long enough to have cooled down, by its since: the old state's, as long as the new
+        # one has not come first; not known, as cold.
+        var off_s = epoch_ms() / 1000 - self.since_s
+        self.cold = !(self.known && self.since_s > 0 && now_ms() - self.since_ms > 2000 && off_s < self.cold_s)
+        self.hist = []
+        self.was_heated = false
         self.heat_done = false
         self.pumped = false
         self.temp0 = self.running ? self.temp : nil
@@ -221,11 +250,8 @@ class ShotTimer
     elif t == self.heat_topic
       var on = p == "ON"
       # The first heating of the morning; a reheat later is not "heating up".
-      if self.heating && !on && self.running && !self.heat_done
+      if self.heating && !on && self.running
         self.heat_done = true
-        if !self.thermo()
-          self.come()
-        end
       end
       self.heating = on
     elif t == self.pump_topic
@@ -313,6 +339,12 @@ class ShotTimer
     if self.shot == "run" && now_ms() - self.t0 > 600000
       self.finish()
     end
+    # Up once it is preheated, however it came to be.
+    var h = self.running && self.heated()
+    if h && !self.was_heated
+      self.come()
+    end
+    self.was_heated = h
   end
 
   # On the display: held there while pinned, else for its turn in the rotation.
@@ -423,14 +455,26 @@ class ShotTimer
       if self.thermo() && self.temp0 != nil && self.ready > self.temp0
         var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
         self.line2 = [[str(pct < 0 ? 0 : (pct > 100 ? 100 : pct)) + "%", self.white]]
-        var rise = self.temp - self.temp0
-        if rise > 0 && self.temp_s > self.temp0_s && (unix / 3) % 2 == 1
-          var at = self.temp_s + int((self.ready - self.temp) * (self.temp_s - self.temp0_s) / rise)
+        # At the rate of the last five minutes: a heat exchanger's group hardly rises at first.
+        var from_v = self.temp0
+        var from_s = self.temp0_s
+        for r : self.hist
+          if r[0] <= self.temp_s - 300 && r[0] >= from_s
+            from_s = r[0]
+            from_v = r[1]
+          end
+        end
+        var rise = self.temp - from_v
+        if rise > 0 && self.temp_s > from_s && (unix / 3) % 2 == 1
+          var at = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
           # Not a 0:00 that stands still when it rises slower than so far: the percentage then.
           if at > unix
             self.line2 = [[self.clock(at - unix), self.white]]
           end
         end
+      elif self.cold && self.since_s > 0
+        # How long until preheated from cold.
+        self.line2 = [[self.clock(self.since_s + self.coldpre_s - unix), self.white]]
       else
         self.line2 = [[self.clock(on_s), self.white]]
       end

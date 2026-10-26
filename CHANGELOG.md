@@ -69,6 +69,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   has been on below HEATING. A Zigbee sensor that had fallen off its network
   held it at HEATING and 0 % until the first coffee.
 
+- `extras/awtrix-ng` 4.8: how long until preheated goes by how fast the
+  temperature rose over the last five minutes, not since switching on; a
+  heat exchanger's group hardly rises at first, and a warm start said 33
+  minutes where it took 9. Without a thermometer, a machine switched on
+  after being off for **Cold after** (45 minutes) is heated once it has
+  been on for **Cold preheat** (30 minutes), counting down to it, rather
+  than once the boiler's heating phase has ended, long before the group is
+  hot; one switched on sooner still is heated once that phase ends.
+
 ## [1.16.1] — 2026-10-21
 
 ### Changed

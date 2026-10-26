@@ -7,7 +7,7 @@ topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at (0 %) to **Preheated from** (100 %), every three seconds taking turns with how long until then at the rate it has risen so far; without a thermometer, how long it has been on |
+| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at (0 %) to **Preheated from** (100 %), every three seconds taking turns with how long until then at the rate it rose over the last five minutes; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute; while a coffee, a rinse or the heater holds Idle, its full time standing still |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
@@ -59,7 +59,11 @@ until the count starts again, when the pump ran just before.
 
 **Optional: a thermometer** on the machine makes HEATED exact — heated is
 whenever it is at least **Preheated from**, not once the heating phase has
-ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
+ended. A heat exchanger's boiler, on a Rocket Appartamento say, is hot long
+before its group, and the coffee is not hot enough before the group is.
+Without a thermometer, a machine switched on after being off for **Cold
+after** counts as cold and is heated once it has been on for **Cold
+preheat**; one switched on sooner, once the heating phase has ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
 One that still reads what it did at switching on five minutes later has
@@ -91,6 +95,8 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
 | Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
 | Preheated from | 38 °C | |
+| Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
+| Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up. |
 | Pump off below | 30 W | The count stops as soon as the plug reads less: neither pump nor heater runs. |
 | Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |
 | Show result for | 20 s | |
