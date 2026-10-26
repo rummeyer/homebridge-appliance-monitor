@@ -328,10 +328,10 @@ class ShotTimer
     end
   end
 
-  # Never stuck if the end got lost, as it is not retained: a shot is over in half a minute, and
-  # its end comes the pump phase's off after later.
+  # Never stuck if the end got lost, as it is not retained: a shot is over in half a minute, a
+  # lungo in a minute, and its end comes the pump phase's off after later.
   def loop()
-    if self.shot == "run" && now_ms() - self.t0 > 60000
+    if self.shot == "run" && now_ms() - self.t0 > 90000
       self.finish()
     end
     # Up once it is preheated, however it came to be.
