@@ -63,6 +63,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   time it was switched on is kept when it came just before its state, rather
   than read as the old state's and shown as 0:00.
 
+- `extras/awtrix-ng` 4.7: a thermometer that still reads what it did at
+  switching on five minutes later counts as gone quiet, and the app goes on
+  as without one: heated once the heating phase has ended, and how long it
+  has been on below HEATING. A Zigbee sensor that had fallen off its network
+  held it at HEATING and 0 % until the first coffee.
+
 ## [1.16.1] — 2026-10-21
 
 ### Changed

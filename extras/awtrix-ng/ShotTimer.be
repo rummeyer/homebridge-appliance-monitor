@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.6
+# @version 4.7
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -159,17 +159,31 @@ class ShotTimer
     end
   end
 
+  # The thermometer tells: it has read something, and the same as at switching on for five
+  # minutes at the most. One that has gone quiet — a Zigbee sensor fallen off its network —
+  # would hold it at 0 % and HEATING for good; then it is as without one.
+  def thermo()
+    if self.temp == nil
+      return false
+    end
+    if !self.running || self.temp0 == nil || self.temp != self.temp0
+      return true
+    end
+    var on = self.since_s > 0 ? self.since_s : self.temp0_s
+    return epoch_ms() / 1000 - on < 300
+  end
+
   # Preheated: warm enough where there is a thermometer, and still when a reading dips below,
   # else once the heating phase has ended.
   def heated()
-    return self.warm || (self.temp != nil ? self.temp >= self.ready : self.heat_done)
+    return self.warm || (self.thermo() ? self.temp >= self.ready : self.heat_done)
   end
 
   # Heating up: until warm enough where the thermometer tells, else while the heating phase is on;
   # not once a coffee has been made, when its OFF countdown matters more, nor while it is shown.
   def warming()
     return self.running && !self.pumped && !(self.shot == "done" && !self.rinsed) &&
-      !self.heated() && (self.temp != nil || self.heating)
+      !self.heated() && (self.thermo() || self.heating)
   end
 
   def machine(t, p)
@@ -209,7 +223,7 @@ class ShotTimer
       # The first heating of the morning; a reheat later is not "heating up".
       if self.heating && !on && self.running && !self.heat_done
         self.heat_done = true
-        if self.temp == nil
+        if !self.thermo()
           self.come()
         end
       end
@@ -406,7 +420,7 @@ class ShotTimer
     # off, by whichever comes first, Idle standing still at its full time while
     # it is held. One from before it was switched on is stale.
     if heating
-      if self.temp != nil && self.temp0 != nil && self.ready > self.temp0
+      if self.thermo() && self.temp0 != nil && self.ready > self.temp0
         var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
         self.line2 = [[str(pct < 0 ? 0 : (pct > 100 ? 100 : pct)) + "%", self.white]]
         var rise = self.temp - self.temp0

@@ -62,6 +62,8 @@ whenever it is at least **Preheated from**, not once the heating phase has
 ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
+One that still reads what it did at switching on five minutes later has
+gone quiet, and the app goes on as without one until it reads again.
 
 ## Installing
 
