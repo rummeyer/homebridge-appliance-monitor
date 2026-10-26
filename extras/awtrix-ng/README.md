@@ -95,7 +95,7 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
 | Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
 | Preheated from | 38 °C | |
-| Heating up as | bar | How far it has heated up: `bar`, filling up block by block, or `percent`. |
+| Heating up as | bar | How far it has heated up: `bar`, blocks filling up between `[` and `]`, or `percent`. |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
 | Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up. |
 | Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |
