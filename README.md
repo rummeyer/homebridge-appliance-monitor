@@ -724,6 +724,13 @@ one, paste it in, save, start it and turn on **Run on startup**. Then:
 |---|---|---|
 | MQTT topic | `shellyplugsg3-…/power` | `shellyplugsg3-…/online` |
 
+For a coffee machine on a Shelly with an LED ring, such as the Plug S Gen3,
+[extras/shelly/heating-led.js](extras/shelly/heating-led.js) shows its heating
+up there: red while it heats up, green once it is heated, dark while the plug
+is off. Heated is a thermometer at 38 °C or more, as on the AWTRIX NG clock,
+or without one the heating phase having ended; the topics and phase name are
+at the top of the script.
+
 ## Plugs that report seldom
 
 A plug decides itself how often it reports its power. The Shelly Plug PM
