@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-10-26
+
 ### Added
 
 - Readings over MQTT, instead of a Matter pairing: an appliance can take
@@ -21,6 +23,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - `extras/shelly/heating-led.js`: a coffee machine's heating up on a Shelly
   plug's LED ring — red while it heats up, green once heated, dark while the
   plug is off — from the heating phase and a thermometer, if there is one.
+
+### Changed
+
+- The settings page and the config schema name no plugs by make: what
+  they say holds for any plug.
 
 ### Fixed
 
@@ -1037,7 +1044,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.2...v1.17.0
 [1.16.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.1...v1.16.2
 [1.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.15.0...v1.16.0
