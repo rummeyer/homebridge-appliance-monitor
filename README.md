@@ -31,6 +31,9 @@ it is doing in between: heating, spinning, a coffee being drawn. Built for the
 meant for any Matter device the Home app shows watts for: also a light that
 reports its own draw, such as the Dyson Solarcycle Morph through
 [homebridge-dyson-solarcycle-morph](https://github.com/rummeyer/homebridge-dyson-solarcycle-morph).
+A plug that publishes its power over MQTT, such as a Shelly Plug S Gen3
+whose Matter side has no power reading, works too: see
+[Readings over MQTT](#readings-over-mqtt).
 
 There are no thresholds to work out: add the plug, run the appliance once, and
 the plugin learns from that cycle what running, pausing and finished look like
@@ -54,7 +57,8 @@ What it needs is **ActivePower** (in milliwatts) from the standard
 reads its watts from, so a device that shows watts in the Home app without
 Homebridge has it. On a plug with a relay it also listens to the standard
 **On/Off** cluster (`0x0006`), to see the plug being switched off. There is
-nothing vendor-specific.
+nothing vendor-specific. A plug read over [MQTT](#readings-over-mqtt) is not
+paired at all; the plugin listens to the topic it publishes to.
 
 ## Requirements
 
@@ -64,7 +68,8 @@ nothing vendor-specific.
   plugin's menu (⋮) → **Bridge Settings**, turn the child bridge on, and
   restart Homebridge.
 - **The plugs set up in the Apple Home app**, which shows their watts. The
-  plugin joins them as a second controller; they stay in Apple Home.
+  plugin joins them as a second controller; they stay in Apple Home. A plug read
+  over [MQTT](#readings-over-mqtt) needs an MQTT broker instead.
 - **For devices on Thread, the Homebridge machine (a Raspberry Pi, say) needs
   a route to the Thread network.** The
   border routers (HomePod, Apple TV) announce it in their IPv6 router
@@ -128,6 +133,13 @@ the first plug.
 A paired plug is remembered by its name, so renaming it means pairing it
 again. Remove the old pairing from the Home app first, under the plug's
 connected services.
+
+To give an appliance another plug, put the new plug's code in place of the
+old one and restart: the new plug is paired, and the old pairing let go only
+once that worked. A plug that was another appliance's before, and is paired
+already, is found too: the log then says which node it was. A plug read over
+MQTT is set up with **Readings from** instead; see
+[Readings over MQTT](#readings-over-mqtt).
 
 ### Behind a Matter bridge
 

@@ -15,6 +15,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   whose Matter side has no power reading, as the Plug S Gen3's has not.
   `extras/shelly/power-mqtt.js` is a script for the Shelly that sends every
   change within a second, where its own status messages leave out small ones.
+  On the settings page, **Readings from** chooses between a Matter pairing
+  and an MQTT topic; with the topic, nothing of pairing or polling is shown.
+- `extras/shelly/heating-led.js`: a coffee machine's heating up on a Shelly
+  plug's LED ring — red while it heats up, green once heated, dark while the
+  plug is off — from the heating phase and a thermometer, if there is one.
 
 ### Fixed
 
