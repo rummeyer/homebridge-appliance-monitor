@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- MQTT: `<name>/phase/<phase>/until`, while a phase is on, when the draw
+  fell below its range, at once rather than after the phase's "off after";
+  empty while the draw is in it or above. A display can stop counting a
+  coffee as the pump stops.
+
 ### Changed
 
 - Idle counted from a phase (`idleOnFrom`) waits while another of the
@@ -77,6 +84,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   been on for **Cold preheat** (30 minutes), counting down to it, rather
   than once the boiler's heating phase has ended, long before the group is
   hot; one switched on sooner still is heated once that phase ends.
+
+- `extras/awtrix-ng` 4.9: **Pump off below** is gone; the shot's count
+  stops when the plugin says the draw fell below the pump phase's range,
+  and runs on if it comes back into it, so all the watts are in the
+  plugin's phases.
 
 ## [1.16.1] — 2026-10-21
 

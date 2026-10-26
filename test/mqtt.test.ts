@@ -46,7 +46,9 @@ test('an appliance is its state, watts, reachability, each phase and the sensors
     'am/Kaffeemaschine/watts': '14.8',
     'am/Kaffeemaschine/reachable': 'true',
     'am/Kaffeemaschine/phase/Aufheizen': 'OFF',
+    'am/Kaffeemaschine/phase/Aufheizen/until': '',
     'am/Kaffeemaschine/phase/Bezug': 'ON',
+    'am/Kaffeemaschine/phase/Bezug/until': '',
     'am/Kaffeemaschine/overtime': 'OFF',
     'am/Kaffeemaschine/overtime/at': '',
     'am/Kaffeemaschine/idle': 'ON',
@@ -65,6 +67,12 @@ test('when the state began and when Overtime and Idle turn on are Unix seconds, 
     state: 'running', since: 1_792_481_234_567, cycle: { startedAt: 1_792_481_174_000, wattHours: 1, peakWatts: 1200 },
   }));
   assert.equal(started.get('am/Kaffeemaschine/since'), '1792481174', 'running since the draw rose, not since that was clear');
+});
+
+test('a phase that is on says when the draw fell below its range, before its hold is over', () => {
+  const topics = stateTopics('am', coffee, live({ state: 'running', phases: ['Bezug'], phasesUntil: { Bezug: 1_792_481_234_567 } }));
+  assert.equal(topics.get('am/Kaffeemaschine/phase/Bezug'), 'ON');
+  assert.equal(topics.get('am/Kaffeemaschine/phase/Bezug/until'), '1792481235');
 });
 
 test('what is not known yet is left out rather than guessed, and an unpaired appliance has nothing', () => {

@@ -123,6 +123,16 @@ export class PhaseTracker {
   }
 
   /**
+   * While the phase is on, when the draw fell below its range, if it has:
+   * where it will have ended, unless the draw comes back into the range
+   * before the hold is over. Known at once rather than after the hold — a
+   * display can stop counting a coffee as the pump stops.
+   */
+  get until(): number | undefined {
+    return this.#active ? this.#belowSince : undefined;
+  }
+
+  /**
    * Readings from before a restart, oldest first, only to know where the draw
    * came from: what they turned on or off was dealt with back then.
    */

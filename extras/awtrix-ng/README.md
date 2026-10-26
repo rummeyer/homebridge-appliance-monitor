@@ -89,7 +89,7 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 |---|---|---|
 | Appliance topic | `appliance-monitor/Kaffeemaschine` | The machine's topics: the plugin's prefix and its name. |
 | Shot topic | `shot-timer` | Where the two messages above go. Empty: the pump phase starts and ends the shot. |
-| Pump phase | `Pumpe` | Used when the shot topic is empty. |
+| Pump phase | `Pumpe` | The count stops as the plugin sees the draw fall below this phase's range. With the shot topic empty, it also starts and ends the shot. |
 | Pump on after | 1 s | The pump phase's "on after", used when the shot topic is empty. |
 | Heating phase | `Aufheizen` | |
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
@@ -97,7 +97,6 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 | Preheated from | 38 °C | |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
 | Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up. |
-| Pump off below | 30 W | The count stops as soon as the plug reads less: neither pump nor heater runs. |
 | Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |
 | Show result for | 20 s | |
 | Stay on screen while on | off | On: the app holds the display the whole time the machine is on. Off: it comes up for a shot and once the machine is preheated, and is in the rotation otherwise. |
@@ -107,15 +106,18 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 
 The count runs on the clock, every second. It starts when the plugin
 first sees the pump, set back by the plug delay, and stops as soon as the
-plug reads less than **Pump off below**. When the phase ends, the plugin's
+plugin sees the draw fall below the pump phase's range — it says so at once
+on `phase/<pump>/until`, before the phase's "off after" is over, and takes
+it back if the draw comes back into the range. When the phase ends, the plugin's
 own count — from the draw entering the pump's range to it falling below
 it — replaces it. Without the two messages the clock's count stays: it hangs on
 when the plug's readings come, so it can be a few seconds off.
 
 The heater often runs beside the pump during a coffee; the plug then reads
 both together, about 1200 W, so the count goes on through it. Once the
-plug has read less than the pump, the count stays stopped: the heater
-coming on alone a few seconds later is not the pump again. A rinse right
+draw has fallen below the pump's range, the count stays stopped: the heater
+coming on alone a few seconds later is not the pump again. All the watts
+are in the plugin's phases; the app has none of its own. A rinse right
 before the heater starts, with no reading below between them, looks like
 the pump and heater together, and its count runs on until the phase ends
 and the plugin's shorter result replaces it.

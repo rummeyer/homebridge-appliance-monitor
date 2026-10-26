@@ -32,6 +32,8 @@ export interface LiveAppliance {
   since?: number;
   /** The phases it is in. */
   phases: string[];
+  /** For a phase it is in, when the draw fell below its range, in ms; see PhaseTracker.until. */
+  phasesUntil?: Record<string, number>;
   /** What the running cycle has used so far, and when it began. */
   cycle?: CycleProgress;
   /** How long its cycles usually take, in seconds, if they have a usual length; see typical.ts. */

@@ -1,15 +1,14 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.8
+# @version 4.9
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
-# @config  pump   text   "Pump phase"       default="Pumpe" help="Used when the shot topic is empty"
+# @config  pump   text   "Pump phase"       default="Pumpe" help="The count stops as the plugin sees the draw fall below its range; without shot messages it also starts and ends the shot"
 # @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after"
 # @config  heat   text   "Heating phase"    default="Aufheizen" help="The phase while the machine heats up"
 # @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that is this phase shows as RINSE"
-# @config  below  number "Pump off below"   default=30 min=0 max=3000 unit=W help="The shot's count stops when the plug reads less"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
@@ -21,9 +20,9 @@
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
 class ShotTimer
-  var start_topic, end_topic, state_topic, since_topic, watts_topic, heat_topic, idle_topic, over_topic
+  var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed
-  var pump_topic, on_after   # the pump phase, when there are no shot messages, and its on after
+  var pump_topic, until_topic, by_phase, on_after   # the pump phase; whether it starts and ends the shot, without shot messages, and its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
   var temp0        # the temperature when it was switched on, the heating up's 0 %; nil while off
   var temp0_s, temp_s   # Unix seconds of temp0 and of the latest reading
@@ -34,13 +33,13 @@ class ShotTimer
   var cold         # switched on after being off for Cold after, or for how long not known
   var cold_s, coldpre_s
   var was_heated   # heated, as last looked at: coming up once it is
-  var below, lead_ms, hold_ms, pin
+  var lead_ms, hold_ms, pin
   var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
   var x0           # where the text starts: past the 16×16 cup, or the 8×8 one 8 rows high
   var done, hot, red, white, grey, warn
   var shot         # "idle", "run" or "done"
   var t0           # now_ms() when the pump started
-  var stopped      # now_ms() when the watts said it stopped, or nil
+  var stopped      # now_ms() when the pump stopped, as the plugin said, or nil
   var final_s      # the plugin's own count at the end
   var running      # the machine is on
   var known        # a state has come at all; the first is the retained one, not a change
@@ -62,11 +61,12 @@ class ShotTimer
     self.start_topic = shot + "/start"
     self.end_topic = shot + "/end"
     # Without shot messages the pump phase's own ON and OFF: the count is then the clock's
-    self.pump_topic = shot == "" ? base + "/phase/" + store.get("pump") : nil
+    self.pump_topic = base + "/phase/" + store.get("pump")
+    self.until_topic = self.pump_topic + "/until"
+    self.by_phase = shot == ""
     self.on_after = store.get("after")
     self.state_topic = base + "/state"
     self.since_topic = base + "/since"
-    self.watts_topic = base + "/watts"
     self.heat_topic = base + "/phase/" + store.get("heat")
     self.idle_topic = base + "/idle/at"
     self.over_topic = base + "/overtime/at"
@@ -86,7 +86,6 @@ class ShotTimer
     self.was_heated = false
     self.cold_s = int(store.get("cold") * 60)
     self.coldpre_s = int(store.get("coldpre") * 60)
-    self.below = store.get("below")
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
     self.pin = store.get("pin")
@@ -143,7 +142,7 @@ class ShotTimer
 
   # Four subscriptions: an app may hold eight, and the rest are dropped without a word.
   def setup()
-    if self.pump_topic == nil
+    if !self.by_phase
       mqtt.subscribe(self.start_topic, / t, p -> self.started(num(p, 0)))
       mqtt.subscribe(self.end_topic, / t, p -> self.ended(num(p, 0)))
     end
@@ -210,8 +209,14 @@ class ShotTimer
   end
 
   def machine(t, p)
-    if t == self.watts_topic
-      self.watts(num(p))
+    if t == self.until_topic
+      # Stopped where the draw fell below the pump's range, as the plugin tells at once rather than
+      # after the phase's off after, and running on if it comes back into it. The heater beside
+      # the pump, above the range, counts on; the heater alone after it does not start it again.
+      if self.shot == "run"
+        var v = num(p, 0)
+        self.stopped = v > 0 ? max(self.t0, now_ms() - (epoch_ms() / 1000 - v) * 1000) : nil
+      end
     elif t == self.state_topic
       var was = self.running
       self.running = p == "running"
@@ -254,9 +259,9 @@ class ShotTimer
         self.heat_done = true
       end
       self.heating = on
-    elif t == self.pump_topic
+    elif t == self.pump_topic && self.by_phase
       # The phase is on after its on after, and goes off its off after late: the result is
-      # what the clock counted, frozen when the watts fell.
+      # what the clock counted, frozen when the draw fell.
       if p == "ON" && self.shot != "run"
         self.started(self.on_after)
       elif p == "OFF" && self.shot == "run"
@@ -319,18 +324,6 @@ class ShotTimer
     self.built = -1
     if !(self.pin && self.running)
       self.leave()
-    end
-  end
-
-  # Frozen once the plug reads below the pump: nothing runs. The heater runs
-  # beside the pump during a coffee, so a reading above it counts on, but the
-  # heater coming on alone after the pump stopped does not start it again.
-  def watts(w)
-    if self.shot != "run" || w == nil
-      return
-    end
-    if w < self.below && self.stopped == nil
-      self.stopped = now_ms()
     end
   end
 

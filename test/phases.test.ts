@@ -229,6 +229,28 @@ test('the heater coming on after the pump has stopped is not the pump', () => {
   assert.equal(off!.until, 30 * S, 'the pump stopped when the draw fell to 6 W, not when the heater did at 42 s');
 });
 
+test('while the phase is on, it says at once when the draw fell below it, and forgets it when the draw is back', () => {
+  const tracker = new PhaseTracker({ name: 'Pumpe', minWatts: 40, maxWatts: 100, minSeconds: 1, holdSeconds: 15 });
+  tracker.reading(0, 2);
+  assert.equal(tracker.until, undefined, 'not while it is off');
+  tracker.reading(6 * S, 55);
+  tracker.tick(7 * S);
+  assert.equal(tracker.active, true);
+  assert.equal(tracker.until, undefined, 'in the range');
+  tracker.reading(12 * S, 1230);
+  assert.equal(tracker.until, undefined, 'above it, as the heater beside the pump');
+  tracker.reading(18 * S, 2);
+  assert.equal(tracker.until, 18 * S);
+  tracker.reading(24 * S, 1190);
+  assert.equal(tracker.until, 18 * S, 'the heater alone after it does not take it back');
+  tracker.reading(30 * S, 55);
+  assert.equal(tracker.until, undefined, 'the pump again');
+  tracker.reading(36 * S, 2);
+  tracker.tick(51 * S);
+  assert.equal(tracker.active, false);
+  assert.equal(tracker.until, undefined, 'not once it is off');
+});
+
 test('a draw that stays above the range until the phase ends: the phase lasted until it left it', () => {
   const tracker = new PhaseTracker({ name: 'Pumpe', minWatts: 30, maxWatts: 100, minSeconds: 1, holdSeconds: 15 });
   const off = track(tracker, [[0, 2], [10, 55], [20, 1200], [60, 2]], 120).find(({ active }) => !active);

@@ -11,6 +11,8 @@
  *     <prefix>/<name>/watts            14.9
  *     <prefix>/<name>/reachable        true | false
  *     <prefix>/<name>/phase/<phase>    ON | OFF; a short phase is ON for a moment
+ *     <prefix>/<name>/phase/<phase>/until  Unix seconds the draw fell below the phase's
+ *                                      range while it is on; empty while in it, above it, or off
  *     <prefix>/<name>/overtime         ON | OFF, if Overtime is set
  *     <prefix>/<name>/overtime/at      Unix seconds it turns on, or did; empty while not counting
  *     <prefix>/<name>/idle             ON | OFF, if Idle is set
@@ -100,7 +102,10 @@ export function stateTopics(prefix: string, device: DeviceConfig, live: LiveAppl
     topics.set(`${base}/reachable`, String(live.reachable));
   }
   for (const { name } of device.phases ?? []) {
-    topics.set(phaseTopic(prefix, device.name, name), live.phases.includes(name) ? ON : OFF);
+    const topic = phaseTopic(prefix, device.name, name);
+    topics.set(topic, live.phases.includes(name) ? ON : OFF);
+    const until = live.phasesUntil?.[name];
+    topics.set(`${topic}/until`, until === undefined ? '' : unixSeconds(until));
   }
   // An empty retained message clears the topic: nothing counting.
   if (usableMinutes(device, 'overtime').minutes !== undefined) {

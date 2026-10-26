@@ -578,6 +578,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       state: monitor.state,
       since: record.since,
       phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
+      phasesUntil: Object.fromEntries(appliance.phases.flatMap(({ name: phase, until }) => (until === undefined ? [] : [[phase, until]]))),
       cycle,
       ...(typical === undefined ? {} : { typicalSeconds: typical }),
       ...(appliance.timed.overtime ? { overtime: true } : {}),
