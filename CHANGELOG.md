@@ -58,6 +58,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
     a reload say, it waits a second for the machine's topics rather than
     flashing the next app; after reconnecting, a switch-on time that came
     just before its state is kept rather than shown as 0:00.
+  - On a TC001, install `ShotTimer.tc001.be`, made by `tc001.py`: a copy
+    without comments, help texts and the 16 × 16 cup, as `ShotTimer.be` has
+    grown past the 24 KB a TC001 takes for a script.
   - 4.0 and 4.1, a setting for every topic, are gone again: they asked for
     more subscriptions than AWTRIX NG holds for an app. After them, set the
     settings again where yours differ from the defaults.

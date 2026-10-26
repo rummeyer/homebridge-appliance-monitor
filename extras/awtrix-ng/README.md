@@ -83,6 +83,12 @@ By hand:
 
 Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 
+**On a TC001** paste [`ShotTimer.tc001.be`](ShotTimer.tc001.be) instead. A
+TC001 takes a script of 24 KB at the most and shares 96 KB among its scripts,
+so this copy leaves out the comments, the settings' help texts and the 16 × 16
+cup it never draws. [`tc001.py`](tc001.py) makes it from `ShotTimer.be`: run
+`python3 tc001.py` after changing it.
+
 ## Settings
 
 | Setting | Default | |
