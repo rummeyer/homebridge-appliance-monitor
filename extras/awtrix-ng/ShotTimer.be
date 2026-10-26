@@ -165,6 +165,7 @@ class ShotTimer
       if self.running && self.temp0 == nil
         self.temp0 = v
         self.temp0_s = self.temp_s
+        self.keep()
       end
       # For the rate it rises at, while it heats up.
       if self.running && !self.warm
@@ -173,8 +174,9 @@ class ShotTimer
           self.hist.remove(0)
         end
       end
-      if self.running && v >= self.ready
+      if self.running && v >= self.ready && !self.warm
         self.warm = true
+        self.keep()
       end
       self.built = -1
     end
@@ -252,18 +254,22 @@ class ShotTimer
           self.leave()
         end
       end
+      self.recall()
       self.known = true
     elif t == self.since_topic
       self.since_s = num(p, 0)
       self.since_ms = now_ms()
+      self.recall()
+      self.keep()
       if self.running && self.pin && self.since_s > 0
         self.come()
       end
     elif t == self.heat_topic
       var on = p == "ON"
       # The first heating of the morning; a reheat later is not "heating up".
-      if self.heating && !on && self.running
+      if self.heating && !on && self.running && !self.heat_done
         self.heat_done = true
+        self.keep()
       end
       self.heating = on
     elif t == self.pump_topic && self.by_phase
@@ -294,6 +300,28 @@ class ShotTimer
     self.built = -1
   end
 
+  # What is known of this switching on, kept on the clock by its since: the temperature it started
+  # at, whether it came on cold, has been warm, heated or made a coffee. Reloaded, as by an update
+  # or a restart, the app picks up where it was rather than heating up again from now.
+  def keep()
+    if self.running && self.since_s > 0
+      store.set("on", [self.since_s, self.temp0, self.temp0_s, self.cold, self.warm, self.heat_done, self.pumped])
+    end
+  end
+
+  def recall()
+    var k = store.get("on")
+    if self.running && self.since_s > 0 && k != nil && size(k) == 7 && k[0] == self.since_s
+      self.temp0 = k[1]
+      self.temp0_s = k[2]
+      self.cold = k[3]
+      self.warm = k[4] || self.warm
+      self.heat_done = k[5] || self.heat_done
+      self.pumped = k[6] || self.pumped
+      self.built = -1
+    end
+  end
+
   # The pump has been in its range for `seconds` already when the plugin knows.
   def started(seconds)
     timer.cancel(self.timer_id)
@@ -322,8 +350,9 @@ class ShotTimer
   def finish()
     # A coffee ends the heating up, a rinse does not: some machines pump a moment as they are
     # switched on. Which it was is known by now.
-    if !self.rinsed
+    if !self.rinsed && !self.pumped
       self.pumped = true
+      self.keep()
     end
     self.shot = "idle"
     self.stopped = nil

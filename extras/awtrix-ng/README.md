@@ -17,7 +17,9 @@ the clock's rotation, and only while the machine is on. A coffee made while
 it is still heating up ends the heating up: from then on line 2 is the
 countdown to switching off. A rinse does not, as a pump a moment long when
 it is switched on, and neither does a reading that dips below **Preheated
-from** once it was reached.
+from** once it was reached. The app keeps what it knows of the machine's
+switching on in the clock's store, so after an update or a restart of the
+clock it carries on where it was, from the temperature it was switched on at.
 
 On a TC001 the cup is 8 × 8 and there is one line beside it: the shot while
 it runs and its result after, else the two lines taking turns every four

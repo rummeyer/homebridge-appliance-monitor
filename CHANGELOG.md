@@ -43,6 +43,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
     after** (45 minutes) is heated once it has been on for **Cold preheat**
     (30 minutes), counting down to it, as the boiler is hot long before the
     group; one switched on sooner, once the heating phase has ended.
+  - Reloaded, as by an update or a restart of the clock, the app carries on
+    from the temperature the machine was switched on at, kept in the
+    clock's store, rather than heating up again from the current one.
   - A rinse no longer ends the heating up, as a pump a moment long when the
     machine is switched on did; a coffee made while heating up shows the
     time until it is switched off below its result.
