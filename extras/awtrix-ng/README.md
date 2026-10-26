@@ -7,7 +7,7 @@ topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at (0 %) to **Preheated from** (100 %), every three seconds taking turns with how long until then at the rate it rose over the last five minutes; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
+| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then at the rate it rose over the last five minutes; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute; while the machine is in use, which holds Idle, its full time standing still |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
@@ -95,6 +95,7 @@ Either way, press ⚙ on ShotTimer under **Apps** for its settings.
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
 | Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
 | Preheated from | 38 °C | |
+| Heating up as | bar | How far it has heated up: `bar`, filling up block by block, or `percent`. |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
 | Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up. |
 | Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |

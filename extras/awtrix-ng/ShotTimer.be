@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 4.9
+# @version 5.0
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -12,6 +12,7 @@
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
+# @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
 # @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="Without a thermometer: switched on after being off this long, it heats up for Cold preheat; else until the heating phase ends"
 # @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="Without a thermometer: how long a cold machine heats up"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
@@ -51,7 +52,9 @@ class ShotTimer
   var idle_len     # how long Idle counts, in whole minutes' seconds, from the last idle at; 0 if not known
   var built        # the second the lines were built for
   var shown        # the shot's seconds the lines were built for
-  var line1, line2 # lists of [text, colour], or nil
+  var line1, line2 # lists of [text, colour], or nil; line 2 empty for the bar
+  var bar          # how far heating up is, 0 to 100, while line 2 is the bar; else nil
+  var as_bar       # heating up as a bar rather than a percentage
   var timer_id
   var wait_id      # a moment's grace on being shown with nothing yet
   var visible      # on the display now
@@ -89,6 +92,8 @@ class ShotTimer
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
     self.pin = store.get("pin")
+    self.as_bar = store.get("heatas") != "percent"
+    self.bar = nil
     # A white cup with coffee and crema, seen from a little above, on a saucer; 8 rows high, as on
     # the TC001, the cup of LaMetric icon 14199, its steam drawn here.
     self.x0 = height() > 8 ? 17 : 9
@@ -419,6 +424,7 @@ class ShotTimer
     end
     self.built = unix
     self.shown = shot_s
+    self.bar = nil
     if !self.running && self.shot == "idle"
       self.line1 = nil
       self.line2 = nil
@@ -450,7 +456,13 @@ class ShotTimer
     if heating
       if self.thermo() && self.temp0 != nil && self.ready > self.temp0
         var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
-        self.line2 = [[str(pct < 0 ? 0 : (pct > 100 ? 100 : pct)) + "%", self.white]]
+        pct = pct < 0 ? 0 : (pct > 100 ? 100 : pct)
+        if self.as_bar
+          self.bar = pct
+          self.line2 = []
+        else
+          self.line2 = [[str(pct) + "%", self.white]]
+        end
         # At the rate of the last five minutes: a heat exchanger's group hardly rises at first.
         var from_v = self.temp0
         var from_s = self.temp0_s
@@ -465,6 +477,7 @@ class ShotTimer
           var at = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
           # Not a 0:00 that stands still when it rises slower than so far: the percentage then.
           if at > unix
+            self.bar = nil
             self.line2 = [[self.clock(at - unix), self.white]]
           end
         end
@@ -527,7 +540,9 @@ class ShotTimer
       if self.line1 != nil
         text(17, 6, self.line1)
       end
-      if self.line2 != nil
+      if self.bar != nil
+        self.draw_bar(9)
+      elif self.line2 != nil
         text(17, 14, self.line2)
       end
       return
@@ -535,11 +550,13 @@ class ShotTimer
     # 8 rows high, one line beside the cup: the shot alone, else the two lines taking turns every
     # 4 s, the one sliding down out of sight and the other coming up from the bottom.
     var line = self.line1
+    var second = false
     var off = 0
     if self.shot == "idle" && self.line1 != nil && self.line2 != nil
       var p = now % 4000
       if (now / 4000) % 2 == 1
         line = self.line2
+        second = true
       end
       if p > 3600
         off = (p - 3600) * 9 / 400
@@ -547,8 +564,45 @@ class ShotTimer
         off = 8 - p * 8 / 400
       end
     end
-    if line != nil
+    if second && self.bar != nil
+      self.draw_bar(1 + off)
+    elif line != nil
       text(self.x0 + max(0, (width() - self.x0 - text_width(line) + 1) / 2), 6 + off, line)
+    end
+  end
+
+  # How far heating up is, as AWTRIX NG's boot screen loads: a frame without its corners, seven
+  # rows high beside the cup from `top`, and in it blocks four wide filling up from the left, the
+  # newest one blinking.
+  def draw_bar(top)
+    var x = self.x0
+    var w = width() - x
+    var h = self.hot
+    var frame = ((h >> 16 & 0xFF) * 3 / 8 << 16) | ((h >> 8 & 0xFF) * 3 / 8 << 8) | (h & 0xFF) * 3 / 8
+    var i = 1
+    while i < w - 1
+      pixel(x + i, top, frame)
+      pixel(x + i, top + 6, frame)
+      i += 1
+    end
+    for y : top + 1 .. top + 5
+      pixel(x, y, frame)
+      pixel(x + w - 1, y, frame)
+    end
+    var n = (w - 3) / 5
+    var used = n * 5 - 1
+    var start = x + 1 + (w - 2 - used) / 2
+    var lit = (self.bar * used + 50) / 100
+    var blink = (now_ms() / 500) % 2 == 1
+    i = 0
+    while i < lit
+      if i % 5 != 4
+        var c = blink && i >= (lit - 1) / 5 * 5 ? self.white : h
+        for y : top + 2 .. top + 4
+          pixel(start + i, y, c)
+        end
+      end
+      i += 1
     end
   end
 end

@@ -30,9 +30,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   made a 20 s coffee 36 s and a 5 s rinse 18.
 
 - `extras/awtrix-ng`, not part of the package — the coffee machine app, 3.4
-  to 4.9:
+  to 5.0:
   - While it heats up, line 2 shows how far, from the temperature it was
-    switched on at as 0 % to **Preheated from** as 100 %, taking turns with
+    switched on at to **Preheated from**, as a bar like the one AWTRIX NG
+    boots with or as a percentage (**Heating up as**), taking turns with
     how long until then at the rate of the last five minutes; a heat
     exchanger's group hardly rises at first. Once heated it stays so when a
     reading dips below. A thermometer that still reads what it did at
