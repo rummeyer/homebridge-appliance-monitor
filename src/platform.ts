@@ -329,10 +329,17 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.#store?.update(device.name, { described: false });
         this.log.info(`${device.name}: paired as node ${nodeId}, instead of node ${old}`);
       } catch (error) {
-        this.log.warn(
-          `${device.name}: a new pairing code, but pairing with it failed: ${message(error)}. Staying with node ${nodeId}; ` +
-            'to stay with it for good, put its old code back or remove the code.',
-        );
+        // The Home app shows another code each time pairing mode is turned
+        // on: a code for the plug already paired is that plug's, not a new one.
+        if (/already commissioned/i.test(message(error))) {
+          registry.set(device.name, nodeId, device.pairingCode);
+          this.log.info(`${device.name}: the new pairing code is the same plug's, node ${nodeId}`);
+        } else {
+          this.log.warn(
+            `${device.name}: a new pairing code, but pairing with it failed: ${message(error)}. Staying with node ${nodeId}; ` +
+              'to stay with it for good, put its old code back or remove the code.',
+          );
+        }
       }
     }
 
