@@ -22,16 +22,17 @@
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed
-  var pump_topic, until_topic, by_phase, on_after   # the pump phase; whether it starts and ends the shot, without shot messages, and its on after
+  var pump_topic, until_topic   # the pump phase, and where the plugin says its draw fell below its range
+  var by_phase, on_after        # no shot messages: the pump phase starts and ends the shot; its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
   var temp0        # the temperature when it was switched on, the heating up's 0 %; nil while off
   var temp0_s, temp_s   # Unix seconds of temp0 and of the latest reading
-  var heat_done    # the heating phase has ended since it was switched on: heated, without a thermometer
+  var heat_done    # the heating phase has ended since it was switched on: heated from warm, without a thermometer
   var pumped       # a coffee has been made since it was switched on: in use, not heating up any more
   var warm         # the thermometer has said heated since it was switched on, whatever it says now
   var hist         # [Unix seconds, temperature] of the readings since it was switched on
   var cold         # switched on after being off for Cold after, or for how long not known
-  var cold_s, coldpre_s
+  var cold_s, coldpre_s   # Cold after and Cold preheat, in seconds
   var was_heated   # heated, as last looked at: coming up once it is
   var lead_ms, hold_ms, pin
   var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
@@ -60,7 +61,6 @@ class ShotTimer
     var shot = store.get("shot")
     self.start_topic = shot + "/start"
     self.end_topic = shot + "/end"
-    # Without shot messages the pump phase's own ON and OFF: the count is then the clock's
     self.pump_topic = base + "/phase/" + store.get("pump")
     self.until_topic = self.pump_topic + "/until"
     self.by_phase = shot == ""
@@ -161,14 +161,15 @@ class ShotTimer
         self.temp0 = v
         self.temp0_s = self.temp_s
       end
-      if self.running && v >= self.ready
-        self.warm = true
-      end
-      if self.running
+      # For the rate it rises at, while it heats up.
+      if self.running && !self.warm
         self.hist.push([self.temp_s, v])
         if size(self.hist) > 120
           self.hist.remove(0)
         end
+      end
+      if self.running && v >= self.ready
+        self.warm = true
       end
       self.built = -1
     end
@@ -221,10 +222,14 @@ class ShotTimer
       var was = self.running
       self.running = p == "running"
       if self.running != was
-        # Off long enough to have cooled down, by its since: the old state's, as long as the new
-        # one has not come first; not known, as cold.
-        var off_s = epoch_ms() / 1000 - self.since_s
-        self.cold = !(self.known && self.since_s > 0 && now_ms() - self.since_ms > 2000 && off_s < self.cold_s)
+        # The since that came before is the old state's, and the new one follows right after; but
+        # on connecting again the retained ones come in any order, and one a moment before is new.
+        var old = self.known && now_ms() - self.since_ms > 2000
+        # Off long enough to have cooled down, by the old state's since; not known, as cold.
+        self.cold = !(old && self.since_s > 0 && epoch_ms() / 1000 - self.since_s < self.cold_s)
+        if old
+          self.since_s = 0
+        end
         self.hist = []
         self.was_heated = false
         self.heat_done = false
@@ -233,12 +238,8 @@ class ShotTimer
         self.warm = self.running && self.temp != nil && self.temp >= self.ready
         self.idle_len = 0
         self.temp0_s = epoch_ms() / 1000
-        # The since that came before is the old state's, and the new one follows right after; but
-        # on connecting again the retained ones come in any order, and one a moment before is new.
-        if self.known && now_ms() - self.since_ms > 2000
-          self.since_s = 0
-        end
-        # Up once its since has come, as there is nothing to show before.
+        # Up once its since has come, as there is nothing to show before: here if it came first,
+        # else as it comes.
         if self.running && self.pin && self.since_s > 0
           self.come()
         elif !self.running && self.shot == "idle"
@@ -440,10 +441,11 @@ class ShotTimer
     end
     # Line 2: while heating up, how far, from the temperature it was switched
     # on at as 0 % to Preheated from as 100 %, every three seconds the other
-    # one of that and how long until then, at the rate it has risen so far;
-    # how long it has been on without a thermometer. Else when it is switched
-    # off, by whichever comes first, Idle standing still at its full time while
-    # it is held. One from before it was switched on is stale.
+    # one of that and how long until then; without a thermometer, from cold
+    # how long until Cold preheat is up, else how long it has been on. Else
+    # when it is switched off, by whichever comes first, Idle standing still
+    # at its full time while it is held. One from before it was switched on
+    # is stale.
     if heating
       if self.thermo() && self.temp0 != nil && self.ready > self.temp0
         var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
@@ -477,8 +479,8 @@ class ShotTimer
     if self.idle_at > self.since_s
       off = self.idle_at
     elif self.idle_at == 0 && self.idle_len > 0
-      # Held while a coffee, a rinse or the heater runs, and counted again in full from its end:
-      # the full time, standing still, not Overtime's an hour away.
+      # Held while it is in use, and counted again in full once that is over: the full time,
+      # standing still, not Overtime's an hour away.
       off = unix + self.idle_len
     end
     if self.over_at > self.since_s && (off == 0 || self.over_at < off)

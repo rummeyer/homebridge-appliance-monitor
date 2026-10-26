@@ -22,73 +22,44 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- The `{duration}` and `{seconds}` of a phase's end run until the draw fell
-  below the phase's range, not until it last left it. A coffee whose heater
-  came on beside the pump for its last seconds, above the pump's range, was
-  sent as 36 s though the pump ran 50.
+- A phase ends where the draw fell below its range: the `{duration}` and
+  `{seconds}` of its end, and when Idle counts from. Not where it last left
+  the range, as a coffee machine's heater beside the pump for the last
+  seconds, above the pump's range, made a 50 s coffee 36 s; nor where it
+  rose above it again, as the heater coming on after the pump had stopped
+  made a 20 s coffee 36 s and a 5 s rinse 18.
 
-- A phase's end is where the draw fell below its range, even when it rose
-  above it again a few seconds later: a coffee machine's heater coming on
-  after the pump had stopped made a 20 s coffee 36 s, and a 5 s rinse 18.
-
-- `extras/awtrix-ng`, not part of the package: once the time until it is
-  switched off is up, the app shows OFF alone rather than a 0:00 that stands
-  still while the plug is not off yet.
-
-- `extras/awtrix-ng` 4.2: while it heats up, line 2 shows how far, from
-  the temperature it was switched on at as 0 % to **Preheated from** as
-  100 %, taking turns every three seconds with how long until then at the
-  rate it has risen so far; without a thermometer, how long it has been on
-  as before. While a coffee, a rinse or the heater holds Idle, OFF stands
-  still at Idle's full time rather than showing Overtime's, an hour away.
-  A rinse no longer ends the heating up, as a pump a moment long when the
-  machine is switched on did, and once heated it stays so when a reading
-  dips below **Preheated from**.
-  4.0 and 4.1, a setting for every topic, are gone again: 4.0 asked for
-  more subscriptions than AWTRIX NG holds for an app, and never heard the
-  thermometer or Overtime. After 4.0 or 4.1, set the settings again where
-  yours differ from the defaults.
-
-- `extras/awtrix-ng` 4.3: with **Stay on screen while on**, the app comes
-  up when the machine is switched on rather than waiting for its turn in
-  the rotation; it was brought up before the time it was switched on had
-  come, found nothing to show and went on to the next app. Once the machine
-  is preheated, the app comes up too, also without that setting.
-
-- `extras/awtrix-ng` 4.4: once the plug has read less than **Pump off
-  below**, the shot's count stays stopped; the heater coming on after the
-  pump went on counting.
-
-- `extras/awtrix-ng` 4.5: brought up with nothing to show yet, the app waits a
-  second for the machine's topics before going on to the next app.
-  Reloaded or reconnected while the machine was on, it went on at once and
-  came back a moment later, flashing the next app for half a second.
-
-- `extras/awtrix-ng` 4.6: a coffee made while heating up shows the time
-  until it is switched off below its result, not how far heating up is.
-  Connecting again after the machine was switched on or off meanwhile, the
-  time it was switched on is kept when it came just before its state, rather
-  than read as the old state's and shown as 0:00.
-
-- `extras/awtrix-ng` 4.7: a thermometer that still reads what it did at
-  switching on five minutes later counts as gone quiet, and the app goes on
-  as without one: heated once the heating phase has ended, and how long it
-  has been on below HEATING. A Zigbee sensor that had fallen off its network
-  held it at HEATING and 0 % until the first coffee.
-
-- `extras/awtrix-ng` 4.8: how long until preheated goes by how fast the
-  temperature rose over the last five minutes, not since switching on; a
-  heat exchanger's group hardly rises at first, and a warm start said 33
-  minutes where it took 9. Without a thermometer, a machine switched on
-  after being off for **Cold after** (45 minutes) is heated once it has
-  been on for **Cold preheat** (30 minutes), counting down to it, rather
-  than once the boiler's heating phase has ended, long before the group is
-  hot; one switched on sooner still is heated once that phase ends.
-
-- `extras/awtrix-ng` 4.9: **Pump off below** is gone; the shot's count
-  stops when the plugin says the draw fell below the pump phase's range,
-  and runs on if it comes back into it, so all the watts are in the
-  plugin's phases.
+- `extras/awtrix-ng`, not part of the package — the coffee machine app, 3.4
+  to 4.9:
+  - While it heats up, line 2 shows how far, from the temperature it was
+    switched on at as 0 % to **Preheated from** as 100 %, taking turns with
+    how long until then at the rate of the last five minutes; a heat
+    exchanger's group hardly rises at first. Once heated it stays so when a
+    reading dips below. A thermometer that still reads what it did at
+    switching on five minutes later counts as gone quiet, as a Zigbee sensor
+    fallen off its network, and the app goes on as without one.
+  - Without a thermometer, a machine switched on after being off for **Cold
+    after** (45 minutes) is heated once it has been on for **Cold preheat**
+    (30 minutes), counting down to it, as the boiler is hot long before the
+    group; one switched on sooner, once the heating phase has ended.
+  - A rinse no longer ends the heating up, as a pump a moment long when the
+    machine is switched on did; a coffee made while heating up shows the
+    time until it is switched off below its result.
+  - While the machine is in use, OFF stands still at Idle's full time rather
+    than showing Overtime's, an hour away; once the time is up, OFF alone
+    rather than a 0:00 that stands still.
+  - **Pump off below** is gone: the shot's count stops when the plugin says
+    the draw fell below the pump phase's range, and runs on if it comes back
+    into it. The heater coming on after the pump no longer starts it again.
+  - With **Stay on screen while on**, the app comes up as the machine is
+    switched on rather than at its turn in the rotation, and without the
+    setting once it is preheated. Brought up with nothing to show yet, after
+    a reload say, it waits a second for the machine's topics rather than
+    flashing the next app; after reconnecting, a switch-on time that came
+    just before its state is kept rather than shown as 0:00.
+  - 4.0 and 4.1, a setting for every topic, are gone again: they asked for
+    more subscriptions than AWTRIX NG holds for an app. After them, set the
+    settings again where yours differ from the defaults.
 
 ## [1.16.1] — 2026-10-21
 
