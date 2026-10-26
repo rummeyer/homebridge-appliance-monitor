@@ -537,9 +537,10 @@
                 }),
               'For an appliance that keeps warm.'))),
 
-        el('details', { class: 'om-set-more om-set-section', open: device.pollSeconds || hasThresholds(device) },
-          el('summary', {}, 'More: Polling, Phases & Thresholds'),
-          el('div', { class: 'om-set-section' },
+        // Polling asks a Matter plug; over MQTT the plug sends by itself.
+        el('details', { class: 'om-set-more om-set-section', open: (!viaMqtt && device.pollSeconds) || hasThresholds(device) },
+          el('summary', {}, viaMqtt ? 'More: Phases & Thresholds' : 'More: Polling, Phases & Thresholds'),
+          viaMqtt ? null : el('div', { class: 'om-set-section' },
             el('h6', {}, 'Polling'),
             el('div', { class: 'om-set-poll' },
               field('Polling interval (s)', number(device.pollSeconds, 'off, only listen', (value, input) => {
