@@ -232,6 +232,14 @@ test('after a restart, a running machine finishes', () => {
   assert.deepEqual(seen, ['running→idle']);
 });
 
+test('after a restart, a running cycle started when the draw rose, not when running became clear', () => {
+  const machine = new CycleMachine(new DeviceMonitor({}, { transition: () => {}, learned: () => {}, resumed: () => {} }).params,
+    { state: 'running', since: 61 * S, startedAt: 0 });
+  assert.equal(machine.progress(2 * MIN)?.startedAt, 0);
+  const before = new CycleMachine(machine.params, { state: 'running', since: 61 * S });
+  assert.equal(before.progress(2 * MIN)?.startedAt, 61 * S, 'saved without it, as before, when running began');
+});
+
 test('nothing is learned from a blip that never really worked', () => {
   const samples = [
     { at: 0, watts: 1 },

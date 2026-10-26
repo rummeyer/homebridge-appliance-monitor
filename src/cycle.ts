@@ -44,6 +44,8 @@ export interface CycleParams {
 export interface SavedState {
   state: CycleState;
   since: number;
+  /** Running: when the draw first rose, some time before `since`. */
+  startedAt?: number;
   wattHours?: number;
   peakWatts?: number;
 }
@@ -101,7 +103,8 @@ export class CycleMachine {
       this.#wattHours = initial?.wattHours ?? 0;
       this.#peak = initial?.peakWatts ?? 0;
     }
-    this.#cycleStart = this.#since;
+    // Where the draw first rose, as before the restart rather than when running became clear.
+    this.#cycleStart = (this.#state === 'running' ? initial?.startedAt : undefined) ?? this.#since;
   }
 
   get state(): CycleState {

@@ -22,6 +22,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A cycle running across a restart of Homebridge keeps the time its draw
+  rose, as `<name>/since` and Overtime count from, rather than starting
+  over a minute later from when running had become clear.
+
 - A phase ends where the draw fell below its range: the `{duration}` and
   `{seconds}` of its end, and when Idle counts from. Not where it last left
   the range, as a coffee machine's heater beside the pump for the last

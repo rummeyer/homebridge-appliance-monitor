@@ -630,6 +630,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         ? {
             state: cycleState(record.state),
             since: record.since,
+            startedAt: record.cycleStartedAt,
             wattHours: record.cycleWattHours,
             peakWatts: record.cyclePeakWatts,
           }
@@ -1054,6 +1055,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     this.#store?.update(device.name, {
       state: transition.to,
       since: transition.at,
+      cycleStartedAt: transition.to === 'running' ? (transition.startedAt ?? transition.at) : undefined,
       cycleWattHours: undefined,
       cyclePeakWatts: undefined,
     });
