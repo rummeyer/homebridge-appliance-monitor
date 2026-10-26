@@ -362,13 +362,18 @@
       const isPaired = isPairedDevice(device);
 
       // A plug that publishes its readings itself, a Shelly say: a topic
-      // instead of a pairing. Kept as '' while chosen and not filled in yet.
-      const viaMqtt = !device.pairedWith && typeof device.mqttTopic === 'string';
+      // instead of a pairing, so nothing of pairing is shown. Kept as ''
+      // while chosen and not filled in yet.
+      const viaMqtt = typeof device.mqttTopic === 'string';
       const topicError = (value) => (typeof value === 'string' && /[+#]/.test(value) ? 'One topic exactly: no + or #.' : '');
-      const readingsField = device.pairedWith ? null : field('Readings from',
+      const readingsField = field('Readings from',
         choice(viaMqtt ? 'mqtt' : 'matter', [['matter', 'Matter pairing'], ['mqtt', 'MQTT topic']], (value) => {
           if (value === 'mqtt') {
             device.mqttTopic = device.mqttTopic ?? '';
+            // A bridge's device is Matter's; the code stays, for going back.
+            for (const key of ['pairedWith', 'deviceId', 'endpoint']) {
+              delete device[key];
+            }
           } else {
             for (const key of ['mqttTopic', 'mqttOnlineTopic', 'mqttPowerKey', 'mqttRelayKey']) {
               delete device[key];
@@ -405,9 +410,9 @@
       // and each follows one device of it. Offered only where more than one
       // device measures, so a house of plain plugs sees nothing of it.
       const owners = config.devices
-        .filter((d) => d !== device && d.name && !d.pairedWith && (metered[d.name]?.length ?? 0) > 1)
+        .filter((d) => d !== device && d.name && !d.pairedWith && typeof d.mqttTopic !== 'string' && (metered[d.name]?.length ?? 0) > 1)
         .map((d) => d.name).sort(byName);
-      const pairingField = owners.length || device.pairedWith
+      const pairingField = !viaMqtt && (owners.length || device.pairedWith)
         ? field('Pairing',
           choice(device.pairedWith ?? '', [['', 'Its own pairing code'], ...owners.map((name) => [name, `Shared with ${name} (a bridge)`])], (value) => {
             setOrDrop(device, 'pairedWith', value);
@@ -426,7 +431,7 @@
       if (current && !deviceOptions.some(([key]) => key === current)) {
         deviceOptions.push([current, `${current} (not found)`]);
       }
-      const deviceField = devices.length > 1 || current
+      const deviceField = !viaMqtt && (devices.length > 1 || current)
         ? field('Device',
           choice(current, deviceOptions, (value) => {
             const endpoint = value.startsWith('endpoint:') ? Number(value.slice('endpoint:'.length)) : undefined;
@@ -486,9 +491,9 @@
           // pairing first, with the device behind a bridge where no code is
           // needed, then the rest.
           el('div', { class: 'om-set-grid om-set-rows' },
-            field('Name', nameInput, 'Renaming means pairing again.', nameError(device.name ?? '')),
-            pairingField,
+            field('Name', nameInput, viaMqtt ? 'Its statistics go by it.' : 'Renaming means pairing again.', nameError(device.name ?? '')),
             readingsField,
+            pairingField,
             device.pairedWith ? deviceField : viaMqtt ? null : field('Pairing code', codeInput,
               isPaired ? 'Paired; no longer needed.' : 'Home app: plug settings → Turn On Pairing Mode.',
               codeError(device.pairingCode ?? ''))),
