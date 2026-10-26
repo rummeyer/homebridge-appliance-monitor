@@ -2,10 +2,12 @@
 // ring. Red while it heats up, green once it is heated, off while the plug
 // is switched off.
 //
-// Heated is a thermometer at PREHEATED or more, as the AWTRIX NG ShotTimer
-// has it. Without one, or with one that has said nothing for QUIET_S, it is
-// the heating phase having ended since the machine was switched on. Once
-// green it stays green until the plug is switched off.
+// Heated is a thermometer at PREHEATED or more, read since the machine was
+// switched on, as the AWTRIX NG ShotTimer has it. Without one, or with one
+// that has said nothing for QUIET_S since then, it is the heating phase
+// having ended since, or, for a machine switched on still warm, the phase
+// not having come on within NO_HEATING_S. Once green it stays green until
+// the plug is switched off.
 //
 // Needs MQTT on the Shelly, on the broker Appliance Monitor publishes to.
 
@@ -14,11 +16,13 @@ let HEATING_PHASE = "Aufheizen";
 let TEMPERATURE = "deconz/Kaffeemaschine/temperature"; // "" for none
 let PREHEATED = 38;
 let QUIET_S = 15 * 60;
+let NO_HEATING_S = 6 * 60;
 let RED = [100, 0, 0];
 let GREEN = [0, 100, 0];
 
 let temperature = null;
 let temperatureAt = null;
+let onAt = 0;
 let heating = false;
 let heatingEnded = false;
 let heated = false;
@@ -45,8 +49,11 @@ function show() {
     setColour(RED);
     return;
   }
-  let quiet = temperature === null || uptime() - temperatureAt > QUIET_S;
-  if ((temperature !== null && temperature >= PREHEATED) || (heatingEnded && quiet)) {
+  let sinceOn = uptime() - onAt;
+  // A last value from before is no reading: the thermometer may have died hot.
+  let measured = temperature !== null && temperatureAt !== null && temperatureAt >= onAt;
+  let without = TEMPERATURE === "" || (!measured && sinceOn > QUIET_S);
+  if ((measured && temperature >= PREHEATED) || (without && (heatingEnded || (!heating && sinceOn > NO_HEATING_S)))) {
     heated = true;
   }
   setColour(heated ? GREEN : RED);
@@ -82,11 +89,12 @@ Shelly.addStatusHandler(function (event) {
     heating = false;
     heatingEnded = false;
     heated = false;
-    temperatureAt = temperature === null ? null : uptime();
+    onAt = uptime();
     show();
   }
 });
 
-// Now and then, for the thermometer going quiet.
+// Now and then, for the times above.
+onAt = uptime();
 Timer.set(30000, true, show);
 show();

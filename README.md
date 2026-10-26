@@ -727,9 +727,11 @@ one, paste it in, save, start it and turn on **Run on startup**. Then:
 For a coffee machine on a Shelly with an LED ring, such as the Plug S Gen3,
 [extras/shelly/heating-led.js](extras/shelly/heating-led.js) shows its heating
 up there: red while it heats up, green once it is heated, dark while the plug
-is off. Heated is a thermometer at 38 °C or more, as on the AWTRIX NG clock,
-or without one the heating phase having ended; the topics and phase name are
-at the top of the script.
+is off. Heated is a thermometer at 38 °C or more, read since switching on,
+as on the AWTRIX NG clock. Without one, or one that has said nothing for 15
+minutes, it is the heating phase having ended, or not having come on within
+6 minutes for a machine switched on still warm. The topics and phase name
+are at the top of the script.
 
 ## Plugs that report seldom
 
