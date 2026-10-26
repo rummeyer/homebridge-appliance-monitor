@@ -242,7 +242,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
     }
     if (!this.#stopping) {
-      this.#reportStrays(controller, registry, devices);
+      this.#reportStrays(controller, registry);
     }
   }
 
@@ -329,11 +329,21 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.#store?.update(device.name, { described: false });
         this.log.info(`${device.name}: paired as node ${nodeId}, instead of node ${old}`);
       } catch (error) {
-        // The Home app shows another code each time pairing mode is turned
-        // on: a code for the plug already paired is that plug's, not a new one.
-        if (/already commissioned/i.test(message(error))) {
+        // A plug paired here already: one that no appliance has any more —
+        // another appliance's old plug, moved over — if there is just one
+        // such. If there is none, it is this plug, as the Home app shows
+        // another code each time pairing mode is turned on.
+        const unclaimed = this.#unclaimed(controller, registry);
+        if (/already commissioned/i.test(message(error)) && unclaimed.length <= 1) {
+          const old = nodeId;
+          nodeId = unclaimed[0] ?? nodeId;
           registry.set(device.name, nodeId, device.pairingCode);
-          this.log.info(`${device.name}: the new pairing code is the same plug's, node ${nodeId}`);
+          if (nodeId === old) {
+            this.log.info(`${device.name}: the new pairing code is the same plug's, node ${nodeId}`);
+          } else {
+            this.#store?.update(device.name, { described: false });
+            this.log.info(`${device.name}: the new pairing code is node ${nodeId}'s, paired before and no appliance's; instead of node ${old}`);
+          }
         } else {
           this.log.warn(
             `${device.name}: a new pairing code, but pairing with it failed: ${message(error)}. Staying with node ${nodeId}; ` +
@@ -1221,16 +1231,21 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  /** Nodes on the fabric that no configured plug claims — usually a renamed plug. */
-  #reportStrays(controller: MatterController, registry: NodeRegistry, devices: DeviceConfig[]): void {
-    const names = new Set(devices.map(({ name }) => name));
+  /** Nodes on the fabric that no configured appliance claims. */
+  #unclaimed(controller: MatterController, registry: NodeRegistry): bigint[] {
+    const names = new Set(this.#devices.map(({ name }) => name));
     const claimed = new Set(
       registry
         .entries()
         .filter(([name]) => names.has(name))
         .map(([, id]) => id),
     );
-    const strays = controller.commissionedNodes().filter((id) => !claimed.has(id));
+    return controller.commissionedNodes().filter((id) => !claimed.has(id));
+  }
+
+  /** Nodes on the fabric that no configured plug claims — usually a renamed plug. */
+  #reportStrays(controller: MatterController, registry: NodeRegistry): void {
+    const strays = this.#unclaimed(controller, registry);
     if (strays.length > 0) {
       this.log.warn(
         `Paired but not configured: node ${strays.join(', ')}. A plug that was renamed ` +

@@ -20,9 +20,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 - A new pairing code for an appliance already paired pairs the plug it
   belongs to: a new plug given the old one's name was not paired while the
-  old one was known. The old pairing is let go only once the new one works;
-  a code that turns out to be the same plug's, as the Home app shows a new
-  one each time, is taken as its code.
+  old one was known. The old pairing is let go only once the new one works.
+  A code for a plug paired here already is that of the one plug no
+  appliance has any more — another appliance's old plug, moved over — or,
+  with none, the same plug's, as the Home app shows a new code each time.
 
 ## [1.16.2] — 2026-10-26
 
