@@ -18,7 +18,11 @@ export interface PhaseConfig {
   minWatts: number;
   /** No upper end if left out: "heating is 1000 W and up". */
   maxWatts?: number;
-  /** How long the draw has to be in the band, added up, before the phase is on. */
+  /**
+   * How long the draw has to be in the band, added up, before the phase is
+   * on. With offBelow, time above the band counts too, from the draw entering
+   * it until it falls below: see offBelow.
+   */
   minSeconds?: number;
   /**
    * How long it has to stay out of the band before the phase is off. A
@@ -62,6 +66,13 @@ export interface PhaseConfig {
    * watts of keeping warm it has stopped — and a rinse a few seconds before
    * the coffee is not the coffee. Not for heating, whose thermostat drops
    * below the band while it lasts.
+   *
+   * For the same reason the time above the band counts towards minSeconds,
+   * once the draw has entered the band and until it falls below: the pump
+   * is running under the heater. On after then measures the draw as Shorter
+   * than does — a coffee on after fifteen seconds and a rinse shorter than
+   * fifteen in the same band are one or the other, never both nor neither,
+   * whether the heater came on beside the pump or not.
    */
   offBelow?: boolean;
 }
@@ -224,10 +235,27 @@ export class PhaseTracker {
   }
 
   #advance(at: number): void {
-    if (this.#watts !== undefined && this.#counts(this.#watts) && this.#accountedAt !== undefined) {
+    if (this.#counting() && this.#accountedAt !== undefined) {
       this.#inMs += Math.max(0, at - this.#accountedAt);
     }
     this.#accountedAt = at;
+  }
+
+  /**
+   * Whether the time since the last reading counts towards minSeconds: in
+   * the band, or — with offBelow — above it once the draw has entered it and
+   * not yet fallen below, something else drawing beside it.
+   */
+  #counting(): boolean {
+    const watts = this.#watts;
+    if (watts === undefined) {
+      return false;
+    }
+    if (this.#counts(watts)) {
+      return true;
+    }
+    return this.#phase.offBelow === true && this.#firstIn !== undefined && this.#belowSince === undefined
+      && watts >= (this.#phase.maxWatts ?? Infinity);
   }
 
   #check(at: number): PhaseChange | undefined {

@@ -716,7 +716,7 @@
             labelled(check(`${id}-down`, 'On down', (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true, (on) => update((p) => { delete p.fromAbove; delete p.rampDown; setOrDrop(p, 'onDown', on, false); })),
               'Only when the draw falls into the range, not when it rises into it'),
             labelled(check(`${id}-below`, 'Off below', phase.offBelow === true, (on) => update((p) => setOrDrop(p, 'offBelow', on, false))),
-              'Off after 3 s below the range; Off after then only counts time above it'),
+              'Off after 3 s below the range; Off after then only counts time above it, and On after counts it too'),
             check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
             labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
               'Count on the Statistics tab instead of finished cycles')),

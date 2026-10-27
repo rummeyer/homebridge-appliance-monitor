@@ -16,6 +16,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - A phase's upper end is called **To**, so that a range reads From … To.
+- With **Off below**, "On after" also counts the time above the range, from
+  the draw entering it until it falls below. It then measures a draw as
+  "Shorter than" does: a coffee on after 15 seconds and a rinse shorter than
+  15 seconds are one or the other, never both nor neither, whether the heater
+  came on beside the pump or not.
 
 ## [1.18.0] — 2026-10-27
 

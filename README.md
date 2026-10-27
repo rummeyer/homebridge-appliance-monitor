@@ -345,6 +345,15 @@ A rinse and the coffee a few seconds after it are then two draws, not one,
 and a shot timer counts only the coffee. Not for heating: its thermostat
 drops below the range while it lasts.
 
+With **Off below**, "on after" also counts the time above the range, from
+the draw entering it until it falls below — the pump runs on under the
+heater. It then measures a draw the way "shorter than" does: a coffee *on
+after* 15 s and a rinse *shorter than* 15 s, both from 45 W, split every draw
+at 15 s, whether the heater came on beside the pump or not. Without it, a
+coffee with the heater on for half of it has too few seconds in the range to
+count, and lowering "on after" to make up for it counts a rinse of the pump
+alone as both.
+
 Some differ by the direction the draw came from. A washing machine that has
 finished rests at a few watts, and so does one just switched on to be
 loaded: one came down from the wash, the other up from nothing. Tick

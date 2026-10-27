@@ -299,3 +299,23 @@ test('off below: a rinse and the shot after it are two draws, the heater beside 
     'the rinse ends 3 s after the 2 W, the shot is 20 s with the heater inside it',
   );
 });
+
+test('off below: on after counts the heater beside the pump, so a coffee and a rinse split at one time', () => {
+  const bezug = { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, offBelow: true };
+  const spuelen = { name: 'Spülen', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, maxSeconds: 15 };
+  const on = (phase: typeof bezug | typeof spuelen, curve: [number, number][]) =>
+    track(new PhaseTracker(phase), curve, 120).filter(({ active }) => active).map(({ at, short }) => [at / S, short ?? false]);
+
+  // A coffee of 20 s, the heater on top of the pump for 9 of them: 11 s in the band, 20 s in all.
+  const coffee: [number, number][] = [[0, 2], [10, 57], [15, 1290], [24, 57], [30, 2]];
+  assert.deepEqual(on(bezug, coffee), [[25, false]], 'a coffee, live at 15 s into it');
+  assert.deepEqual(on(spuelen, coffee), [], 'not a rinse');
+
+  // The pump alone for 12 s, no heater: a rinse, and not a coffee.
+  const rinse: [number, number][] = [[0, 2], [10, 57], [22, 2]];
+  assert.deepEqual(on(bezug, rinse), [], 'not a coffee');
+  assert.deepEqual(on(spuelen, rinse), [[25, true]], 'a rinse, known 3 s after it');
+
+  // Without offBelow the heater seconds do not count: the same coffee is not one.
+  assert.deepEqual(on({ ...bezug, offBelow: false }, coffee), [], 'the gap offBelow closes');
+});
