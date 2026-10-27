@@ -651,6 +651,7 @@ publishes them itself, see [Readings over MQTT](#readings-over-mqtt).
 | `appliance-monitor/<name>/since` | when that state began, in Unix seconds: `1792481235`; running, when the draw rose |
 | `appliance-monitor/<name>/watts` | what it draws, to a tenth of a watt: `14.9` |
 | `appliance-monitor/<name>/reachable` | `true` or `false`; while `false`, `watts` is the last reading |
+| `appliance-monitor/<name>/relay` | `ON` or `OFF`, how the plug is switched, for a plug with a relay once it has said |
 | `appliance-monitor/<name>/phase/<phase>` | `ON` or `OFF`, for each phase; a phase with "shorter than" is `ON` for a moment once it is over |
 | `appliance-monitor/<name>/phase/<phase>/until` | while the phase is on, when the draw fell below its range, in Unix seconds — at once, before its "off after" is over; empty while the draw is in it or above, or the phase is off |
 | `appliance-monitor/<name>/overtime` | `ON` or `OFF`, if Overtime is set |

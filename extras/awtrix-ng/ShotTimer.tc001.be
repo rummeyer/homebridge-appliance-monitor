@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.1
+# @version 5.2
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -15,7 +15,6 @@
 # @config cold number "Cold after" default=45 min=0 max=1440 unit=min
 # @config coldpre number "Cold preheat" default=30 min=0 max=120 unit=min
 # @config hold number "Show result for" default=20 min=1 max=600 unit=s
-# @config pin bool "Stay on screen while on" default=false
 # @config done color "Result" default=#30D158
 # @config hot color "Heating" default=#FF8C00
 # @config red color "Heated" default=#FF3B30
@@ -33,8 +32,10 @@ var warm
 var hist
 var cold
 var cold_s, coldpre_s
-var was_heated
-var lead_ms, hold_ms, pin
+var lead_ms, hold_ms
+var relay_topic
+var plug_on
+var relay_s
 var cup
 var x0
 var done, hot, red, white, grey, warn
@@ -84,12 +85,13 @@ self.pumped = false
 self.warm = false
 self.hist = []
 self.cold = true
-self.was_heated = false
+self.relay_topic = base + "/relay"
+self.plug_on = nil
+self.relay_s = 0
 self.cold_s = int(store.get("cold") * 60)
 self.coldpre_s = int(store.get("coldpre") * 60)
 self.lead_ms = int(store.get("lead") * 1000)
 self.hold_ms = int(store.get("hold") * 1000)
-self.pin = store.get("pin")
 self.as_bar = store.get("heatas") != "percent"
 self.bar = nil
 self.x0 = height() > 8 ? 17 : 9
@@ -194,17 +196,18 @@ if old
 self.since_s = 0
 end
 self.hist = []
-self.was_heated = false
 self.heat_done = false
 self.pumped = false
 self.temp0 = self.running ? self.temp : nil
 self.warm = self.running && self.temp != nil && self.temp >= self.ready
 self.idle_len = 0
 self.temp0_s = epoch_ms() / 1000
-if self.running && self.pin && self.since_s > 0
+if self.plug_on == nil
+if self.running && self.since_s > 0
 self.come()
 elif !self.running && self.shot == "idle"
 self.leave()
+end
 end
 end
 self.recall()
@@ -214,8 +217,19 @@ self.since_s = num(p, 0)
 self.since_ms = now_ms()
 self.recall()
 self.keep()
-if self.running && self.pin && self.since_s > 0
+if self.plug_on == nil && self.running && self.since_s > 0
 self.come()
+end
+elif t == self.relay_topic
+var on = p == "ON"
+if on != self.plug_on
+self.relay_s = on && self.plug_on != nil ? epoch_ms() / 1000 : 0
+self.plug_on = on
+if on
+self.come()
+elif self.shot == "idle"
+self.leave()
+end
 end
 elif t == self.heat_topic
 var on = p == "ON"
@@ -293,7 +307,7 @@ self.shot = "idle"
 self.stopped = nil
 self.timer_id = nil
 self.built = -1
-if !(self.pin && self.running)
+if !self.on()
 self.leave()
 end
 end
@@ -301,17 +315,13 @@ def loop()
 if self.shot == "run" && now_ms() - self.t0 > 90000
 self.finish()
 end
-var h = self.running && self.heated()
-if h && !self.was_heated
-self.come()
 end
-self.was_heated = h
+def on()
+return self.plug_on != nil ? self.plug_on : self.running && self.since_s > 0
 end
 def come()
 rotation.show()
-if self.pin
 rotation.pause()
-end
 end
 def leave()
 rotation.resume()
@@ -336,7 +346,7 @@ def on_hide()
 self.visible = false
 end
 def should_show()
-return self.shot != "idle" || (self.running && self.since_s > 0)
+return self.shot != "idle" || self.on()
 end
 def clock(s)
 if s < 0
@@ -367,8 +377,13 @@ end
 self.built = unix
 self.shown = shot_s
 self.bar = nil
-if !self.running && self.shot == "idle"
+if !self.on() && self.shot == "idle"
 self.line1 = nil
+self.line2 = nil
+return
+end
+if !self.running && self.shot == "idle"
+self.line1 = self.relay_s > 0 ? self.pair("ON", self.clock(unix - self.relay_s), self.white) : [["ON", self.white]]
 self.line2 = nil
 return
 end

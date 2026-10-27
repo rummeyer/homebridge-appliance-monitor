@@ -618,6 +618,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       name,
       paired: true,
       reachable: appliance.reachable,
+      ...(appliance.relayOff === undefined ? {} : { relay: !appliance.relayOff }),
       watts: appliance.watts,
       at: appliance.last?.at,
       state: monitor.state,

@@ -40,11 +40,12 @@ test('a broker address or prefix that cannot work costs MQTT, not the plugin, an
 });
 
 test('an appliance is its state, watts, reachability, each phase and the sensors it has', () => {
-  const topics = stateTopics('am', coffee, live({ state: 'running', watts: 14.849, reachable: true, phases: ['Bezug'], idleOn: true }));
+  const topics = stateTopics('am', coffee, live({ state: 'running', watts: 14.849, reachable: true, relay: true, phases: ['Bezug'], idleOn: true }));
   assert.deepEqual(Object.fromEntries(topics), {
     'am/Kaffeemaschine/state': 'running',
     'am/Kaffeemaschine/watts': '14.8',
     'am/Kaffeemaschine/reachable': 'true',
+    'am/Kaffeemaschine/relay': 'ON',
     'am/Kaffeemaschine/phase/Aufheizen': 'OFF',
     'am/Kaffeemaschine/phase/Aufheizen/until': '',
     'am/Kaffeemaschine/phase/Bezug': 'ON',
@@ -54,6 +55,11 @@ test('an appliance is its state, watts, reachability, each phase and the sensors
     'am/Kaffeemaschine/idle': 'ON',
     'am/Kaffeemaschine/idle/at': '',
   });
+});
+
+test('the relay only for a plug that says how it is switched', () => {
+  assert.equal(stateTopics('am', coffee, live({ relay: false })).get('am/Kaffeemaschine/relay'), 'OFF');
+  assert.equal(stateTopics('am', coffee, live({})).has('am/Kaffeemaschine/relay'), false);
 });
 
 test('when the state began and when Overtime and Idle turn on are Unix seconds, for a display to count with', () => {

@@ -12,8 +12,9 @@ topics:
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
 
-The shot takes over the display while it runs; the rest takes its turn in
-the clock's rotation, and only while the machine is on. A coffee made while
+The app is on the display, and holds it, exactly while the machine's plug
+is switched on, as Appliance Monitor tells it on `relay`: from switching on
+to switching off, and nothing of it otherwise. A coffee made while
 it is still heating up ends the heating up: from then on line 2 is the
 countdown to switching off. A rinse does not, as a pump a moment long when
 it is switched on, and neither does a reading that dips below **Preheated
@@ -28,8 +29,10 @@ value do not both fit, the value stands alone.
 
 ## What it needs
 
-**MQTT** switched on in Appliance Monitor, and the clock connected to the
-same broker (its web UI, **Settings › MQTT**).
+**MQTT** switched on in Appliance Monitor 1.17.1 or later, and the clock
+connected to the same broker (its web UI, **Settings › MQTT**). An earlier
+Appliance Monitor does not tell the plug's relay; the app is then on the
+display while the machine runs.
 
 **Phases** on the coffee machine, set up on the Power tab. The app's
 defaults use these names; any others can be set in the app's settings.
@@ -37,8 +40,12 @@ defaults use these names; any others can be set in the app's settings.
 | Phase | What | Example |
 |---|---|---|
 | Aufheizen | heating up | from 1000 W, on after 60 s |
-| Pumpe | the pump, for a coffee or a rinse | 30–100 W, on after 1 s, off after 15 s |
-| Spülen | a rinse: the pump for less than 10 s | 30–100 W, on after 2 s, shorter than 10 s |
+| Pumpe | the pump, for a coffee or a rinse | 40–100 W, on after 4 s, off after 15 s |
+| Spülen | a rinse: the pump for less than 10 s | 40–100 W, on after 4 s, shorter than 10 s |
+
+With a plug that reads every second, a Shelly say, the pump's "on after"
+has to be a few seconds: as the heater switches on or off, one reading falls
+between the two and would be taken for the pump.
 
 **Optional: two MQTT messages** on the same machine, below the phases on the
 Power tab, which start and end the shot timer with the plugin's own count:
@@ -106,9 +113,8 @@ cup it never draws. [`tc001.py`](tc001.py) makes it from `ShotTimer.be`: run
 | Heating up as | bar | How far it has heated up: `bar`, small blocks lighting up one after the other, or `percent`. |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
 | Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up. |
-| Plug delay | 5 s | The Eve Energy reports an average over 6 seconds, so the pump started that much before the plugin saw it. 0 for a plug that reports at once. |
+| Plug delay | 5 s | How much later the plugin sees the pump than it started: 5 s for a plug that reports an average over 6 seconds, as the Eve Energy does; 0 for one that reports every second, as a Shelly does. |
 | Show result for | 20 s | |
-| Stay on screen while on | off | On: the app holds the display the whole time the machine is on. Off: it comes up for a shot and once the machine is preheated, and is in the rotation otherwise. |
 | Colours | | Result, heating, heated. The cup is drawn as it is. |
 
 ## How exact it is

@@ -59,8 +59,9 @@ function show() {
   setColour(heated ? GREEN : RED);
 }
 
-// The ring follows the relay by itself; off is dark.
-Shelly.call("PLUGS_UI.SetConfig", { config: { leds: { mode: "switch", colors: { "switch:0": { off: { brightness: 0 } } } } } });
+// The ring follows the relay by itself; off is dark. Black too, as at brightness 0
+// alone the plug still shows the colour.
+Shelly.call("PLUGS_UI.SetConfig", { config: { leds: { mode: "switch", colors: { "switch:0": { off: { rgb: [0, 0, 0], brightness: 0 } } } } } });
 
 MQTT.subscribe(APPLIANCE + "/phase/" + HEATING_PHASE, function (topic, message) {
   // Only an end seen after its start: on subscribing, the last OFF comes too.

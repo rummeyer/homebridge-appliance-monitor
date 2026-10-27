@@ -10,6 +10,7 @@
  *                                      running, when the draw rose
  *     <prefix>/<name>/watts            14.9
  *     <prefix>/<name>/reachable        true | false
+ *     <prefix>/<name>/relay            ON | OFF, the plug's relay, for a plug that has one
  *     <prefix>/<name>/phase/<phase>    ON | OFF; a short phase is ON for a moment
  *     <prefix>/<name>/phase/<phase>/until  Unix seconds the draw fell below the phase's
  *                                      range while it is on; empty while in it, above it, or off
@@ -101,6 +102,9 @@ export function stateTopics(prefix: string, device: DeviceConfig, live: LiveAppl
   }
   if (live.reachable !== undefined) {
     topics.set(`${base}/reachable`, String(live.reachable));
+  }
+  if (live.relay !== undefined) {
+    topics.set(`${base}/relay`, live.relay ? ON : OFF);
   }
   for (const { name } of device.phases ?? []) {
     const topic = phaseTopic(prefix, device.name, name);

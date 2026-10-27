@@ -24,6 +24,8 @@ export interface LiveAppliance {
   paired: boolean;
   /** Whether it is connected; unknown until the first connect. */
   reachable?: boolean;
+  /** Whether the plug's relay is switched on; unknown for a plug without one, or until it says. */
+  relay?: boolean;
   watts?: number;
   /** When the last reading came, in ms. */
   at?: number;

@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.1
+# @version 5.2
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -16,7 +16,6 @@
 # @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="Without a thermometer: switched on after being off this long, it heats up for Cold preheat; else until the heating phase ends"
 # @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="Without a thermometer: how long a cold machine heats up"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
-# @config  pin    bool   "Stay on screen while on" default=false help="Off: in the rotation, with only the shot and being preheated taking over"
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
@@ -34,8 +33,10 @@ class ShotTimer
   var hist         # [Unix seconds, temperature] of the readings since it was switched on
   var cold         # switched on after being off for Cold after, or for how long not known
   var cold_s, coldpre_s   # Cold after and Cold preheat, in seconds
-  var was_heated   # heated, as last looked at: coming up once it is
-  var lead_ms, hold_ms, pin
+  var lead_ms, hold_ms
+  var relay_topic  # the plug's relay, as Appliance Monitor tells it
+  var plug_on      # the plug is switched on: on the display the whole time; nil until told
+  var relay_s      # Unix seconds it was switched on, 0 if not seen
   var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
   var x0           # where the text starts: past the 16×16 cup, or the 8×8 one 8 rows high
   var done, hot, red, white, grey, warn
@@ -86,12 +87,13 @@ class ShotTimer
     self.warm = false
     self.hist = []
     self.cold = true
-    self.was_heated = false
+    self.relay_topic = base + "/relay"
+    self.plug_on = nil
+    self.relay_s = 0
     self.cold_s = int(store.get("cold") * 60)
     self.coldpre_s = int(store.get("coldpre") * 60)
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
-    self.pin = store.get("pin")
     self.as_bar = store.get("heatas") != "percent"
     self.bar = nil
     # A white cup with coffee and crema, seen from a little above, on a saucer; 8 rows high, as on
@@ -239,19 +241,20 @@ class ShotTimer
           self.since_s = 0
         end
         self.hist = []
-        self.was_heated = false
         self.heat_done = false
         self.pumped = false
         self.temp0 = self.running ? self.temp : nil
         self.warm = self.running && self.temp != nil && self.temp >= self.ready
         self.idle_len = 0
         self.temp0_s = epoch_ms() / 1000
-        # Up once its since has come, as there is nothing to show before: here if it came first,
-        # else as it comes.
-        if self.running && self.pin && self.since_s > 0
-          self.come()
-        elif !self.running && self.shot == "idle"
-          self.leave()
+        # A plugin that does not tell the relay: on the display while it runs, once its since has
+        # come, as there is nothing to show before; here if it came first, else as it comes.
+        if self.plug_on == nil
+          if self.running && self.since_s > 0
+            self.come()
+          elif !self.running && self.shot == "idle"
+            self.leave()
+          end
         end
       end
       self.recall()
@@ -261,8 +264,21 @@ class ShotTimer
       self.since_ms = now_ms()
       self.recall()
       self.keep()
-      if self.running && self.pin && self.since_s > 0
+      if self.plug_on == nil && self.running && self.since_s > 0
         self.come()
+      end
+    elif t == self.relay_topic
+      # The one rule: on the display while the plug is switched on, off it once it is not.
+      var on = p == "ON"
+      if on != self.plug_on
+        # Switched on now, not the retained state on connecting, which says nothing of when.
+        self.relay_s = on && self.plug_on != nil ? epoch_ms() / 1000 : 0
+        self.plug_on = on
+        if on
+          self.come()
+        elif self.shot == "idle"
+          self.leave()
+        end
       end
     elif t == self.heat_topic
       var on = p == "ON"
@@ -358,7 +374,7 @@ class ShotTimer
     self.stopped = nil
     self.timer_id = nil
     self.built = -1
-    if !(self.pin && self.running)
+    if !self.on()
       self.leave()
     end
   end
@@ -369,20 +385,17 @@ class ShotTimer
     if self.shot == "run" && now_ms() - self.t0 > 90000
       self.finish()
     end
-    # Up once it is preheated, however it came to be.
-    var h = self.running && self.heated()
-    if h && !self.was_heated
-      self.come()
-    end
-    self.was_heated = h
   end
 
-  # On the display: held there while pinned, else for its turn in the rotation.
+  # Whether the machine is on: its plug switched on, or without word of the relay, running.
+  def on()
+    return self.plug_on != nil ? self.plug_on : self.running && self.since_s > 0
+  end
+
+  # On the display, and held there.
   def come()
     rotation.show()
-    if self.pin
-      rotation.pause()
-    end
+    rotation.pause()
   end
 
   # Off the display, and any hold of it let go: nothing left to show.
@@ -416,7 +429,7 @@ class ShotTimer
   end
 
   def should_show()
-    return self.shot != "idle" || (self.running && self.since_s > 0)
+    return self.shot != "idle" || self.on()
   end
 
   def clock(s)
@@ -455,8 +468,14 @@ class ShotTimer
     self.built = unix
     self.shown = shot_s
     self.bar = nil
-    if !self.running && self.shot == "idle"
+    if !self.on() && self.shot == "idle"
       self.line1 = nil
+      self.line2 = nil
+      return
+    end
+    # Switched on, and not running yet: the draw has to hold a while before it counts.
+    if !self.running && self.shot == "idle"
+      self.line1 = self.relay_s > 0 ? self.pair("ON", self.clock(unix - self.relay_s), self.white) : [["ON", self.white]]
       self.line2 = nil
       return
     end

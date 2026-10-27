@@ -6,6 +6,21 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- MQTT: `<name>/relay`, `ON` or `OFF`, how the plug's relay is switched, for
+  a plug with one once it has said.
+
+### Changed
+
+- `extras/awtrix-ng`, the coffee machine app, 5.2: on the display, and
+  holding it, exactly while the machine's plug is switched on, by `relay`;
+  the setting **Stay on screen while on** and the coming up for a shot or
+  once preheated are gone. Without `relay`, from an earlier plugin, while the
+  machine runs, as before.
+- `extras/shelly/heating-led.js`: the ring's colour while the plug is off is
+  black as well as at brightness 0; the plug showed red.
+
 ## [1.17.0] — 2026-10-26
 
 ### Added
