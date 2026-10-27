@@ -6,12 +6,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Fixed
-
-- Settings, Power tab: numbers such as 1000 fit their fields again; with Off
-  below, the four checkboxes had left them too narrow. The number fields have
-  no arrows and are just wide enough, the name takes the rest, and each
-  checkbox's label sits closer to it.
+## [1.19.0] — 2026-10-27
 
 ### Changed
 
@@ -21,6 +16,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   "Shorter than" does: a coffee on after 15 seconds and a rinse shorter than
   15 seconds are one or the other, never both nor neither, whether the heater
   came on beside the pump or not.
+
+### Fixed
+
+- Settings, Power tab: numbers such as 1000 fit their fields again; with Off
+  below, the four checkboxes had left them too narrow. The number fields have
+  no arrows and are just wide enough, the name takes the rest, and each
+  checkbox's label sits closer to it.
 
 ## [1.18.0] — 2026-10-27
 
@@ -1097,7 +1099,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.19.0...HEAD
+[1.19.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.2...v1.17.0
 [1.16.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.1...v1.16.2
