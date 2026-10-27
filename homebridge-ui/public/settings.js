@@ -60,10 +60,10 @@
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
   /* A phase in one line. Fixed widths for the checkboxes, as each row is a
      grid of its own and the heading row has none: each as wide as its label
-     measured in the Homebridge UI, and a few pixels. The name just as wide as
-     "Milchschaum", the numbers without arrows, so that "1000" fits beside four
-     checkboxes in the 768 pixels the Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: 6.75rem repeat(5, minmax(0, 1fr)) 5.25rem 5.6rem 4.4rem 4.1rem 1.4rem;
+     measured in the Homebridge UI, and a few pixels. The numbers without
+     arrows, just wide enough for "1000"; the name gets whatever is left of the
+     768 pixels the Homebridge UI gives the page. */
+  .om-set-phase { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 3.05rem) 5.2rem 5.55rem 4.35rem 4.05rem 1.4rem;
                   gap: .3rem; align-items: center; padding: .3rem 0; }
   .om-set-phase-switches { display: contents; }
   .om-set-phase input[type=number] { -moz-appearance: textfield; appearance: textfield; }
@@ -71,7 +71,12 @@
   .om-set-phase input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .om-set-phase .form-control { padding-left: .3rem; padding-right: .3rem; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
-  .om-set-phase .form-check { margin: 0; white-space: nowrap; }
+  .om-set-phase .form-check { margin: 0; white-space: nowrap; padding-left: 1.25rem; }
+  /* The label close to its box: a quarter of a rem instead of half; rem, as
+     the box has a font size of its own. As
+     specific as Bootstrap's own rule, which otherwise wins and pushes the box
+     out of its column onto the field before it. */
+  .om-set-phase .form-check .form-check-input { margin-left: -1.25rem; }
   /* Small and square, the cross in the middle of it. A
      drawn cross rather than "×", which each font puts somewhere else; and
      !important, as the host's own button styles would win otherwise. */
@@ -635,7 +640,7 @@
       const phases = Array.isArray(device.phases) ? device.phases : [];
       const table = el('table', { class: 'om-table' },
         el('thead', {}, el('tr', {},
-          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Off below', 'Switch', 'Count']
+          ['Name', 'From (W)', 'To (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Off below', 'Switch', 'Count']
             .map((label) => el('th', {}, label)))),
         el('tbody', {}, phases.map((phase) => el('tr', {},
           el('td', {}, phase.name || '(no name)'),
@@ -703,7 +708,7 @@
             drawMessages();
           }), 'Name'),
           labelled(number(phase.minWatts, '', (value) => update((p) => setOrDrop(p, 'minWatts', numberOrUndefined(value)))), 'From (W)'),
-          labelled(number(phase.maxWatts, 'none', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'Below (W)'),
+          labelled(number(phase.maxWatts, 'none', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'To (W)'),
           labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
           labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
@@ -730,7 +735,7 @@
         rows.length
           ? el('div', {},
             el('div', { class: 'om-set-phase om-set-head' },
-              el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'Below (W)'),
+              el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'To (W)'),
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
               el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {}), el('span', {}), el('span', {})),
             rows)

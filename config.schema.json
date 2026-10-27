@@ -283,7 +283,7 @@
                     "minimum": 0
                   },
                   "maxWatts": {
-                    "title": "Below (W)",
+                    "title": "To (W)",
                     "type": "number",
                     "minimum": 0,
                     "placeholder": "no upper end",

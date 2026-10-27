@@ -491,7 +491,7 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
     if (typeof minWatts !== 'number' || !(minWatts >= 0)) {
       wrong.push('needs a "from" of 0 W or more');
     } else if (!open && !(typeof maxWatts === 'number' && maxWatts > minWatts)) {
-      wrong.push('needs its "below" to be more than its "from", or empty for no upper end');
+      wrong.push('needs its "to" to be more than its "from", or empty for no upper end');
     }
     for (const key of ['minSeconds', 'holdSeconds'] as const) {
       const value = phase[key];

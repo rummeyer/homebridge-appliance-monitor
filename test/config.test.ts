@@ -94,7 +94,7 @@ test('phases need a name, once each, and a range that goes up; a wrong one costs
   assert.equal(mixed.problems.length, 4);
   assert.match(mixed.problems[0]!, /phase 2 has no name/);
   assert.match(mixed.problems[1]!, /"Heating" is there twice/);
-  assert.match(mixed.problems[2]!, /"Brewing" needs its "below" to be more than its "from"/);
+  assert.match(mixed.problems[2]!, /"Brewing" needs its "to" to be more than its "from"/);
   assert.match(mixed.problems[3]!, /holdSeconds/);
   assert.match(check('Heating').problems[0]!, /not a list/);
 });
