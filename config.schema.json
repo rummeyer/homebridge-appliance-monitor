@@ -313,6 +313,11 @@
                     "type": "boolean",
                     "description": "Only when the draw falls into the range from above, not when it rises into it. A washing machine that has finished rests at the same few watts as one just switched on to be loaded."
                   },
+                  "offBelow": {
+                    "title": "Off below",
+                    "type": "boolean",
+                    "description": "Off once the draw has been below the range for 3 s; \"Off after\" then counts only the time above it. A coffee machine's pump with the heater beside it reads above its range and may still be running; at the few watts of keeping warm it has stopped. Not for heating, whose thermostat drops below the range while it lasts."
+                  },
                   "sensor": {
                     "title": "Switch in HomeKit",
                     "type": "boolean",

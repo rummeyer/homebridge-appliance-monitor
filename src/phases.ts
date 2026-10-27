@@ -55,6 +55,15 @@ export interface PhaseConfig {
    * a false alarm is better than none.
    */
   onDown?: boolean;
+  /**
+   * Off once the draw has been below the band for FORGET_BELOW_MS, the hold
+   * then only for time above it. A coffee machine's pump with the heater
+   * beside it reads above its band and may still be running; at the few
+   * watts of keeping warm it has stopped — and a rinse a few seconds before
+   * the coffee is not the coffee. Not for heating, whose thermostat drops
+   * below the band while it lasts.
+   */
+  offBelow?: boolean;
 }
 
 export const DEFAULT_MIN_SECONDS = 5;
@@ -224,11 +233,11 @@ export class PhaseTracker {
   #check(at: number): PhaseChange | undefined {
     const minMs = (this.#phase.minSeconds ?? DEFAULT_MIN_SECONDS) * 1000;
     const holdMs = (this.#phase.holdSeconds ?? DEFAULT_HOLD_SECONDS) * 1000;
+    const belowLong = this.#belowSince !== undefined && at - this.#belowSince >= FORGET_BELOW_MS;
     const outLong = this.#outSince !== undefined && at - this.#outSince >= holdMs;
 
     if (!this.#active) {
-      const belowLong = this.#firstIn !== undefined && this.#belowSince !== undefined && at - this.#belowSince >= FORGET_BELOW_MS;
-      if (outLong || belowLong) {
+      if (outLong || (belowLong && this.#firstIn !== undefined)) {
         // The draw is over. For a short phase, that is when it is known;
         // otherwise a start in the making is forgotten.
         const short = this.#short(at, minMs);
@@ -243,7 +252,7 @@ export class PhaseTracker {
       }
       return undefined;
     }
-    if (outLong) {
+    if (outLong || (belowLong && this.#phase.offBelow)) {
       this.#active = false;
       const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
       this.#inMs = 0;

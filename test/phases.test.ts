@@ -279,3 +279,23 @@ test('a draw that stays above the range until the phase ends: the phase lasted u
   assert.equal(off!.until, 20 * S);
   assert.equal(off!.at, 35 * S);
 });
+
+/**
+ * As the plug read it on 2026-10-27: a rinse of 7 s with the heater after it,
+ * the machine at 2 W, then a coffee of 20 s with the heater beside the pump,
+ * all within the pump's 15 s hold.
+ */
+const rinseThenShot: [number, number][] = [
+  [0, 3], [10, 58], [16, 1245], [24, 2], [30, 57], [35, 1290], [44, 57], [50, 2],
+];
+
+test('off below: a rinse and the shot after it are two draws, the heater beside the pump still held', () => {
+  const pumpe = { name: 'Pumpe', minWatts: 40, maxWatts: 100, minSeconds: 4, holdSeconds: 15 };
+  const span = (changes: PhaseChange[]) => changes.filter(({ active }) => !active).map(({ from, until }) => [from! / S, until! / S]);
+  assert.deepEqual(span(track(new PhaseTracker(pumpe), rinseThenShot, 120)), [[10, 50]], 'held: one draw of 40 s');
+  assert.deepEqual(
+    span(track(new PhaseTracker({ ...pumpe, offBelow: true }), rinseThenShot, 120)),
+    [[10, 24], [30, 50]],
+    'the rinse ends 3 s after the 2 W, the shot is 20 s with the heater inside it',
+  );
+});

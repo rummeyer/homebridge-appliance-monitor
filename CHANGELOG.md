@@ -8,6 +8,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Phases: **Off below** (`offBelow`), for a phase to end after 3 seconds
+  below its range rather than after its "off after", which then counts only
+  the time above it. A coffee machine's pump with the heater beside it is
+  still held on; one stopped at the few watts of keeping warm is off, and a
+  rinse a few seconds before the coffee no longer runs into it, so a shot
+  timer counts the coffee alone.
 - MQTT: `<name>/relay`, `ON` or `OFF`, how the plug's relay is switched, for
   a plug with one once it has said.
 

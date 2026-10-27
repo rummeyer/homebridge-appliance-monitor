@@ -507,7 +507,7 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
         wrong.push('needs its "shorter than" to be more than its "on after", or it never happens');
       }
     }
-    for (const key of ['count', 'onDown'] as const) {
+    for (const key of ['count', 'onDown', 'offBelow'] as const) {
       const value = phase[key];
       if (value !== undefined && value !== null && typeof value !== 'boolean') {
         wrong.push(`has a ${key} that is not on or off`);

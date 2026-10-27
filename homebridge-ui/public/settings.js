@@ -63,7 +63,7 @@
      Homebridge UI, and a few pixels, so that the gaps between them look the
      same. Narrow padding, so that "Milchschaum" fits in the 768 pixels the
      Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(7.125rem, 1.5fr) repeat(5, minmax(0, 1fr)) 5.25rem 4.4rem 4.1rem 1.4rem;
+  .om-set-phase { display: grid; grid-template-columns: minmax(7.125rem, 1.5fr) repeat(5, minmax(0, 1fr)) 5.25rem 5.6rem 4.4rem 4.1rem 1.4rem;
                   gap: .4rem; align-items: center; padding: .3rem 0; }
   .om-set-phase .form-control { padding-left: .4rem; padding-right: .4rem; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
@@ -631,7 +631,7 @@
       const phases = Array.isArray(device.phases) ? device.phases : [];
       const table = el('table', { class: 'om-table' },
         el('thead', {}, el('tr', {},
-          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Switch', 'Count']
+          ['Name', 'From (W)', 'Below (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Off below', 'Switch', 'Count']
             .map((label) => el('th', {}, label)))),
         el('tbody', {}, phases.map((phase) => el('tr', {},
           el('td', {}, phase.name || '(no name)'),
@@ -641,6 +641,7 @@
           el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
           el('td', {}, (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true ? 'yes' : 'no'),
+          el('td', {}, phase.offBelow === true ? 'yes' : 'no'),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
       return el('div', { class: 'om-set-section' },
@@ -704,6 +705,8 @@
           labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
           labelled(check(`${id}-down`, 'On down', (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true, (on) => update((p) => { delete p.fromAbove; delete p.rampDown; setOrDrop(p, 'onDown', on, false); })),
             'Only when the draw falls into the range, not when it rises into it'),
+          labelled(check(`${id}-below`, 'Off below', phase.offBelow === true, (on) => update((p) => setOrDrop(p, 'offBelow', on, false))),
+            'Off after 3 s below the range; Off after then only counts time above it'),
           check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
           labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
             'Count on the Statistics tab instead of finished cycles'),
@@ -724,7 +727,7 @@
             el('div', { class: 'om-set-phase om-set-head' },
               el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'Below (W)'),
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
-              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {}), el('span', {})),
+              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {}), el('span', {}), el('span', {})),
             rows)
           : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
         el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));
