@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-10-27
+
 ### Added
 
 - Phases: **Off below** (`offBelow`), for a phase to end after 3 seconds
@@ -1079,7 +1081,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.18.0...HEAD
+[1.18.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.2...v1.17.0
 [1.16.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.1...v1.16.2
 [1.16.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.0...v1.16.1

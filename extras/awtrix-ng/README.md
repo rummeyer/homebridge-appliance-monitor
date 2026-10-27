@@ -29,7 +29,7 @@ value do not both fit, the value stands alone.
 
 ## What it needs
 
-**MQTT** switched on in Appliance Monitor 1.17.1 or later, and the clock
+**MQTT** switched on in Appliance Monitor 1.18.0 or later, and the clock
 connected to the same broker (its web UI, **Settings › MQTT**). An earlier
 Appliance Monitor does not tell the plug's relay; the app is then on the
 display while the machine runs.
