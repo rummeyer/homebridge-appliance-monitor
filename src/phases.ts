@@ -34,10 +34,11 @@ export interface PhaseConfig {
    */
   count?: boolean;
   /**
-   * Only draws shorter than this, added up in the band, are the phase. A rinse
-   * runs the same pump as a coffee, only for less time: a coffee on after ten
-   * seconds and a rinse shorter than ten, in the same band, are one or the
-   * other and never both.
+   * Only draws shorter than this are the phase: from entering the band to
+   * falling below it, a moment above it included — a coffee machine's heater
+   * beside the pump. A rinse runs the same pump as a coffee, only for less
+   * time: a coffee on after ten seconds and a rinse shorter than ten, in the
+   * same band, are one or the other and never both.
    *
    * How long a draw was is only known once it is over, so such a phase is on
    * for a moment then, not while it lasts.
@@ -58,6 +59,15 @@ export interface PhaseConfig {
 
 export const DEFAULT_MIN_SECONDS = 5;
 export const DEFAULT_HOLD_SECONDS = 30;
+
+/**
+ * Below the band this long, a phase not on yet is not in the making any more:
+ * the next draw into the band starts afresh. A plug that reads every second
+ * shows a coffee machine flushed a few seconds before the coffee, or a
+ * moment's reading in the band as a heater switches off, apart from the pump
+ * run after them. The hold is for a phase that is on.
+ */
+export const FORGET_BELOW_MS = 3000;
 
 /**
  * How far back the recording is read for where the draw came from. A plug
@@ -217,7 +227,8 @@ export class PhaseTracker {
     const outLong = this.#outSince !== undefined && at - this.#outSince >= holdMs;
 
     if (!this.#active) {
-      if (outLong) {
+      const belowLong = this.#firstIn !== undefined && this.#belowSince !== undefined && at - this.#belowSince >= FORGET_BELOW_MS;
+      if (outLong || belowLong) {
         // The draw is over. For a short phase, that is when it is known;
         // otherwise a start in the making is forgotten.
         const short = this.#short(at, minMs);
@@ -247,7 +258,10 @@ export class PhaseTracker {
     if (maxSeconds === undefined || this.#firstIn === undefined) {
       return undefined;
     }
-    if (this.#inMs < minMs || this.#inMs >= maxSeconds * 1000) {
+    // In the band long enough to count, and short from start to end, the time
+    // above it included.
+    const lasted = (this.#until() ?? at) - this.#firstIn;
+    if (this.#inMs < minMs || lasted >= maxSeconds * 1000) {
       return undefined;
     }
     return { active: true, at, short: true, since: this.#firstIn, from: this.#firstIn, until: this.#until(), inBandMs: this.#inMs };

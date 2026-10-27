@@ -13,13 +13,27 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A phase not on yet forgets the draw that was making it once the draw has
+  been below its range for 3 seconds, rather than for its "off after". On a
+  plug that reads every second, a coffee machine flushed a few seconds before
+  the coffee, or a single reading in the range as its heater switched off,
+  made the coffee's start that much earlier and the coffee that much longer.
+- "Shorter than" is from the draw entering the range to it falling below,
+  a time above it included, rather than the seconds in the range added up: a
+  coffee with the heater beside the pump for half of it was taken for a
+  rinse. A short phase is known 3 seconds after it, rather than after its
+  "off after".
 - `extras/awtrix-ng`, the coffee machine app, 5.2: on the display, and
   holding it, exactly while the machine's plug is switched on, by `relay`;
   the setting **Stay on screen while on** and the coming up for a shot or
   once preheated are gone. Without `relay`, from an earlier plugin, while the
   machine runs, as before.
-- `extras/shelly/heating-led.js`: the ring's colour while the plug is off is
-  black as well as at brightness 0; the plug showed red.
+- `extras/shelly/heating-led.js`: the ring is switched off while the plug is,
+  as the plug showed red with its colour for off black.
+- `extras/awtrix-ng`, the coffee machine app: the machine is on from its plug
+  being switched on, by `relay`, not once the plugin sees it running, which a
+  warm machine whose heater comes on for seconds at a time takes minutes to;
+  heated, heating up and the OFF time count from then.
 
 ## [1.17.0] — 2026-10-26
 

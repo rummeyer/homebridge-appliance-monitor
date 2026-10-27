@@ -26,7 +26,7 @@ let onAt = 0;
 let heating = false;
 let heatingEnded = false;
 let heated = false;
-let shown = null;
+let shown = undefined;
 
 function uptime() {
   return Shelly.getComponentStatus("sys").uptime;
@@ -36,17 +36,23 @@ function isOn() {
   return Shelly.getComponentStatus("switch", 0).output === true;
 }
 
-function setColour(rgb) {
-  if (shown !== rgb) {
-    shown = rgb;
-    Shelly.call("PLUGS_UI.SetConfig", { config: { leds: { colors: { "switch:0": { on: { rgb: rgb } } } } } });
+// The ring off while the plug is, as the plug shows a colour even with its
+// "off" colour black; else following the relay in the colour given.
+function setRing(colour) {
+  if (shown === colour) {
+    return;
+  }
+  shown = colour;
+  if (colour === null) {
+    Shelly.call("PLUGS_UI.SetConfig", { config: { leds: { mode: "off" } } });
+  } else {
+    Shelly.call("PLUGS_UI.SetConfig", { config: { leds: { mode: "switch", colors: { "switch:0": { on: { rgb: colour } } } } } });
   }
 }
 
 function show() {
-  // Off: red in waiting, so that switching on shows no green from before.
   if (!isOn()) {
-    setColour(RED);
+    setRing(null);
     return;
   }
   let sinceOn = uptime() - onAt;
@@ -56,12 +62,9 @@ function show() {
   if ((measured && temperature >= PREHEATED) || (without && (heatingEnded || (!heating && sinceOn > NO_HEATING_S)))) {
     heated = true;
   }
-  setColour(heated ? GREEN : RED);
+  setRing(heated ? GREEN : RED);
 }
 
-// The ring follows the relay by itself; off is dark. Black too, as at brightness 0
-// alone the plug still shows the colour.
-Shelly.call("PLUGS_UI.SetConfig", { config: { leds: { mode: "switch", colors: { "switch:0": { off: { rgb: [0, 0, 0], brightness: 0 } } } } } });
 
 MQTT.subscribe(APPLIANCE + "/phase/" + HEATING_PHASE, function (topic, message) {
   // Only an end seen after its start: on subscribing, the last OFF comes too.

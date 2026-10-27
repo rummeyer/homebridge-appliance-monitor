@@ -35,7 +35,6 @@ var cold_s, coldpre_s
 var lead_ms, hold_ms
 var relay_topic
 var plug_on
-var relay_s
 var cup
 var x0
 var done, hot, red, white, grey, warn
@@ -87,7 +86,6 @@ self.hist = []
 self.cold = true
 self.relay_topic = base + "/relay"
 self.plug_on = nil
-self.relay_s = 0
 self.cold_s = int(store.get("cold") * 60)
 self.coldpre_s = int(store.get("coldpre") * 60)
 self.lead_ms = int(store.get("lead") * 1000)
@@ -186,28 +184,31 @@ if self.shot == "run"
 var v = num(p, 0)
 self.stopped = v > 0 ? max(self.t0, now_ms() - (epoch_ms() / 1000 - v) * 1000) : nil
 end
-elif t == self.state_topic
-var was = self.running
-self.running = p == "running"
-if self.running != was
-var old = self.known && now_ms() - self.since_ms > 2000
-self.cold = !(old && self.since_s > 0 && epoch_ms() / 1000 - self.since_s < self.cold_s)
-if old
-self.since_s = 0
+elif t == self.relay_topic
+var on = p == "ON"
+if on != self.plug_on
+var live = self.plug_on != nil
+self.plug_on = on
+if on != self.running
+self.switched(on, live ? epoch_ms() / 1000 : 0, live)
+self.recall()
 end
-self.hist = []
-self.heat_done = false
-self.pumped = false
-self.temp0 = self.running ? self.temp : nil
-self.warm = self.running && self.temp != nil && self.temp >= self.ready
-self.idle_len = 0
-self.temp0_s = epoch_ms() / 1000
-if self.plug_on == nil
+if on
+self.come()
+elif self.shot == "idle"
+self.leave()
+end
+end
+elif self.plug_on != nil && (t == self.state_topic || t == self.since_topic)
+elif t == self.state_topic
+var running = p == "running"
+if running != self.running
+var old = self.known && now_ms() - self.since_ms > 2000
+self.switched(running, old ? 0 : self.since_s, old)
 if self.running && self.since_s > 0
 self.come()
 elif !self.running && self.shot == "idle"
 self.leave()
-end
 end
 end
 self.recall()
@@ -217,19 +218,8 @@ self.since_s = num(p, 0)
 self.since_ms = now_ms()
 self.recall()
 self.keep()
-if self.plug_on == nil && self.running && self.since_s > 0
+if self.running && self.since_s > 0
 self.come()
-end
-elif t == self.relay_topic
-var on = p == "ON"
-if on != self.plug_on
-self.relay_s = on && self.plug_on != nil ? epoch_ms() / 1000 : 0
-self.plug_on = on
-if on
-self.come()
-elif self.shot == "idle"
-self.leave()
-end
 end
 elif t == self.heat_topic
 var on = p == "ON"
@@ -259,6 +249,18 @@ self.over_at = num(p, 0)
 end
 self.built = -1
 end
+def switched(on, at, fresh)
+self.cold = !(fresh && self.since_s > 0 && epoch_ms() / 1000 - self.since_s < self.cold_s)
+self.running = on
+self.since_s = at
+self.hist = []
+self.heat_done = false
+self.pumped = false
+self.temp0 = on ? self.temp : nil
+self.warm = on && self.temp != nil && self.temp >= self.ready
+self.idle_len = 0
+self.temp0_s = epoch_ms() / 1000
+end
 def keep()
 if self.running && self.since_s > 0
 store.set("on", [self.since_s, self.temp0, self.temp0_s, self.cold, self.warm, self.heat_done, self.pumped])
@@ -266,7 +268,13 @@ end
 end
 def recall()
 var k = store.get("on")
-if self.running && self.since_s > 0 && k != nil && size(k) == 7 && k[0] == self.since_s
+if k == nil || size(k) != 7
+return
+end
+if self.running && self.since_s == 0 && self.plug_on && epoch_ms() / 1000 - k[0] < 21600
+self.since_s = k[0]
+end
+if self.running && self.since_s > 0 && k[0] == self.since_s
 self.temp0 = k[1]
 self.temp0_s = k[2]
 self.cold = k[3]
@@ -379,11 +387,6 @@ self.shown = shot_s
 self.bar = nil
 if !self.on() && self.shot == "idle"
 self.line1 = nil
-self.line2 = nil
-return
-end
-if !self.running && self.shot == "idle"
-self.line1 = self.relay_s > 0 ? self.pair("ON", self.clock(unix - self.relay_s), self.white) : [["ON", self.white]]
 self.line2 = nil
 return
 end

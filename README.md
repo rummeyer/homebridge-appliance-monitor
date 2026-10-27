@@ -324,10 +324,17 @@ and *Spülen* (a rinse):
 
 A draw of ten seconds or more turns Bezug on; a shorter one is a rinse, and
 never turns Bezug on. How long a draw was is known only once it is over, so
-a phase with **Shorter than** goes on for a moment then,
-rather than while it lasts. Both times count the draw's time in the range,
-not how long a switch was on; give both phases the same "off after", so they
-see the same draws.
+a phase with **Shorter than** goes on for a moment then, three seconds after
+the draw fell below the range, rather than while it lasts. "On after" counts
+the draw's time in the range; "Shorter than" the time from it entering the
+range to falling below, so a moment above it — the heater beside the pump —
+does not make a coffee a rinse. Give both phases the same "off after", so
+they see the same draws.
+
+A phase that is not on yet forgets the draw making it once the draw has been
+below the range for three seconds. A plug that reads every second shows a
+rinse just before the coffee, or one reading in the range as a heater
+switches off, apart from the coffee after them.
 
 Some differ by the direction the draw came from. A washing machine that has
 finished rests at a few watts, and so does one just switched on to be
@@ -804,7 +811,7 @@ config it writes looks like this:
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, in the range; any; see [Phases](#phases)), `onDown` (only when the draw falls into the range, not when it rises into it; `false`) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (only when the draw falls into the range, not when it rises into it; `false`) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].messages` | none | MQTT messages of your own: `phase`, `when` (`start` or `end`), `topic` and `payload`, with `{appliance}`, `{phase}`, `{duration}` and `{seconds}` filled in. See [Messages of your own](#messages-of-your-own). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |

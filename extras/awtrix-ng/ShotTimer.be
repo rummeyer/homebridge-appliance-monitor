@@ -36,7 +36,6 @@ class ShotTimer
   var lead_ms, hold_ms
   var relay_topic  # the plug's relay, as Appliance Monitor tells it
   var plug_on      # the plug is switched on: on the display the whole time; nil until told
-  var relay_s      # Unix seconds it was switched on, 0 if not seen
   var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
   var x0           # where the text starts: past the 16×16 cup, or the 8×8 one 8 rows high
   var done, hot, red, white, grey, warn
@@ -44,7 +43,7 @@ class ShotTimer
   var t0           # now_ms() when the pump started
   var stopped      # now_ms() when the pump stopped, as the plugin said, or nil
   var final_s      # the plugin's own count at the end
-  var running      # the machine is on
+  var running      # the machine is on: its plug switched on, or without word of that, running
   var known        # a state has come at all; the first is the retained one, not a change
   var since_s      # Unix seconds it has been in its state since, 0 if not known
   var since_ms     # now_ms() when the since came
@@ -89,7 +88,6 @@ class ShotTimer
     self.cold = true
     self.relay_topic = base + "/relay"
     self.plug_on = nil
-    self.relay_s = 0
     self.cold_s = int(store.get("cold") * 60)
     self.coldpre_s = int(store.get("coldpre") * 60)
     self.lead_ms = int(store.get("lead") * 1000)
@@ -228,33 +226,40 @@ class ShotTimer
         var v = num(p, 0)
         self.stopped = v > 0 ? max(self.t0, now_ms() - (epoch_ms() / 1000 - v) * 1000) : nil
       end
+    elif t == self.relay_topic
+      # The one rule: on the display while the plug is switched on, off it once it is not. The
+      # machine is on from then, not once the plugin has seen it running, which a warm machine
+      # whose heater comes on for a few seconds at a time takes minutes to.
+      var on = p == "ON"
+      if on != self.plug_on
+        # Switched now, not the retained state on connecting, which says nothing of when.
+        var live = self.plug_on != nil
+        self.plug_on = on
+        if on != self.running
+          self.switched(on, live ? epoch_ms() / 1000 : 0, live)
+          self.recall()
+        end
+        if on
+          self.come()
+        elif self.shot == "idle"
+          self.leave()
+        end
+      end
+    elif self.plug_on != nil && (t == self.state_topic || t == self.since_topic)
+      # Told by the relay: the plugin's running and since are not the machine's on.
     elif t == self.state_topic
-      var was = self.running
-      self.running = p == "running"
-      if self.running != was
+      var running = p == "running"
+      if running != self.running
         # The since that came before is the old state's, and the new one follows right after; but
         # on connecting again the retained ones come in any order, and one a moment before is new.
         var old = self.known && now_ms() - self.since_ms > 2000
-        # Off long enough to have cooled down, by the old state's since; not known, as cold.
-        self.cold = !(old && self.since_s > 0 && epoch_ms() / 1000 - self.since_s < self.cold_s)
-        if old
-          self.since_s = 0
-        end
-        self.hist = []
-        self.heat_done = false
-        self.pumped = false
-        self.temp0 = self.running ? self.temp : nil
-        self.warm = self.running && self.temp != nil && self.temp >= self.ready
-        self.idle_len = 0
-        self.temp0_s = epoch_ms() / 1000
-        # A plugin that does not tell the relay: on the display while it runs, once its since has
-        # come, as there is nothing to show before; here if it came first, else as it comes.
-        if self.plug_on == nil
-          if self.running && self.since_s > 0
-            self.come()
-          elif !self.running && self.shot == "idle"
-            self.leave()
-          end
+        self.switched(running, old ? 0 : self.since_s, old)
+        # Without word of the relay: on the display while it runs, once its since has come, as
+        # there is nothing to show before; here if it came first, else as it comes.
+        if self.running && self.since_s > 0
+          self.come()
+        elif !self.running && self.shot == "idle"
+          self.leave()
         end
       end
       self.recall()
@@ -264,21 +269,8 @@ class ShotTimer
       self.since_ms = now_ms()
       self.recall()
       self.keep()
-      if self.plug_on == nil && self.running && self.since_s > 0
+      if self.running && self.since_s > 0
         self.come()
-      end
-    elif t == self.relay_topic
-      # The one rule: on the display while the plug is switched on, off it once it is not.
-      var on = p == "ON"
-      if on != self.plug_on
-        # Switched on now, not the retained state on connecting, which says nothing of when.
-        self.relay_s = on && self.plug_on != nil ? epoch_ms() / 1000 : 0
-        self.plug_on = on
-        if on
-          self.come()
-        elif self.shot == "idle"
-          self.leave()
-        end
       end
     elif t == self.heat_topic
       var on = p == "ON"
@@ -316,6 +308,22 @@ class ShotTimer
     self.built = -1
   end
 
+  # Switched on or off: what was known of the last time is gone. `at` is when, in Unix seconds, 0
+  # if not known; `fresh`, whether the since before it says when it was switched the other way.
+  def switched(on, at, fresh)
+    # Off long enough to have cooled down, by the old since; not known, as cold.
+    self.cold = !(fresh && self.since_s > 0 && epoch_ms() / 1000 - self.since_s < self.cold_s)
+    self.running = on
+    self.since_s = at
+    self.hist = []
+    self.heat_done = false
+    self.pumped = false
+    self.temp0 = on ? self.temp : nil
+    self.warm = on && self.temp != nil && self.temp >= self.ready
+    self.idle_len = 0
+    self.temp0_s = epoch_ms() / 1000
+  end
+
   # What is known of this switching on, kept on the clock by its since: the temperature it started
   # at, whether it came on cold, has been warm, heated or made a coffee. Reloaded, as by an update
   # or a restart, the app picks up where it was rather than heating up again from now.
@@ -327,7 +335,14 @@ class ShotTimer
 
   def recall()
     var k = store.get("on")
-    if self.running && self.since_s > 0 && k != nil && size(k) == 7 && k[0] == self.since_s
+    if k == nil || size(k) != 7
+      return
+    end
+    # The plug found on, on connecting: when it was switched on is what was kept, if lately.
+    if self.running && self.since_s == 0 && self.plug_on && epoch_ms() / 1000 - k[0] < 21600
+      self.since_s = k[0]
+    end
+    if self.running && self.since_s > 0 && k[0] == self.since_s
       self.temp0 = k[1]
       self.temp0_s = k[2]
       self.cold = k[3]
@@ -470,12 +485,6 @@ class ShotTimer
     self.bar = nil
     if !self.on() && self.shot == "idle"
       self.line1 = nil
-      self.line2 = nil
-      return
-    end
-    # Switched on, and not running yet: the draw has to hold a while before it counts.
-    if !self.running && self.shot == "idle"
-      self.line1 = self.relay_s > 0 ? self.pair("ON", self.clock(unix - self.relay_s), self.white) : [["ON", self.white]]
       self.line2 = nil
       return
     end

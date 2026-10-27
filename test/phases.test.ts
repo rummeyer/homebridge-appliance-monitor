@@ -116,10 +116,32 @@ test('a coffee and a rinse in the same band: the long draw is one, the short one
     track(spuelen, rinseAndEspresso, 600).map(({ active, short, at, since, until, inBandMs }) =>
       [active, short, at / S, since! / S, until! / S, inBandMs! / S]),
     [
-      // Known once it has been out of the band for the hold: then on, for a moment.
-      [true, true, 121, 100, 106, 6],
-      [true, true, 520, 500, 505, 5],
+      // Known once it has been below the band for a few seconds: then on, for a moment.
+      [true, true, 109, 100, 106, 6],
+      [true, true, 508, 500, 505, 5],
     ],
+  );
+});
+
+test('a flush a few seconds before the coffee is not part of it, read every second', () => {
+  // A morning on a plug that reads every second: flushed with the heater on,
+  // the heater alone, then the coffee with the heater beside the pump.
+  const pumpe = new PhaseTracker({ name: 'Pumpe', minWatts: 40, maxWatts: 100, minSeconds: 4, holdSeconds: 15 });
+  const curve: [number, number][] = [[0, 3], [2, 1288], [8, 59], [10, 3], [14, 1235], [21, 3], [22, 58], [29, 1281], [38, 55], [46, 4]];
+  assert.deepEqual(
+    track(pumpe, curve, 80).map(({ active, at, from, until }) => [active, at / S, from! / S, until === undefined ? null : until / S]),
+    [[true, 26, 22, null], [false, 61, 22, 46]],
+  );
+});
+
+test('the pump with the heater beside it is not a rinse: short is from start to end, the time above counted', () => {
+  const spuelen = new PhaseTracker({ name: 'Spülen', minWatts: 40, maxWatts: 100, minSeconds: 4, holdSeconds: 15, maxSeconds: 10 });
+  // A reading in the band as the steam's heater switches off, then the pump for 19 s, 12 of them beside the heater.
+  assert.deepEqual(track(spuelen, [[0, 3], [27, 99.5], [28, 8], [33, 58], [40, 1300], [51, 874], [52, 16]], 100), []);
+  // A rinse of 5 s alone is one, known a few seconds after.
+  assert.deepEqual(
+    track(spuelen, [[0, 3], [10, 58], [15, 3]], 60).map(({ short, at, since, until }) => [short, at / S, since! / S, until! / S]),
+    [[true, 18, 10, 15]],
   );
 });
 
