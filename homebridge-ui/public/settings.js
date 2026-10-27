@@ -58,16 +58,18 @@
   .om-set-icon { display: flex; align-items: center; gap: .5rem; }
   .om-set-icon-preview { display: flex; flex: none; --hole: var(--bs-body-bg, #fff); }
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
-  /* A phase in two lines: its name, numbers and remove button, then its
-     switches under the numbers. In one line the four switches left the
-     numbers too narrow for "1000" in the 768 pixels the Homebridge UI gives
-     the page. Narrow padding, so that "Milchschaum" fits. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(7.125rem, 1.5fr) repeat(5, minmax(0, 1fr)) 1.4rem;
-                  gap: .4rem; align-items: center; padding: .3rem 0; }
-  .om-set-phase-switches { grid-row: 2; grid-column: 2 / span 5; display: flex; flex-wrap: wrap; gap: .25rem 1.1rem; }
-  /* A faint line between two phases, now that each takes two lines. */
-  .om-set-phase:not(.om-set-head) + .om-set-phase { border-top: 1px solid rgba(128,128,128,.18); padding-top: .5rem; }
-  .om-set-phase .form-control { padding-left: .4rem; padding-right: .4rem; }
+  /* A phase in one line. Fixed widths for the checkboxes, as each row is a
+     grid of its own and the heading row has none: each as wide as its label
+     measured in the Homebridge UI, and a few pixels. The name just as wide as
+     "Milchschaum", the numbers without arrows, so that "1000" fits beside four
+     checkboxes in the 768 pixels the Homebridge UI gives the page. */
+  .om-set-phase { display: grid; grid-template-columns: 6.75rem repeat(5, minmax(0, 1fr)) 5.25rem 5.6rem 4.4rem 4.1rem 1.4rem;
+                  gap: .3rem; align-items: center; padding: .3rem 0; }
+  .om-set-phase-switches { display: contents; }
+  .om-set-phase input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+  .om-set-phase input[type=number]::-webkit-inner-spin-button,
+  .om-set-phase input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .om-set-phase .form-control { padding-left: .3rem; padding-right: .3rem; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
   .om-set-phase .form-check { margin: 0; white-space: nowrap; }
   /* Small and square, the cross in the middle of it. A
@@ -83,7 +85,6 @@
   @media (max-width: 760px) {
     .om-set-phase, .om-set-message { grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(128,128,128,.2); padding: .5rem 0; }
     .om-set-phase.om-set-head, .om-set-message.om-set-head { display: none; }
-    .om-set-phase-switches { grid-row: auto; grid-column: 1 / -1; }
   }
   .om-set-poll { margin-bottom: 0; }
   .om-set-poll input { max-width: 13rem; }
@@ -731,7 +732,7 @@
             el('div', { class: 'om-set-phase om-set-head' },
               el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'Below (W)'),
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
-              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {})),
+              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {}), el('span', {}), el('span', {})),
             rows)
           : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
         el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));

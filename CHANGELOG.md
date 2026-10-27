@@ -8,9 +8,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Settings, Power tab: a phase in two lines, its switches under its numbers,
-  so that numbers such as 1000 fit their fields again; with Off below, the
-  four switches had left them too narrow.
+- Settings, Power tab: numbers such as 1000 fit their fields again; with Off
+  below, the four checkboxes had left them too narrow. The name is narrower,
+  and the number fields have no arrows.
 
 ## [1.18.0] — 2026-10-27
 
