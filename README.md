@@ -127,7 +127,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with where its readings come from (here an MQTT topic, with its online topic and keys), its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle time and what it counts from, and under More its phases and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with where its readings come from (here an MQTT topic, with its online topic and keys), its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle time and what it counts from, and under More its phases, with what each counts, and the thresholds it learned" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -303,7 +303,7 @@ learn from; see [Learning](#learning).)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over twelve hours, with its phases Aufheizen, Bezug, Spülen, Pumpe and Milchschaum and a bar for each showing when it was on; below, each phase in one line with its checkboxes, and the MQTT messages for the shot timer" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over twelve hours, with its phases Aufheizen, Bezug, Spülen, Pumpe and Milchschaum and a bar for each showing when it was on; below, each phase in one line — Bezug, Spülen and Pumpe counting by difference — and the MQTT messages for the shot timer" width="760">
 </picture>
 
 Name the phase, adjust the range if you like, and save; the chart shows a

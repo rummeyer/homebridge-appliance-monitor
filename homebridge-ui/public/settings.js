@@ -63,13 +63,15 @@
      label measured in the Homebridge UI, and a few pixels. The numbers without
      arrows, just wide enough for "1000"; the name gets whatever is left of the
      768 pixels the Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 3.05rem) 8.4rem 4.35rem 4.05rem 1.4rem;
+  .om-set-phase { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 3.05rem) 8.6rem 4.35rem 4.05rem 1.4rem;
                   gap: .25rem; align-items: center; padding: .3rem 0; }
   .om-set-phase-switches { display: contents; }
   .om-set-phase input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .om-set-phase input[type=number]::-webkit-inner-spin-button,
   .om-set-phase input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .om-set-phase .form-control { padding-left: .3rem; padding-right: .3rem; }
+  /* Counts: its arrow closer to the edge, so that "By difference" fits whole. */
+  .om-set-phase .form-select { padding-left: .3rem; padding-right: 1.75rem; background-position: right .35rem center; }
   .om-set-phase.om-set-head { font-size: .78rem; opacity: .7; padding-bottom: 0; align-items: end; }
   .om-set-phase .form-check { margin: 0; white-space: nowrap; padding-left: 1.25rem; }
   /* The label close to its box: a quarter of a rem instead of half; rem, as
@@ -671,7 +673,7 @@
           el('td', {}, phase.minSeconds ?? 5),
           el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
-          el('td', { title: COUNTS_HELP[countsOf(phase)] }, Object.fromEntries(COUNTS)[countsOf(phase)]),
+          el('td', { title: COUNTS_HELP[countsOf(phase)], style: 'white-space: nowrap' }, Object.fromEntries(COUNTS)[countsOf(phase)]),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
       return el('div', { class: 'om-set-section' },
