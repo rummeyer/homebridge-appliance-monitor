@@ -354,6 +354,13 @@ coffee with the heater on for half of it has too few seconds in the range to
 count, and lowering "on after" to make up for it counts a rinse of the pump
 alone as both.
 
+Two things keep the heater from passing for the pump. Time above the range
+counts only once the draw has been in the range on its own for two seconds —
+a heater warming up passes through it in a single reading. And above the
+range, a fall by about the range's lower end is the pump stopping beneath the
+heater: the draw counts as over then, though the heater runs on. Give the
+rinse **Off below** too, so that it is measured the same way.
+
 Some differ by the direction the draw came from. A washing machine that has
 finished rests at a few watts, and so does one just switched on to be
 loaded: one came down from the wash, the other up from nothing. Tick

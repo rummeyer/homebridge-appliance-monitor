@@ -68,8 +68,10 @@ export interface PhaseConfig {
    * below the band while it lasts.
    *
    * For the same reason the time above the band counts towards minSeconds,
-   * once the draw has entered the band and until it falls below: the pump
-   * is running under the heater. On after then measures the draw as Shorter
+   * once the draw has been in the band for a moment and until it falls below:
+   * the pump is running under the heater. Above the band, a fall by about
+   * the band's lower end counts as falling below it — the pump stopping
+   * beneath the heater, which runs on. On after then measures the draw as Shorter
    * than does — a coffee on after fifteen seconds and a rinse shorter than
    * fifteen in the same band are one or the other, never both nor neither,
    * whether the heater came on beside the pump or not.
@@ -97,6 +99,16 @@ export const FORGET_BELOW_MS = 3000;
  * not the pump (28.10.2026: three of them started the shot timer).
  */
 export const IN_BAND_BEFORE_ABOVE_MS = 2000;
+
+/**
+ * With offBelow, above the band: a fall by this share of the band's lower
+ * end below the highest reading since the draw went above it is what was in
+ * the band stopping beneath what is above — the pump under the heater, its
+ * 55 W gone from 1270. It counts as falling below the band then. The heater
+ * alone drifts by a few watts at most while it runs (28.10.2026: a rinse of
+ * 12 s with the heater on 8 s longer was taken for a 20 s coffee).
+ */
+export const STOPPED_BENEATH_SHARE = 0.75;
 
 /**
  * How far back the recording is read for where the draw came from. A plug
@@ -150,6 +162,8 @@ export class PhaseTracker {
   #firstIn: number | undefined;
   /** Where the last reading out of the band was, if any. */
   #side: 'above' | 'below' | undefined;
+  /** With offBelow, the highest reading since the draw went above the band: see STOPPED_BENEATH_SHARE. */
+  #abovePeak: number | undefined;
 
   constructor(phase: PhaseConfig) {
     this.#phase = phase;
@@ -204,8 +218,16 @@ export class PhaseTracker {
     // alone a few seconds later is not the pump again.
     if (watts < this.#phase.minWatts) {
       this.#belowSince ??= at;
+      this.#abovePeak = undefined;
     } else if (this.#inBand(watts)) {
       this.#belowSince = undefined;
+      this.#abovePeak = undefined;
+    } else if (this.#phase.offBelow && this.#firstIn !== undefined) {
+      // Above the band: the pump stopping beneath the heater is a fall by about its draw.
+      this.#abovePeak = Math.max(this.#abovePeak ?? watts, watts);
+      if (this.#abovePeak - watts >= this.#phase.minWatts * STOPPED_BENEATH_SHARE) {
+        this.#belowSince ??= at;
+      }
     }
     return this.#check(at);
   }
@@ -289,6 +311,7 @@ export class PhaseTracker {
         const short = this.#short(at, minMs);
         this.#inMs = 0;
         this.#inBandOnlyMs = 0;
+        this.#abovePeak = undefined;
         this.#firstIn = undefined;
         return short;
       }
@@ -304,6 +327,7 @@ export class PhaseTracker {
       const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
       this.#inMs = 0;
       this.#inBandOnlyMs = 0;
+      this.#abovePeak = undefined;
       this.#firstIn = undefined;
       return change;
     }

@@ -326,3 +326,24 @@ test('off below: a heater warming up passes through the band in one reading, and
   const burst: [number, number][] = [[0, 2], [52, 82], [53, 1152], [54, 1217], [58, 240], [59, 2]];
   assert.deepEqual(track(pumpe, burst, 120).filter(({ active }) => active), [], 'no pump');
 });
+
+test('off below: the pump stopping beneath the heater ends the draw, though the heater runs on', () => {
+  const bezug = { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, offBelow: true };
+  const spuelen = { name: 'Spülen', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, maxSeconds: 15, offBelow: true };
+  const pumpe = { name: 'Pumpe', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, offBelow: true };
+  // 28.10.2026, 09:36: the pump alone 5 s, with the heater 6 s (1270 W), the heater alone 8 s more (1212 W).
+  const rinse: [number, number][] = [[0, 3], [17, 44.4], [18, 57.6], [23, 1028], [24, 1275], [27, 1270], [28, 1254], [30, 1212.7], [36, 1211], [37, 536], [38, 5]];
+  const changes = (phase: typeof bezug) => track(new PhaseTracker(phase), rinse, 120);
+  assert.deepEqual(changes(bezug).filter(({ active }) => active), [], 'not a coffee');
+  const rinsed = changes(spuelen).filter(({ active }) => active);
+  assert.equal(rinsed.length, 1, 'a rinse');
+  assert.equal((rinsed[0]!.until! - rinsed[0]!.from!) / S, 12, 'of 12 s, to the pump stopping');
+  const pump = changes(pumpe).find(({ active }) => !active)!;
+  assert.equal((pump.until! - pump.from!) / S, 12, 'the shot timer ends with the pump, not the heater');
+
+  // 09:37: the pump on after the heater has gone off is still the coffee, 21 s in all.
+  const coffee: [number, number][] = [[0, 3], [44, 30], [45, 54], [52, 94], [53, 1180], [54, 1276], [59, 1268], [60, 829], [61, 54], [66, 17], [67, 3]];
+  const brewed = track(new PhaseTracker(bezug), coffee, 120);
+  assert.equal(brewed.filter(({ active }) => active).length, 1, 'a coffee');
+  assert.equal((brewed.find(({ active }) => !active)!.until! - brewed[0]!.from!) / S, 21);
+});

@@ -13,6 +13,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   passes through it in a single reading on its way up, and its burst of a
   few seconds started the coffee machine's Pumpe, and with it the shot
   timer.
+- With **Off below**, a fall above the range by about the range's lower end
+  counts as falling below it: the pump stopping beneath the heater, which
+  runs on. A rinse of 12 seconds with the heater on 8 seconds longer was
+  taken for a 20-second coffee.
 
 ## [1.19.0] — 2026-10-27
 
