@@ -404,8 +404,9 @@ seen as the difference it makes:
 A level is two readings within 15 W of each other, or one that holds for two
 seconds: a plug that averages over a second reads half the heater as it comes
 on, a moment on the way and not a level. It wants a plug that reports about
-every second, as a Shelly does; one that reports every few seconds averages
-the steps away.
+every second, as a Shelly does. With a plug that reports only every few
+seconds, as an Eve Energy does, choose **Always**: its readings are averages
+over those seconds, and the steps By difference looks for are lost in them.
 
 A rinse and then a coffee, as the plug read them one morning:
 
