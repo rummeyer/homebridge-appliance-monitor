@@ -289,19 +289,19 @@ const rinseThenShot: [number, number][] = [
   [0, 3], [10, 58], [16, 1245], [24, 2], [30, 57], [35, 1290], [44, 57], [50, 2],
 ];
 
-test('off on drop: a rinse and the shot after it are two draws, the heater beside the pump still held', () => {
+test('by difference: a rinse and the shot after it are two draws, the heater beside the pump still held', () => {
   const pumpe = { name: 'Pumpe', minWatts: 40, maxWatts: 100, minSeconds: 4, holdSeconds: 15 };
   const span = (changes: PhaseChange[]) => changes.filter(({ active }) => !active).map(({ from, until }) => [from! / S, until! / S]);
   assert.deepEqual(span(track(new PhaseTracker(pumpe), rinseThenShot, 120)), [[10, 50]], 'held: one draw of 40 s');
   assert.deepEqual(
-    span(track(new PhaseTracker({ ...pumpe, offOnDrop: true }), rinseThenShot, 120)),
+    span(track(new PhaseTracker({ ...pumpe, byDifference: true }), rinseThenShot, 120)),
     [[10, 24], [30, 50]],
     'the rinse ends 3 s after the 2 W, the shot is 20 s with the heater inside it',
   );
 });
 
-test('off on drop: on after counts the heater beside the pump, so a coffee and a rinse split at one time', () => {
-  const bezug = { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, offOnDrop: true };
+test('by difference: on after counts the heater beside the pump, so a coffee and a rinse split at one time', () => {
+  const bezug = { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, byDifference: true };
   const spuelen = { name: 'Spülen', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, maxSeconds: 15 };
   const on = (phase: typeof bezug | typeof spuelen, curve: [number, number][]) =>
     track(new PhaseTracker(phase), curve, 120).filter(({ active }) => active).map(({ at, short }) => [at / S, short ?? false]);
@@ -316,21 +316,21 @@ test('off on drop: on after counts the heater beside the pump, so a coffee and a
   assert.deepEqual(on(bezug, rinse), [], 'not a coffee');
   assert.deepEqual(on(spuelen, rinse), [[25, true]], 'a rinse, known 3 s after it');
 
-  // Without offOnDrop the heater seconds do not count: the same coffee is not one.
-  assert.deepEqual(on({ ...bezug, offOnDrop: false }, coffee), [], 'the gap offOnDrop closes');
+  // Without byDifference the heater seconds do not count: the same coffee is not one.
+  assert.deepEqual(on({ ...bezug, byDifference: false }, coffee), [], 'the gap byDifference closes');
 });
 
-test('off on drop: a heater warming up passes through the band in one reading, and is not the pump', () => {
-  const pumpe = new PhaseTracker({ name: 'Pumpe', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, offOnDrop: true });
+test('by difference: a heater warming up passes through the band in one reading, and is not the pump', () => {
+  const pumpe = new PhaseTracker({ name: 'Pumpe', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, byDifference: true });
   // As the plug read it on 28.10.2026 at 09:16: 82 W for a second on the way up, the heater 6 s, then 2 W.
   const burst: [number, number][] = [[0, 2], [52, 82], [53, 1152], [54, 1217], [58, 240], [59, 2]];
   assert.deepEqual(track(pumpe, burst, 120).filter(({ active }) => active), [], 'no pump');
 });
 
-test('off on drop: the pump stopping beneath the heater ends the draw, though the heater runs on', () => {
-  const bezug = { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, offOnDrop: true };
-  const spuelen = { name: 'Spülen', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, maxSeconds: 15, offOnDrop: true };
-  const pumpe = { name: 'Pumpe', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, offOnDrop: true };
+test('by difference: the pump stopping beneath the heater ends the draw, though the heater runs on', () => {
+  const bezug = { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, byDifference: true };
+  const spuelen = { name: 'Spülen', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, maxSeconds: 15, byDifference: true };
+  const pumpe = { name: 'Pumpe', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, byDifference: true };
   // 28.10.2026, 09:36: the pump alone 5 s, with the heater 6 s (1270 W), the heater alone 8 s more (1212 W).
   const rinse: [number, number][] = [[0, 3], [17, 44.4], [18, 57.6], [23, 1028], [24, 1275], [27, 1270], [28, 1254], [30, 1212.7], [36, 1211], [37, 536], [38, 5]];
   const changes = (phase: typeof bezug) => track(new PhaseTracker(phase), rinse, 120);

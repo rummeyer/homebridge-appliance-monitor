@@ -468,17 +468,19 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
   }
   const seen = new Set<string>();
   for (const [index, entry] of list.entries()) {
-    const { fromAbove, rampDown, offBelow, ...rest } = (entry ?? {}) as Partial<PhaseConfig> & {
+    const { fromAbove, rampDown, offBelow, offOnDrop, ...rest } = (entry ?? {}) as Partial<PhaseConfig> & {
       fromAbove?: unknown;
       rampDown?: unknown;
       offBelow?: unknown;
+      offOnDrop?: unknown;
     };
-    // What 1.1.1 called rampDown, and 1.1.0 fromAbove; what 1.18 and 1.19 called offBelow.
+    // What 1.1.1 called rampDown, and 1.1.0 fromAbove; what 1.20 called offOnDrop, and 1.18 and 1.19 offBelow.
     const earlier = rampDown ?? fromAbove;
+    const earlierDifference = offOnDrop ?? offBelow;
     const phase: Partial<PhaseConfig> = {
       ...rest,
       ...(rest.onDown === undefined && earlier !== undefined ? { onDown: earlier as boolean } : {}),
-      ...(rest.offOnDrop === undefined && offBelow !== undefined ? { offOnDrop: offBelow as boolean } : {}),
+      ...(rest.byDifference === undefined && earlierDifference !== undefined ? { byDifference: earlierDifference as boolean } : {}),
     };
     const name = typeof phase.name === 'string' ? phase.name.trim() : '';
     const { minWatts, maxWatts } = phase;
@@ -513,11 +515,16 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
         wrong.push('needs its "shorter than" to be more than its "on after", or it never happens');
       }
     }
-    for (const key of ['count', 'onDown', 'offOnDrop'] as const) {
+    for (const key of ['count', 'onDown', 'byDifference'] as const) {
       const value = phase[key];
       if (value !== undefined && value !== null && typeof value !== 'boolean') {
         wrong.push(`has a ${key} that is not on or off`);
       }
+    }
+    // Counts is one of the two, as the settings page offers it: by difference, if both are on.
+    if (phase.onDown === true && phase.byDifference === true) {
+      problems.push(`${what} counts both coming down and by difference, which do not go together; by difference is used`);
+      phase.onDown = false;
     }
     if (wrong.length > 0) {
       problems.push(`${what} ${wrong.join(', and ')}`);

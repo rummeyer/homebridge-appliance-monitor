@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Counts**, one choice per phase in place of two checkboxes: **Always**,
+  **Coming down** (what was *On down*) or **By difference** (what was *Off on
+  drop*, `byDifference` in the config) — the two never went together. A
+  phase's settings with both on use by difference, and say so.
+  `offOnDrop` and `offBelow` are read as `byDifference`.
+
 ## [1.20.0] — 2026-10-28
 
 ### Changed

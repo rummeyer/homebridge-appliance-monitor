@@ -58,12 +58,12 @@
   .om-set-icon { display: flex; align-items: center; gap: .5rem; }
   .om-set-icon-preview { display: flex; flex: none; --hole: var(--bs-body-bg, #fff); }
   .om-set-error { font-size: .78rem; color: #d64545; margin-top: .2rem; }
-  /* A phase in one line. Fixed widths for the checkboxes, as each row is a
-     grid of its own and the heading row has none: each as wide as its label
-     measured in the Homebridge UI, and a few pixels. The numbers without
+  /* A phase in one line. Fixed widths for Counts and the checkboxes, as each
+     row is a grid of its own and the heading row has none: each as wide as its
+     label measured in the Homebridge UI, and a few pixels. The numbers without
      arrows, just wide enough for "1000"; the name gets whatever is left of the
      768 pixels the Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 3.05rem) 5.2rem 6.4rem 4.35rem 4.05rem 1.4rem;
+  .om-set-phase { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 3.05rem) 8.4rem 4.35rem 4.05rem 1.4rem;
                   gap: .25rem; align-items: center; padding: .3rem 0; }
   .om-set-phase-switches { display: contents; }
   .om-set-phase input[type=number] { -moz-appearance: textfield; appearance: textfield; }
@@ -290,6 +290,28 @@
     /** The names of an appliance's phases, as Idle may count from one. */
     function phaseNames(device) {
       return (device.phases ?? []).map((phase) => (phase.name ?? '').trim()).filter(Boolean);
+    }
+
+    /**
+     * What a phase counts, as one choice: every draw in its range, only one
+     * coming down into it, or — by difference — also one hidden under something
+     * bigger. Read from the names each had before.
+     */
+    const COUNTS = [
+      ['always', 'Always'],
+      ['down', 'Coming down'],
+      ['difference', 'By difference'],
+    ];
+    const COUNTS_HELP = {
+      always: 'Every draw in the range',
+      down: 'Only when the draw comes down into the range, as a washing machine done after its run; not when it rises into it',
+      difference: 'Also while something bigger runs on top, as a pump under a heater: seen as the difference, and over when that is gone',
+    };
+    function countsOf(phase) {
+      if ((phase.byDifference ?? phase.offOnDrop ?? phase.offBelow) === true) {
+        return 'difference';
+      }
+      return (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true ? 'down' : 'always';
     }
 
     function choice(value, options, onChange) {
@@ -640,7 +662,7 @@
       const phases = Array.isArray(device.phases) ? device.phases : [];
       const table = el('table', { class: 'om-table' },
         el('thead', {}, el('tr', {},
-          ['Name', 'From (W)', 'To (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Off on drop', 'Switch', 'Count']
+          ['Name', 'From (W)', 'To (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'Counts', 'Switch', 'Count']
             .map((label) => el('th', {}, label)))),
         el('tbody', {}, phases.map((phase) => el('tr', {},
           el('td', {}, phase.name || '(no name)'),
@@ -649,8 +671,7 @@
           el('td', {}, phase.minSeconds ?? 5),
           el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
-          el('td', {}, (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true ? 'yes' : 'no'),
-          el('td', {}, (phase.offOnDrop ?? phase.offBelow) === true ? 'yes' : 'no'),
+          el('td', { title: COUNTS_HELP[countsOf(phase)] }, Object.fromEntries(COUNTS)[countsOf(phase)]),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
       return el('div', { class: 'om-set-section' },
@@ -713,10 +734,21 @@
           labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
           labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
           el('div', { class: 'om-set-phase-switches' },
-            labelled(check(`${id}-down`, 'On down', (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true, (on) => update((p) => { delete p.fromAbove; delete p.rampDown; setOrDrop(p, 'onDown', on, false); })),
-              'Only when the draw falls into the range, not when it rises into it'),
-            labelled(check(`${id}-drop`, 'Off on drop', (phase.offOnDrop ?? phase.offBelow) === true, (on) => update((p) => { delete p.offBelow; setOrDrop(p, 'offOnDrop', on, false); })),
-              'Runs hidden under something drawing more: above the range still on, off when the draw drops'),
+            (() => {
+              const counts = countsOf(phase);
+              const list = labelled(choice(counts, COUNTS, (value) => {
+                update((p) => {
+                  for (const key of ['fromAbove', 'rampDown', 'offBelow', 'offOnDrop']) {
+                    delete p[key];
+                  }
+                  setOrDrop(p, 'onDown', value === 'down', false);
+                  setOrDrop(p, 'byDifference', value === 'difference', false);
+                });
+                list.title = COUNTS_HELP[value];
+              }), 'Counts');
+              list.title = COUNTS_HELP[counts];
+              return list;
+            })(),
             check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
             labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
               'Count on the Statistics tab instead of finished cycles')),
@@ -737,7 +769,7 @@
             el('div', { class: 'om-set-phase om-set-head' },
               el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'To (W)'),
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
-              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}), el('span', {}), el('span', {}), el('span', {}), el('span', {})),
+              el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}, 'Counts'), el('span', {}), el('span', {}), el('span', {})),
             rows)
           : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
         el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));

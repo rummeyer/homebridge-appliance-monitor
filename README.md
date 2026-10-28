@@ -336,17 +336,51 @@ below the range for three seconds. A plug that reads every second shows a
 rinse just before the coffee, or one reading in the range as a heater
 switches off, apart from the coffee after them.
 
-### Off on drop: something running under something bigger
+### What a phase counts
+
+Most phases count every draw in their range. Two kinds of appliance need
+more, and **Counts** beside each phase says which:
+
+| Counts | | For |
+|---|---|---|
+| **Always** | every draw in the range | most phases |
+| **Coming down** | only a draw that comes **down** into the range, not one that rises into it | a rest after a run: a washing machine done, not one just switched on |
+| **By difference** | also a draw **hidden under something bigger**, seen as the difference it makes, over when that is gone | a pump under a heater: a coffee or a rinse |
+
+#### Coming down: a rest after a run
+
+Some differ by the direction the draw came from. A washing machine that has
+finished rests at a few watts, and so does one just switched on to be
+loaded: one came down from the wash, the other up from nothing. With
+**Counts: Coming down** a phase counts only the first:
+
+| Phase | Range | On after | Counts |
+|---|---|---|---|
+| Gewaschen | 2–4.5 W | 25 s | Coming down |
+
+When the draw rises into the range (0 W → 3 W, the machine switched on), the
+phase stays off until the draw has left the range again. When it falls into
+it (20 W → 3 W, the wash over), the phase goes on as usual. After a restart
+the plugin looks up in the recording of the last 12 hours where the draw came
+from, so a machine standing there to be loaded does not count as done just
+because Homebridge restarted. If there is nothing to look up there (no
+recording, or nothing in the last 12 hours), the phase does count: a false
+alarm is better than none. A draw that dips above the range and back, a
+door lock or a display lighting up while the machine is loaded, also counts
+as from above. The chart on the Power tab shows the phase the same way.
+
+#### By difference: something running under something bigger
 
 Sometimes what a phase is about runs hidden under something drawing much
 more. A coffee machine's pump draws about 55 W — but while it runs, the
 heater often comes on beside it at 1200 W, and the plug then reads 1270 W:
-far above the pump's range, though the pump has not stopped. Tick
-**Off on drop** for such a phase, and it reads the draw as the pump does:
+far above the pump's range, though the pump has not stopped. With
+**Counts: By difference** a phase reads the draw as the pump does — the pump
+seen as the difference it makes:
 
 - **Above the range, it is still on.** The time counts towards "on after",
   and it does not end the phase.
-- **A drop ends it** — whichever way the pump stops:
+- **It is over when its difference is gone** — whichever way the pump stops:
   - the draw falls **below the range**, for three seconds, as to the few watts
     of keeping warm; or
   - **above the range, it falls by about the range's lower end** — the pump's
@@ -365,29 +399,9 @@ A rinse and then a coffee, as the plug read them one morning:
 So "on after" and "shorter than" measure the same thing — the pump from
 start to stop — and two phases in the same range split every draw at one
 time: a coffee *on after* 15 s and a rinse *shorter than* 15 s are one or the
-other, never both and never neither. Tick it for both, and for a phase a shot
-timer follows. Not for heating: its thermostat drops below the range while
+other, never both and never neither. Choose it for both, and for a phase a
+shot timer follows. Not for heating: its thermostat drops below the range while
 it lasts, which is not the end of it.
-
-Some differ by the direction the draw came from. A washing machine that has
-finished rests at a few watts, and so does one just switched on to be
-loaded: one came down from the wash, the other up from nothing. Tick
-**On down** for a phase that should only count the first:
-
-| Phase | Range | On after | On down |
-|---|---|---|---|
-| Gewaschen | 2–4.5 W | 25 s | ✓ |
-
-When the draw rises into the range (0 W → 3 W, the machine switched on), the
-phase stays off until the draw has left the range again. When it falls into
-it (20 W → 3 W, the wash over), the phase goes on as usual. After a restart
-the plugin looks up in the recording of the last 12 hours where the draw came
-from, so a machine standing there to be loaded does not count as done just
-because Homebridge restarted. If there is nothing to look up there (no
-recording, or nothing in the last 12 hours), the phase does count: a false
-alarm is better than none. A draw that dips above the range and back, a
-door lock or a display lighting up while the machine is loaded, also counts
-as from above. The chart on the Power tab shows the phase the same way.
 
 ## In the Home app
 
@@ -844,7 +858,7 @@ config it writes looks like this:
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (only when the draw falls into the range, not when it rises into it; `false`), `offOnDrop` (above the range still on, off when the draw drops — below the range, or above it by about its lower end; see [Off on drop](#off-on-drop-something-running-under-something-bigger); `false`, read from `offBelow` as 1.18 and 1.19 called it) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (*Counts: Coming down* — only when the draw falls into the range, not when it rises into it; `false`), `byDifference` (*Counts: By difference* — also while something bigger runs on top, over when its difference is gone; see [By difference](#by-difference-something-running-under-something-bigger); `false`, read from `offOnDrop` and `offBelow` as 1.18 to 1.20 called it; not together with `onDown`) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].messages` | none | MQTT messages of your own: `phase`, `when` (`start` or `end`), `topic` and `payload`, with `{appliance}`, `{phase}`, `{duration}` and `{seconds}` filled in. See [Messages of your own](#messages-of-your-own). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
