@@ -198,6 +198,9 @@ test('a phase marked to be counted keeps the mark; a mark that is not on or off 
 test('a phase may be on down only (rampDown in 1.1.1, fromAbove in 1.1.0); a mark that is not on or off is refused', () => {
   const check = (phase: object) => usablePhases({ name: 'Waschmaschine', phases: [phase as PhaseConfig] });
   assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, onDown: true }).phases[0]!.onDown, true);
+  assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, offOnDrop: true }).phases[0]!.offOnDrop, true);
+  assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, offBelow: true }).phases[0]!.offOnDrop, true, 'as 1.18 and 1.19 called it');
+  assert.match(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, offOnDrop: 'yes' }).problems[0]!, /offOnDrop/);
   assert.match(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, onDown: 'yes' }).problems[0]!, /onDown/);
   assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, fromAbove: true }).phases[0]!.onDown, true, 'as 1.1.0 called it');
   assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, rampDown: true }).phases[0]!.onDown, true, 'as 1.1.1 called it');

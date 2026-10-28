@@ -336,30 +336,38 @@ below the range for three seconds. A plug that reads every second shows a
 rinse just before the coffee, or one reading in the range as a heater
 switches off, apart from the coffee after them.
 
-A phase that is on ends after its "off after" out of the range, above it or
-below. For a pump with the heater beside it, above is not over: the pump may
-still be running under it. Below is — at the few watts of keeping warm the
-pump has stopped. Tick **Off below** for such a phase to end after three
-seconds below the range, "off after" then counting only the time above it.
-A rinse and the coffee a few seconds after it are then two draws, not one,
-and a shot timer counts only the coffee. Not for heating: its thermostat
-drops below the range while it lasts.
+### Off on drop: something running under something bigger
 
-With **Off below**, "on after" also counts the time above the range, from
-the draw entering it until it falls below — the pump runs on under the
-heater. It then measures a draw the way "shorter than" does: a coffee *on
-after* 15 s and a rinse *shorter than* 15 s, both from 45 W, split every draw
-at 15 s, whether the heater came on beside the pump or not. Without it, a
-coffee with the heater on for half of it has too few seconds in the range to
-count, and lowering "on after" to make up for it counts a rinse of the pump
-alone as both.
+Sometimes what a phase is about runs hidden under something drawing much
+more. A coffee machine's pump draws about 55 W — but while it runs, the
+heater often comes on beside it at 1200 W, and the plug then reads 1270 W:
+far above the pump's range, though the pump has not stopped. Tick
+**Off on drop** for such a phase, and it reads the draw as the pump does:
 
-Two things keep the heater from passing for the pump. Time above the range
-counts only once the draw has been in the range on its own for two seconds —
-a heater warming up passes through it in a single reading. And above the
-range, a fall by about the range's lower end is the pump stopping beneath the
-heater: the draw counts as over then, though the heater runs on. Give the
-rinse **Off below** too, so that it is measured the same way.
+- **Above the range, it is still on.** The time counts towards "on after",
+  and it does not end the phase.
+- **A drop ends it** — whichever way the pump stops:
+  - the draw falls **below the range**, for three seconds, as to the few watts
+    of keeping warm; or
+  - **above the range, it falls by about the range's lower end** — the pump's
+    55 W gone from 1270, though the heater runs on at 1212.
+- **The heater alone is not the pump.** Time above the range counts only once
+  the draw has been in the range on its own for two seconds: a heater warming
+  up passes through it in a single reading on its way up.
+
+A rinse and then a coffee, as the plug read them one morning:
+
+| | Pump alone | Pump and heater | Heater alone | Measured |
+|---|---|---|---|---|
+| Rinse | 58 W, 5 s | 1270 W, 6 s | 1212 W, 8 s | **12 s** — the pump, not the heater after it |
+| Coffee | 57 W, 8 s | 1270 W, 7 s | – | **21 s**, the pump on alone after the heater |
+
+So "on after" and "shorter than" measure the same thing — the pump from
+start to stop — and two phases in the same range split every draw at one
+time: a coffee *on after* 15 s and a rinse *shorter than* 15 s are one or the
+other, never both and never neither. Tick it for both, and for a phase a shot
+timer follows. Not for heating: its thermostat drops below the range while
+it lasts, which is not the end of it.
 
 Some differ by the direction the draw came from. A washing machine that has
 finished rests at a few watts, and so does one just switched on to be
@@ -836,7 +844,7 @@ config it writes looks like this:
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (only when the draw falls into the range, not when it rises into it; `false`), `offBelow` (off after 3 s below the range, `holdSeconds` then only for time above it; `false`) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (only when the draw falls into the range, not when it rises into it; `false`), `offOnDrop` (above the range still on, off when the draw drops — below the range, or above it by about its lower end; see [Off on drop](#off-on-drop-something-running-under-something-bigger); `false`, read from `offBelow` as 1.18 and 1.19 called it) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].messages` | none | MQTT messages of your own: `phase`, `when` (`start` or `end`), `topic` and `payload`, with `{appliance}`, `{phase}`, `{duration}` and `{seconds}` filled in. See [Messages of your own](#messages-of-your-own). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |

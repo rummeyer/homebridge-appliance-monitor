@@ -468,12 +468,18 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
   }
   const seen = new Set<string>();
   for (const [index, entry] of list.entries()) {
-    const { fromAbove, rampDown, ...rest } = (entry ?? {}) as Partial<PhaseConfig> & { fromAbove?: unknown; rampDown?: unknown };
-    // What 1.1.1 called rampDown, and 1.1.0 fromAbove.
+    const { fromAbove, rampDown, offBelow, ...rest } = (entry ?? {}) as Partial<PhaseConfig> & {
+      fromAbove?: unknown;
+      rampDown?: unknown;
+      offBelow?: unknown;
+    };
+    // What 1.1.1 called rampDown, and 1.1.0 fromAbove; what 1.18 and 1.19 called offBelow.
     const earlier = rampDown ?? fromAbove;
-    const phase: Partial<PhaseConfig> = rest.onDown === undefined && earlier !== undefined
-      ? { ...rest, onDown: earlier as boolean }
-      : rest;
+    const phase: Partial<PhaseConfig> = {
+      ...rest,
+      ...(rest.onDown === undefined && earlier !== undefined ? { onDown: earlier as boolean } : {}),
+      ...(rest.offOnDrop === undefined && offBelow !== undefined ? { offOnDrop: offBelow as boolean } : {}),
+    };
     const name = typeof phase.name === 'string' ? phase.name.trim() : '';
     const { minWatts, maxWatts } = phase;
     const hasRange = (minWatts !== undefined && minWatts !== null) || (maxWatts !== undefined && maxWatts !== null);
@@ -507,7 +513,7 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
         wrong.push('needs its "shorter than" to be more than its "on after", or it never happens');
       }
     }
-    for (const key of ['count', 'onDown', 'offBelow'] as const) {
+    for (const key of ['count', 'onDown', 'offOnDrop'] as const) {
       const value = phase[key];
       if (value !== undefined && value !== null && typeof value !== 'boolean') {
         wrong.push(`has a ${key} that is not on or off`);

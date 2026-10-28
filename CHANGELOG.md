@@ -6,17 +6,26 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.20.0] — 2026-10-28
+
+### Changed
+
+- **Off below** is called **Off on drop** (`offOnDrop`), as it now ends a
+  phase on any drop: below the range, or above it by about its lower end.
+  `offBelow`, as 1.18 and 1.19 called it, is read as it.
+
 ### Fixed
 
-- With **Off below**, time above the range counts towards "On after" only
+- With **Off on drop**, time above the range counts towards "On after" only
   once the draw has been in the range for 2 seconds: a heater warming up
   passes through it in a single reading on its way up, and its burst of a
   few seconds started the coffee machine's Pumpe, and with it the shot
   timer.
-- With **Off below**, a fall above the range by about the range's lower end
-  counts as falling below it: the pump stopping beneath the heater, which
-  runs on. A rinse of 12 seconds with the heater on 8 seconds longer was
-  taken for a 20-second coffee.
+- With **Off on drop**, a fall above the range by about the range's lower end
+  counts as the end: the pump stopping beneath the heater, which runs on. A
+  rinse of 12 seconds with the heater on 8 seconds longer was taken for a
+  20-second coffee.
+- Settings, Power tab: the phase row keeps its fit with the longer label.
 
 ## [1.19.0] — 2026-10-27
 
@@ -1111,7 +1120,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.19.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.20.0...HEAD
+[1.20.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.16.2...v1.17.0

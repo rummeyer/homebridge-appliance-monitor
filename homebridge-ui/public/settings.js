@@ -63,8 +63,8 @@
      measured in the Homebridge UI, and a few pixels. The numbers without
      arrows, just wide enough for "1000"; the name gets whatever is left of the
      768 pixels the Homebridge UI gives the page. */
-  .om-set-phase { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 3.05rem) 5.2rem 5.55rem 4.35rem 4.05rem 1.4rem;
-                  gap: .3rem; align-items: center; padding: .3rem 0; }
+  .om-set-phase { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 3.05rem) 5.2rem 6.4rem 4.35rem 4.05rem 1.4rem;
+                  gap: .25rem; align-items: center; padding: .3rem 0; }
   .om-set-phase-switches { display: contents; }
   .om-set-phase input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .om-set-phase input[type=number]::-webkit-inner-spin-button,
@@ -640,7 +640,7 @@
       const phases = Array.isArray(device.phases) ? device.phases : [];
       const table = el('table', { class: 'om-table' },
         el('thead', {}, el('tr', {},
-          ['Name', 'From (W)', 'To (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Off below', 'Switch', 'Count']
+          ['Name', 'From (W)', 'To (W)', 'On after (s)', 'Off after (s)', 'Shorter than (s)', 'On down', 'Off on drop', 'Switch', 'Count']
             .map((label) => el('th', {}, label)))),
         el('tbody', {}, phases.map((phase) => el('tr', {},
           el('td', {}, phase.name || '(no name)'),
@@ -650,7 +650,7 @@
           el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
           el('td', {}, (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true ? 'yes' : 'no'),
-          el('td', {}, phase.offBelow === true ? 'yes' : 'no'),
+          el('td', {}, (phase.offOnDrop ?? phase.offBelow) === true ? 'yes' : 'no'),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
       return el('div', { class: 'om-set-section' },
@@ -715,8 +715,8 @@
           el('div', { class: 'om-set-phase-switches' },
             labelled(check(`${id}-down`, 'On down', (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true, (on) => update((p) => { delete p.fromAbove; delete p.rampDown; setOrDrop(p, 'onDown', on, false); })),
               'Only when the draw falls into the range, not when it rises into it'),
-            labelled(check(`${id}-below`, 'Off below', phase.offBelow === true, (on) => update((p) => setOrDrop(p, 'offBelow', on, false))),
-              'Off after 3 s below the range; Off after then only counts time above it, and On after counts it too'),
+            labelled(check(`${id}-drop`, 'Off on drop', (phase.offOnDrop ?? phase.offBelow) === true, (on) => update((p) => { delete p.offBelow; setOrDrop(p, 'offOnDrop', on, false); })),
+              'Runs hidden under something drawing more: above the range still on, off when the draw drops'),
             check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
             labelled(check(`${id}-count`, 'Count', phase.count === true, (on) => update((p) => setOrDrop(p, 'count', on, false))),
               'Count on the Statistics tab instead of finished cycles')),
