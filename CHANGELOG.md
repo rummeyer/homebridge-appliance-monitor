@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.21.0] — 2026-10-28
+
 ### Changed
 
 - **Counts**, one choice per phase in place of two checkboxes: **Always**,
@@ -13,6 +15,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   drop*, `byDifference` in the config) — the two never went together. A
   phase's settings with both on use by difference, and say so.
   `offOnDrop` and `offBelow` are read as `byDifference`.
+- The README says what a phase counts in a section of its own, and has new
+  screenshots of the Power and Settings tabs.
 
 ## [1.20.0] — 2026-10-28
 
@@ -1128,7 +1132,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.20.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.21.0...HEAD
+[1.21.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.17.0...v1.18.0
