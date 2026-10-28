@@ -8,7 +8,7 @@ import test from 'node:test';
 
 import type { Sample } from '../src/learn.ts';
 import { findLevels, PhaseTracker } from '../src/phases.ts';
-import type { PhaseChange } from '../src/phases.ts';
+import type { PhaseChange, PhaseConfig } from '../src/phases.ts';
 
 const S = 1000;
 
@@ -337,13 +337,82 @@ test('by difference: the pump stopping beneath the heater ends the draw, though 
   assert.deepEqual(changes(bezug).filter(({ active }) => active), [], 'not a coffee');
   const rinsed = changes(spuelen).filter(({ active }) => active);
   assert.equal(rinsed.length, 1, 'a rinse');
-  assert.equal((rinsed[0]!.until! - rinsed[0]!.from!) / S, 12, 'of 12 s, to the pump stopping');
+  assert.equal((rinsed[0]!.until! - rinsed[0]!.from!) / S, 10, 'of 10 s, to the pump stopping: 1254 W at 28 s is it stopping within that second');
   const pump = changes(pumpe).find(({ active }) => !active)!;
-  assert.equal((pump.until! - pump.from!) / S, 12, 'the shot timer ends with the pump, not the heater');
+  assert.equal((pump.until! - pump.from!) / S, 10, 'the shot timer ends with the pump, not the heater');
 
   // 09:37: the pump on after the heater has gone off is still the coffee, 21 s in all.
   const coffee: [number, number][] = [[0, 3], [44, 30], [45, 54], [52, 94], [53, 1180], [54, 1276], [59, 1268], [60, 829], [61, 54], [66, 17], [67, 3]];
   const brewed = track(new PhaseTracker(bezug), coffee, 120);
   assert.equal(brewed.filter(({ active }) => active).length, 1, 'a coffee');
   assert.equal((brewed.find(({ active }) => !active)!.until! - brewed[0]!.from!) / S, 21);
+});
+
+/** The coffee machine's phases as configured on 28.10.2026, all by difference. */
+const coffeePhases = {
+  bezug: { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, byDifference: true },
+  spuelen: { name: 'Spülen', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, maxSeconds: 15, byDifference: true },
+  pumpe: { name: 'Pumpe', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, byDifference: true },
+};
+
+/** Each draw a phase took: when it went on, if live, and from when to when the draw was. */
+function draws(phase: PhaseConfig, curve: [number, number][], until = 120): { on?: number; from: number; until: number }[] {
+  const result: { on?: number; from: number; until: number }[] = [];
+  let on: number | undefined;
+  for (const change of track(new PhaseTracker(phase), curve, until)) {
+    if (change.short) {
+      result.push({ from: change.from! / S, until: change.until! / S });
+    } else if (change.active) {
+      on = change.at / S;
+    } else {
+      result.push({ on, from: change.from! / S, until: change.until! / S });
+    }
+  }
+  return result;
+}
+
+test('by difference: a rinse started as the steam was opened, the heater beside them, is seen once the pump stops', () => {
+  // As the plug read it on 28.10.2026 at 12:33: 8 W, the pump and the steam
+  // coming on together, the heater beside them, the steam closed, the
+  // pump stopping beneath the heater (1300 → 1245 W).
+  const rinse: [number, number][] = [
+    [0, 8.2], [1, 8.3], [2, 23.6], [3, 158.4], [4, 499], [5, 545.5], [6, 1551.3], [7, 1786.7], [8, 1415.2],
+    [9, 1303.9], [10, 1302], [11, 1299.3], [13, 1276.3], [15, 1244.7], [16, 1243.1], [20, 10.2], [21, 4.8],
+  ];
+  assert.deepEqual(draws(coffeePhases.spuelen, rinse), [{ from: 2, until: 13 }], 'a rinse of 11 s');
+  assert.deepEqual(draws(coffeePhases.bezug, rinse), [], 'not a coffee');
+  assert.deepEqual(draws(coffeePhases.pumpe, rinse).map(({ from, until }) => until - from), [11], 'the shot timer told 11 s, once known');
+});
+
+test('by difference: a coffee drawn while the milk froths is the pump\'s step up beside the steam, and down again', () => {
+  // The steam at 497 W, the pump 56 W beside it for 25 s, the heater coming
+  // on beside both for 6 s, the steam closed 10 s after the pump stopped.
+  const changes: [number, number][] = [[0, 5], [10, 497], [30, 520], [31, 553], [40, 1100], [41, 1787], [47, 553], [56, 497], [66, 8]];
+  // A plug reporting every second, half a watt either way.
+  const coffee = Array.from({ length: 67 }, (_, t): [number, number] => {
+    const [at, watts] = changes.findLast(([at]) => at <= t)!;
+    return [t, at === t ? watts : watts + (t % 2 ? 0.5 : -0.5)];
+  });
+  assert.deepEqual(draws(coffeePhases.bezug, coffee), [{ on: 45, from: 30, until: 56 }], 'a coffee of 26 s, on at 15 s into it');
+  assert.deepEqual(draws(coffeePhases.spuelen, coffee), [], 'not a rinse');
+});
+
+test('by difference: the pump beside the steam, as the plug read it on 28.10.2026 at 09:39', () => {
+  const froth: [number, number][] = [
+    [0, 5], [5, 506], [6, 501.2], [9, 501.5], [10, 501.3], [11, 541], [12, 555.1], [13, 555.3], [14, 555.4], [15, 555.2],
+    [17, 1114.6], [18, 1753.9], [19, 1763.1], [20, 1767.1], [21, 1720.6], [22, 1713.6], [23, 1712.6], [24, 1709.9], [30, 497], [31, 498], [40, 5],
+  ];
+  assert.deepEqual(draws(coffeePhases.spuelen, froth), [{ from: 11, until: 21 }], 'the pump for 10 s');
+});
+
+test('by difference: the heater coming on and off beside the steam is not the pump', () => {
+  // 28.10.2026, 12:31–12:33: the steam, the heater beside it twice, a moment on the way each time.
+  const froth: [number, number][] = [
+    [0, 7.5], [1, 197.8], [2, 469.8], [3, 495], [4, 495.3], [5, 496], [10, 496.3], [11, 1466.7], [12, 1730.7], [13, 1728.6], [14, 1726.2],
+    [16, 1683.3], [17, 600.1], [18, 497], [19, 497.2], [30, 497], [31, 1022.9], [32, 1734.7], [33, 1738.3], [36, 1312.1], [37, 520.2],
+    [39, 506], [40, 498.4], [42, 497.7], [43, 499], [44, 96.3], [45, 8.4], [46, 8.2],
+  ];
+  for (const phase of Object.values(coffeePhases)) {
+    assert.deepEqual(draws(phase, froth), [], phase.name);
+  }
 });

@@ -69,12 +69,14 @@ export interface PhaseConfig {
    *
    * For the same reason the time above the band counts towards minSeconds,
    * once the draw has been in the band for a moment and until it falls below:
-   * the pump is running under the heater. Above the band, a fall by about
-   * the band's lower end counts as falling below it — the pump stopping
-   * beneath the heater, which runs on. On after then measures the draw as Shorter
-   * than does — a coffee on after fifteen seconds and a rinse shorter than
-   * fifteen in the same band are one or the other, never both nor neither,
-   * whether the heater came on beside the pump or not.
+   * the pump is running under the heater. Above the band, the draw is told by
+   * its steps from one level to the next: a step up by as much as the band
+   * is the pump starting beside the steam or the heater, a step down by
+   * about as much the pump stopping beneath them (see STEADY_WATTS). On
+   * after then measures the draw as Shorter than does — a coffee on after
+   * fifteen seconds and a rinse shorter than fifteen in the same band are
+   * one or the other, never both nor neither, whether the heater came on
+   * beside the pump or not.
    */
   byDifference?: boolean;
 }
@@ -101,14 +103,35 @@ export const FORGET_BELOW_MS = 3000;
 export const IN_BAND_BEFORE_ABOVE_MS = 2000;
 
 /**
- * With byDifference, above the band: a fall by this share of the band's lower
- * end below the highest reading since the draw went above it is what was in
- * the band stopping beneath what is above — the pump under the heater, its
- * 55 W gone from 1270. It counts as falling below the band then. The heater
- * alone drifts by a few watts at most while it runs (28.10.2026: a rinse of
- * 12 s with the heater on 8 s longer was taken for a 20 s coffee).
+ * With byDifference, above the band: a step down from one level to the next
+ * by this share of the band's lower end, and no more than its upper end, is
+ * what was in the band stopping beneath what is above — the pump under the
+ * heater, its 55 W gone from 1300. It counts as falling below the band then.
+ * The heater alone drifts by a few watts at most while it runs (28.10.2026:
+ * a rinse of 12 s with the heater on 8 s longer was taken for a 20 s
+ * coffee). A step by much more is something else stopping: the steam
+ * closed while the pump runs on.
  */
 export const STOPPED_BENEATH_SHARE = 0.75;
+
+/**
+ * With byDifference, two readings this close are the draw holding at a
+ * level, rather than a moment on the way between two: a plug averaging over
+ * a second reads half the heater as it comes on. The heater drifts by a few
+ * watts a second as it warms; the pump coming or going is 55 W.
+ *
+ * A step up between levels by as much as the band is the pump starting
+ * beside what was drawn already, the steam say — a coffee drawn while the
+ * milk froths. A step down by about as much, with nothing known to have
+ * started, is the pump stopping having started unseen, at the same moment
+ * as something else: the draw counts from the move into the level it
+ * stopped beneath (28.10.2026: a rinse started as the steam was opened, the
+ * heater coming on beside them both, was not seen at all).
+ */
+export const STEADY_WATTS = 15;
+
+/** With byDifference, no new reading for this long is the draw holding at a level too: a plug may report changes only. */
+export const SETTLED_MS = 2000;
 
 /**
  * How far back the recording is read for where the draw came from. A plug
@@ -162,8 +185,20 @@ export class PhaseTracker {
   #firstIn: number | undefined;
   /** Where the last reading out of the band was, if any. */
   #side: 'above' | 'below' | undefined;
-  /** With byDifference, the highest reading since the draw went above the band: see STOPPED_BENEATH_SHARE. */
-  #abovePeak: number | undefined;
+  /** With byDifference, the levels the draw holds at: see STEADY_WATTS. */
+  #last: { at: number; watts: number } | undefined;
+  /** Whether the last reading is at a level, the one before it as close. */
+  #holding = false;
+  /** When the draw last started moving from a level. */
+  #movedAt: number | undefined;
+  /** When the move into the present level started. */
+  #levelFrom: number | undefined;
+  /** What had counted towards minSeconds when the draw last started moving. */
+  #countedAtMove = { inMs: 0, inBandOnlyMs: 0 };
+  /** The level the draw left last: its last reading, and when the move into it started. */
+  #left: { watts: number; from: number | undefined } | undefined;
+  /** With byDifference, the pump seen starting by a step up beside something else, and not stopped. */
+  #beside = false;
 
   constructor(phase: PhaseConfig) {
     this.#phase = phase;
@@ -208,7 +243,10 @@ export class PhaseTracker {
     if (!this.#inBand(watts)) {
       this.#side = this.#sideOf(watts);
     }
-    if (this.#counts(watts)) {
+    if (this.#phase.byDifference) {
+      this.#follow(at, watts);
+    }
+    if (this.#counts(watts) || this.#besideNow(watts)) {
       this.#outSince = undefined;
       this.#firstIn ??= at;
     } else {
@@ -218,18 +256,80 @@ export class PhaseTracker {
     // alone a few seconds later is not the pump again.
     if (watts < this.#phase.minWatts) {
       this.#belowSince ??= at;
-      this.#abovePeak = undefined;
+      this.#beside = false;
     } else if (this.#inBand(watts)) {
       this.#belowSince = undefined;
-      this.#abovePeak = undefined;
-    } else if (this.#phase.byDifference && this.#firstIn !== undefined) {
-      // Above the band: the pump stopping beneath the heater is a fall by about its draw.
-      this.#abovePeak = Math.max(this.#abovePeak ?? watts, watts);
-      if (this.#abovePeak - watts >= this.#phase.minWatts * STOPPED_BENEATH_SHARE) {
-        this.#belowSince ??= at;
-      }
     }
     return this.#check(at);
+  }
+
+  /**
+   * With byDifference, the steps of the draw from one level to the next:
+   * the pump starting or stopping beside something else. See STEADY_WATTS.
+   */
+  #follow(at: number, watts: number): void {
+    const last = this.#last;
+    this.#last = { at, watts };
+    if (last === undefined) {
+      return;
+    }
+    if (Math.abs(watts - last.watts) > STEADY_WATTS) {
+      if (this.#holding) {
+        this.#left = { watts: last.watts, from: this.#levelFrom };
+        this.#holding = false;
+        this.#movedAt = at;
+        this.#countedAtMove = { inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs };
+      }
+      return;
+    }
+    if (!this.#holding) {
+      this.#settle(at, watts, last.at);
+    }
+  }
+
+  /**
+   * A new level, from the reading before this one, at what it settled to:
+   * the first may have been a moment on the way.
+   */
+  #settle(at: number, watts: number, firstAt: number): void {
+    this.#holding = true;
+    const movedAt = this.#movedAt ?? firstAt;
+    this.#levelFrom = movedAt;
+    const left = this.#left;
+    if (left === undefined) {
+      return;
+    }
+    const { minWatts } = this.#phase;
+    const maxWatts = this.#phase.maxWatts ?? Infinity;
+    const step = watts - left.watts;
+    if (step >= minWatts && step < maxWatts && watts >= maxWatts && !this.#beside) {
+      // The pump starting beside what was drawn already.
+      this.#beside = true;
+      this.#belowSince = undefined;
+      this.#firstIn ??= movedAt;
+      this.#inMs += at - movedAt;
+      this.#inBandOnlyMs += at - movedAt;
+    } else if (-step >= minWatts * STOPPED_BENEATH_SHARE && -step < maxWatts && left.watts >= maxWatts && watts >= minWatts) {
+      if (this.#beside || this.#firstIn !== undefined) {
+        // The pump stopping beneath what runs on, the time since counted no more.
+        this.#belowSince ??= movedAt;
+        if (this.#belowSince === movedAt && this.#movedAt !== undefined) {
+          ({ inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs } = this.#countedAtMove);
+        }
+      } else if (left.from !== undefined) {
+        // It stopped having started unseen, as something else did: since the move into the level it left.
+        this.#firstIn = left.from;
+        this.#inMs += movedAt - left.from;
+        this.#inBandOnlyMs += movedAt - left.from;
+        this.#belowSince = movedAt;
+      }
+      this.#beside = false;
+    }
+  }
+
+  /** The pump known to be running beside something else, from its steps. */
+  #besideNow(watts: number): boolean {
+    return this.#beside && watts >= this.#phase.minWatts;
   }
 
   /**
@@ -242,11 +342,18 @@ export class PhaseTracker {
     this.#watts = undefined;
     this.#outSince ??= at;
     this.#belowSince ??= at;
+    this.#beside = false;
+    this.#last = undefined;
+    this.#holding = false;
     return this.#check(at);
   }
 
   tick(at: number): PhaseChange | undefined {
     this.#advance(at);
+    const last = this.#last;
+    if (this.#phase.byDifference && last !== undefined && !this.#holding && at - last.at >= SETTLED_MS) {
+      this.#settle(at, last.watts, last.at);
+    }
     return this.#check(at);
   }
 
@@ -283,15 +390,15 @@ export class PhaseTracker {
   /**
    * Whether the time since the last reading counts towards minSeconds: in
    * the band, or — with byDifference — above it once the draw has been in it for
-   * IN_BAND_BEFORE_ABOVE_MS and not yet fallen below, something else drawing
-   * beside it.
+   * IN_BAND_BEFORE_ABOVE_MS and not yet fallen below, or since a step up by
+   * as much as the band: something else drawing beside it.
    */
   #counting(): boolean {
     const watts = this.#watts;
     if (watts === undefined) {
       return false;
     }
-    if (this.#counts(watts)) {
+    if (this.#counts(watts) || (this.#besideNow(watts) && this.#belowSince === undefined)) {
       return true;
     }
     return this.#phase.byDifference === true && this.#firstIn !== undefined && this.#belowSince === undefined
@@ -305,20 +412,22 @@ export class PhaseTracker {
     const outLong = this.#outSince !== undefined && at - this.#outSince >= holdMs;
 
     if (!this.#active) {
+      // On first, should a draw only seen once it stopped be long enough
+      // (see STEADY_WATTS): it ends on the next tick.
+      if (this.#phase.maxSeconds === undefined && this.#inMs >= minMs) {
+        this.#active = true;
+        this.#since = at;
+        return { active: true, at, from: this.#firstIn };
+      }
       if (outLong || (belowLong && this.#firstIn !== undefined)) {
         // The draw is over. For a short phase, that is when it is known;
         // otherwise a start in the making is forgotten.
         const short = this.#short(at, minMs);
         this.#inMs = 0;
         this.#inBandOnlyMs = 0;
-        this.#abovePeak = undefined;
+        this.#beside = false;
         this.#firstIn = undefined;
         return short;
-      }
-      if (this.#phase.maxSeconds === undefined && this.#inMs >= minMs) {
-        this.#active = true;
-        this.#since = at;
-        return { active: true, at, from: this.#firstIn };
       }
       return undefined;
     }
@@ -327,7 +436,7 @@ export class PhaseTracker {
       const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
       this.#inMs = 0;
       this.#inBandOnlyMs = 0;
-      this.#abovePeak = undefined;
+      this.#beside = false;
       this.#firstIn = undefined;
       return change;
     }

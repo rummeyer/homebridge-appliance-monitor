@@ -383,17 +383,35 @@ seen as the difference it makes:
 - **It is over when its difference is gone** — whichever way the pump stops:
   - the draw falls **below the range**, for three seconds, as to the few watts
     of keeping warm; or
-  - **above the range, it falls by about the range's lower end** — the pump's
-    55 W gone from 1270, though the heater runs on at 1212.
+  - **above the range, it steps down by about the range's lower end** — the
+    pump's 55 W gone from 1270, though the heater runs on at 1212. A step
+    down by much more is something else stopping: the steam closed while the
+    pump runs on.
+- **It may start beside something else too.** Above the range, a **step up by
+  as much as the range** from one level to the next is the pump starting
+  beside what was running already — a coffee drawn while the milk froths, the
+  steam at 497 W and the pump taking it to 553.
+- **Started unseen, it is still seen as it stops.** A pump that started at
+  the same moment as something else — a rinse as the steam is opened — shows
+  only as its step down. It is then counted from the move into the level it
+  stopped beneath, and is on and over in one go: the shot timer told its time
+  at the end.
 - **The heater alone is not the pump.** Time above the range counts only once
-  the draw has been in the range on its own for two seconds: a heater warming
-  up passes through it in a single reading on its way up.
+  the draw has been in the range on its own for two seconds, or after a step
+  up by as much as the range: a heater warming up passes through it in a
+  single reading on its way up, and steps by far more.
+
+A level is two readings within 15 W of each other, or one that holds for two
+seconds: a plug that averages over a second reads half the heater as it comes
+on, a moment on the way and not a level. It wants a plug that reports about
+every second, as a Shelly does; one that reports every few seconds averages
+the steps away.
 
 A rinse and then a coffee, as the plug read them one morning:
 
 | | Pump alone | Pump and heater | Heater alone | Measured |
 |---|---|---|---|---|
-| Rinse | 58 W, 5 s | 1270 W, 6 s | 1212 W, 8 s | **12 s** — the pump, not the heater after it |
+| Rinse | 58 W, 5 s | 1270 W, 6 s | 1212 W, 8 s | **10 s** — the pump, not the heater after it |
 | Coffee | 57 W, 8 s | 1270 W, 7 s | – | **21 s**, the pump on alone after the heater |
 
 So "on after" and "shorter than" measure the same thing — the pump from
@@ -858,7 +876,7 @@ config it writes looks like this:
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (*Counts: Coming down* — only when the draw falls into the range, not when it rises into it; `false`), `byDifference` (*Counts: By difference* — also while something bigger runs on top, over when its difference is gone; see [By difference](#by-difference-something-running-under-something-bigger); `false`, read from `offOnDrop` and `offBelow` as 1.18 to 1.20 called it; not together with `onDown`) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (*Counts: Coming down* — only when the draw falls into the range, not when it rises into it; `false`), `byDifference` (*Counts: By difference* — also while something bigger runs on top, started or stopped by a step of its size beside it, over when its difference is gone; see [By difference](#by-difference-something-running-under-something-bigger); `false`, read from `offOnDrop` and `offBelow` as 1.18 to 1.20 called it; not together with `onDown`) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].messages` | none | MQTT messages of your own: `phase`, `when` (`start` or `end`), `topic` and `payload`, with `{appliance}`, `{phase}`, `{duration}` and `{seconds}` filled in. See [Messages of your own](#messages-of-your-own). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
