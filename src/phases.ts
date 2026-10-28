@@ -90,6 +90,15 @@ export const DEFAULT_HOLD_SECONDS = 30;
 export const FORGET_BELOW_MS = 3000;
 
 /**
+ * With offBelow, how long the draw has to have been in the band itself before
+ * time above it counts too: the pump running on its own for a moment, as it
+ * does before the heater comes on beside it. A heater warming up passes
+ * through the band in a single reading on its way up, and its burst above is
+ * not the pump (28.10.2026: three of them started the shot timer).
+ */
+export const IN_BAND_BEFORE_ABOVE_MS = 2000;
+
+/**
  * How far back the recording is read for where the draw came from. A plug
  * reports changes only, so a machine resting since the morning has its last
  * reading there; before that, it counts as having come from above.
@@ -130,8 +139,10 @@ export class PhaseTracker {
   #since = 0;
   #watts: number | undefined;
   #accountedAt: number | undefined;
-  /** Time spent in the band since the draw first entered it, through to the phase's end. */
+  /** Time counted towards minSeconds since the draw first entered the band, through to the phase's end. */
   #inMs = 0;
+  /** Of that, the time actually in the band, without any above it: see IN_BAND_BEFORE_ABOVE_MS. */
+  #inBandOnlyMs = 0;
   #outSince: number | undefined;
   /** When the draw fell below the band, or none came, since it was last in it. */
   #belowSince: number | undefined;
@@ -235,16 +246,23 @@ export class PhaseTracker {
   }
 
   #advance(at: number): void {
-    if (this.#counting() && this.#accountedAt !== undefined) {
-      this.#inMs += Math.max(0, at - this.#accountedAt);
+    if (this.#accountedAt !== undefined) {
+      const elapsed = Math.max(0, at - this.#accountedAt);
+      if (this.#watts !== undefined && this.#counts(this.#watts)) {
+        this.#inBandOnlyMs += elapsed;
+      }
+      if (this.#counting()) {
+        this.#inMs += elapsed;
+      }
     }
     this.#accountedAt = at;
   }
 
   /**
    * Whether the time since the last reading counts towards minSeconds: in
-   * the band, or — with offBelow — above it once the draw has entered it and
-   * not yet fallen below, something else drawing beside it.
+   * the band, or — with offBelow — above it once the draw has been in it for
+   * IN_BAND_BEFORE_ABOVE_MS and not yet fallen below, something else drawing
+   * beside it.
    */
   #counting(): boolean {
     const watts = this.#watts;
@@ -255,7 +273,7 @@ export class PhaseTracker {
       return true;
     }
     return this.#phase.offBelow === true && this.#firstIn !== undefined && this.#belowSince === undefined
-      && watts >= (this.#phase.maxWatts ?? Infinity);
+      && this.#inBandOnlyMs >= IN_BAND_BEFORE_ABOVE_MS && watts >= (this.#phase.maxWatts ?? Infinity);
   }
 
   #check(at: number): PhaseChange | undefined {
@@ -270,6 +288,7 @@ export class PhaseTracker {
         // otherwise a start in the making is forgotten.
         const short = this.#short(at, minMs);
         this.#inMs = 0;
+        this.#inBandOnlyMs = 0;
         this.#firstIn = undefined;
         return short;
       }
@@ -284,6 +303,7 @@ export class PhaseTracker {
       this.#active = false;
       const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
       this.#inMs = 0;
+      this.#inBandOnlyMs = 0;
       this.#firstIn = undefined;
       return change;
     }

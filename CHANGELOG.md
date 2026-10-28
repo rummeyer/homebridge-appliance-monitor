@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- With **Off below**, time above the range counts towards "On after" only
+  once the draw has been in the range for 2 seconds: a heater warming up
+  passes through it in a single reading on its way up, and its burst of a
+  few seconds started the coffee machine's Pumpe, and with it the shot
+  timer.
+
 ## [1.19.0] — 2026-10-27
 
 ### Changed

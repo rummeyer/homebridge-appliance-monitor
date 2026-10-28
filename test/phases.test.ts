@@ -319,3 +319,10 @@ test('off below: on after counts the heater beside the pump, so a coffee and a r
   // Without offBelow the heater seconds do not count: the same coffee is not one.
   assert.deepEqual(on({ ...bezug, offBelow: false }, coffee), [], 'the gap offBelow closes');
 });
+
+test('off below: a heater warming up passes through the band in one reading, and is not the pump', () => {
+  const pumpe = new PhaseTracker({ name: 'Pumpe', minWatts: 45, maxWatts: 100, minSeconds: 4, holdSeconds: 15, offBelow: true });
+  // As the plug read it on 28.10.2026 at 09:16: 82 W for a second on the way up, the heater 6 s, then 2 W.
+  const burst: [number, number][] = [[0, 2], [52, 82], [53, 1152], [54, 1217], [58, 240], [59, 2]];
+  assert.deepEqual(track(pumpe, burst, 120).filter(({ active }) => active), [], 'no pump');
+});
