@@ -182,9 +182,7 @@
   /** The column headers that sort, and the cost after each value. */
   const TABLE_CSS = `
     th.om-sort { cursor: pointer; user-select: none; white-space: nowrap; }
-    th.om-sort .om-arrow { display: inline-block; width: 1em; margin-left: .2em; opacity: .35; font-size: .8em; }
-    th.om-sort[aria-sort] .om-arrow { opacity: 1; }
-    th.om-sort:hover .om-arrow { opacity: .8; }
+    th.om-sort .om-arrow { display: inline-block; width: 1em; margin-left: .2em; font-size: .8em; }
     td .om-cost { opacity: .65; white-space: nowrap; }
     tfoot tr.om-fee td { font-weight: normal; }`;
 
@@ -360,8 +358,8 @@
     const fill = () => {
       for (const { th, column, arrow } of headers) {
         const on = sort.column === column;
-        // Faint, the way a first click sorts.
-        arrow.textContent = on ? (sort.descending ? '▼' : '▲') : (column > 0 ? '▼' : '▲');
+        // Only on the column sorted by.
+        arrow.textContent = on ? (sort.descending ? '▼' : '▲') : '';
         if (on) {
           th.setAttribute('aria-sort', sort.descending ? 'descending' : 'ascending');
         } else {
