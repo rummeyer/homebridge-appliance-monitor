@@ -187,8 +187,8 @@
     tfoot tr.om-fee td { font-weight: normal; }`;
 
   /**
-   * How the statistics are sorted: by a column, which way, or as the settings
-   * list them. Kept in the browser, for the next time.
+   * How the statistics are sorted: by a column and which way, by name from A
+   * to begin with. Kept in the browser, for the next time.
    */
   const SORT_KEY = 'appliance-monitor.statistics-sort';
   function savedSort() {
@@ -201,11 +201,7 @@
   }
   function saveSort(sort) {
     try {
-      if (sort) {
-        localStorage.setItem(SORT_KEY, JSON.stringify(sort));
-      } else {
-        localStorage.removeItem(SORT_KEY);
-      }
+      localStorage.setItem(SORT_KEY, JSON.stringify(sort));
     } catch {
       // Not kept, as in a private window: sorted for now only.
     }
@@ -245,9 +241,9 @@
    * not marked: the README says how such a period is counted.
    *
    * With a price, each value has its cost after it, and the foot the fixed
-   * fee and what it all cost. A click on a column's header sorts by it — the
-   * biggest first, names from A — again the other way, and a third time
-   * back as the settings list them; an appliance's parts stay under it.
+   * fee and what it all cost. Sorted by name from A to begin with; a click on
+   * a column's header sorts by it — the biggest first, names from A — and
+   * again the other way; an appliance's parts stay under it.
    */
   function statisticsTable(table, { className = '', dates = false, decorate } = {}) {
     if (!document.getElementById('om-table-style')) {
@@ -277,10 +273,11 @@
     const shown = table.periods.map((_, column) => table.rows.some(({ values }) => values[column] !== null));
     const shownOnly = (values) => values.filter((_, column) => shown[column]);
 
-    // Column 0 is the name, 1 on the periods'; none, the settings' order.
-    let sort = savedSort();
-    if (sort && sort.column > 0 && !shown[sort.column - 1]) {
-      sort = null;
+    // Column 0 is the name, 1 on the periods'.
+    const BY_NAME = { column: 0, descending: false };
+    let sort = savedSort() ?? BY_NAME;
+    if (sort.column > 0 && !shown[sort.column - 1]) {
+      sort = BY_NAME;
     }
     const headers = [];
     const sortable = (th, column) => {
@@ -293,14 +290,8 @@
       th.insertBefore(arrow, th.querySelector('small'));
       headers.push({ th, column, arrow });
       const click = () => {
-        const firstWay = column > 0; // the biggest first; names from A
-        if (sort?.column !== column) {
-          sort = { column, descending: firstWay };
-        } else if (sort.descending === firstWay) {
-          sort = { column, descending: !firstWay };
-        } else {
-          sort = null;
-        }
+        // The biggest first; names from A. Again, the other way.
+        sort = sort.column === column ? { column, descending: !sort.descending } : { column, descending: column > 0 };
         saveSort(sort);
         fill();
       };
@@ -366,7 +357,7 @@
 
     const fill = () => {
       for (const { th, column, arrow } of headers) {
-        const on = sort?.column === column;
+        const on = sort.column === column;
         // Faint, the way a first click sorts.
         arrow.textContent = on ? (sort.descending ? '▼' : '▲') : (column > 0 ? '▼' : '▲');
         if (on) {
@@ -376,12 +367,13 @@
         }
       }
       let compare;
-      if (sort?.column === 0) {
+      if (sort.column === 0) {
         compare = (a, b) => table.rows[a].name.localeCompare(table.rows[b].name, LOCALE) * (sort.descending ? -1 : 1);
-      } else if (sort) {
-        // None last, whichever way.
+      } else {
+        // None last, whichever way; the same by name from A.
         const of = (index) => table.rows[index].values[sort.column - 1];
-        compare = (a, b) => (of(a) === null) - (of(b) === null) || (of(a) - of(b)) * (sort.descending ? -1 : 1);
+        compare = (a, b) => (of(a) === null) - (of(b) === null) || (of(a) - of(b)) * (sort.descending ? -1 : 1)
+          || table.rows[a].name.localeCompare(table.rows[b].name, LOCALE);
       }
       body.replaceChildren(...sortedRows(table.depths, rows.length, compare).map((index) => rows[index]));
     };

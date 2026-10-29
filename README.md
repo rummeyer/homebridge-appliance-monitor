@@ -565,11 +565,10 @@ day its share. Changed twice in a day, the last counts. The first price of
 all holds from the first day anything was recorded. **General** lists the prices
 noted so far, and says when a change is waiting to be noted.
 
-**Sorted by a column.** A click on a column's header sorts by it: a period
-with the biggest first, to find what used the most last week; the names
-from A. A second click turns it round, a third goes back to the order of
-the settings. An appliance's parts stay right under it, sorted among
-themselves. The browser keeps the choice for the next visit; the dashboard
+**Sorted by a column.** The table begins sorted by name, from A to Z. A
+click on a column's header sorts by it: a period with the biggest first, to
+find what used the most last week; the names from A. Another click turns it
+round. An appliance's parts stay right under it, sorted among themselves. The browser keeps the choice for the next visit; the dashboard
 sorts the same way.
 
 **Something measured twice** is counted once. A lamp that reports its own

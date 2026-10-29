@@ -14,9 +14,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   share of each period and the total cost with it. A changed price holds
   from the next day: the plugin notes each price in `prices.json`, and
   energy used before keeps the price it had.
-- **The statistics sort by a column**: a click on its header, the biggest
-  first; again the other way round, a third time back to the settings'
-  order. An appliance's parts stay under it.
+- **The statistics sort by a column**, by name from A to begin with: a
+  click on its header, the biggest first; again the other way round. An
+  appliance's parts stay under it.
 - **By difference** tells the pump by its steps between levels: starting
   beside the steam or the heater — a coffee drawn while the milk froths —
   stopping beneath them, or seen only as it stops, having started with
