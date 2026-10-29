@@ -144,6 +144,9 @@ export const SETTLED_MS = 2000;
  */
 export const ALONE_MS = 10 * 60_000;
 
+/** A reading at what the heater draws alone, held this long, is that level: see #follow. */
+export const ALONE_HELD_MS = 1500;
+
 /**
  * A plug whose readings change this many seconds apart or more, while it
  * draws power, reports too seldom for byDifference: its readings are
@@ -231,6 +234,8 @@ export class PhaseTracker {
   #firstIn: number | undefined;
   /** Where the last reading out of the band was, if any. */
   #side: 'above' | 'below' | undefined;
+  /** Whether the last reading was in the band. */
+  #lastInBand = false;
   /** With byDifference, the levels the draw holds at: see STEADY_WATTS. */
   #last: { at: number; watts: number } | undefined;
   /** Whether the last reading is at a level, the one before it as close. */
@@ -290,6 +295,9 @@ export class PhaseTracker {
       return this.#check(at);
     }
     this.#watts = watts;
+    const drawing = this.#firstIn !== undefined;
+    const lastInBand = this.#lastInBand;
+    this.#lastInBand = this.#inBand(watts);
     if (!this.#inBand(watts)) {
       this.#side = this.#sideOf(watts);
     }
@@ -311,7 +319,11 @@ export class PhaseTracker {
         this.#alone = this.#restLevel;
         this.#restLevel = undefined;
       }
-    } else if (this.#inBand(watts)) {
+    } else if (this.#inBand(watts) && (!this.#phase.byDifference || !drawing || lastInBand)) {
+      // By difference, once the draw has fallen below, it is back on a second
+      // reading in the band: one alone may be the heater on its way up
+      // (29.10.2026: 53 W for a second, 3 s after a rinse, and the rinse
+      // counted on beside the heater).
       this.#belowSince = undefined;
     }
     return this.#check(at);
@@ -326,6 +338,14 @@ export class PhaseTracker {
     this.#last = { at, watts };
     if (last === undefined) {
       return;
+    }
+    // At what the heater draws alone while the pump counts, a reading held
+    // ALONE_HELD_MS is that level, whatever comes next: the heater may go off
+    // before a second reading (29.10.2026: a pump stopped beneath it unseen).
+    const alone = this.#alone;
+    if (!this.#holding && at - last.at >= ALONE_HELD_MS && (this.#beside || this.#firstIn !== undefined)
+      && alone !== undefined && Math.abs(last.watts - alone.watts) < this.#phase.minWatts / 2) {
+      this.#settle(at, last.watts, last.at);
     }
     if (Math.abs(watts - last.watts) > STEADY_WATTS) {
       if (this.#holding) {

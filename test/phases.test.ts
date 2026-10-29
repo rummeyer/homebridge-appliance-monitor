@@ -440,3 +440,29 @@ test('by difference: settled at what the heater draws alone, the pump has stoppe
   assert.deepEqual(draws(coffeePhases.bezug, rinse), [], 'not a coffee');
   assert.deepEqual(draws(coffeePhases.spuelen, rinse), [{ from: 83, until: 88 }], 'a rinse, to the heater coming on');
 });
+
+test('by difference: one reading back in the band after the pump stopped, on the heater\'s way up, is not the pump again', () => {
+  // As the plug read it on 29.10.2026 at 13:43: a heater burst alone, a rinse
+  // of 5 s, 3 s at rest, the heater coming on through 53 W in one reading.
+  const rinse: [number, number][] = [
+    [0, 2], [1, 361.3], [2, 1258.3], [3, 1256.3], [4, 1254.2], [5, 1252.6], [6, 378.2], [7, 3.2], [8, 2],
+    [9, 20.5], [10, 57.8], [12, 58.3], [13, 58.4], [14, 55.4], [15, 5.8], [16, 2.1], [17, 2], [18, 53.1],
+    [19, 1166.7], [20, 1256.6], [21, 1253.4], [22, 1252], [23, 1250.4], [24, 956.9], [25, 3], [26, 2],
+  ];
+  assert.deepEqual(draws(coffeePhases.spuelen, rinse), [{ from: 10, until: 15 }], 'a rinse of 5 s, over at 15 s');
+  const pump = track(new PhaseTracker(coffeePhases.pumpe), rinse, 60);
+  assert.equal(pump.find(({ active }) => !active)!.until! / S, 15, 'the shot timer told the pump stopped at 15 s, and not taken back');
+});
+
+test('by difference: a reading at what the heater draws alone, held 1.5 s, is it alone though the heater goes off next', () => {
+  // 29.10.2026, 13:45: a heater burst from rest, then the heater alone at
+  // 1250 W, the pump beside it for 3 s, the heater alone for one reading
+  // two seconds long, then off.
+  const pump: [number, number][] = [
+    [0, 5], [1, 4.9], [2, 1253], [3, 1252.4], [4, 1251.8], [5, 380], [6, 4.8], [10, 5],
+    [20, 1252], [21, 1251.5], [22, 1250.7], [23, 1249.9], [24, 1298.7], [25, 1302.5], [26, 1280.2], [27, 1249.3], [29, 50.1], [30, 4.8], [31, 5],
+  ];
+  const changes = track(new PhaseTracker({ ...coffeePhases.pumpe, minSeconds: 2 }), pump, 60);
+  const off = changes.find(({ active }) => !active)!;
+  assert.deepEqual([off.from! / S, off.until! / S], [24, 26], 'the pump from 24 s to its fall at 26 s, not on to the heater going off');
+});
