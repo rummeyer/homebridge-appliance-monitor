@@ -115,7 +115,7 @@ the first plug.
    device.
 2. In the plugin settings, click **+ Add**, give the appliance a name, paste
    the code, and save. The settings show one appliance at a time, picked from
-   the list at the top; paired ones are ticked.
+   the list at the top; one not paired yet says so there.
 3. Restart the child bridge. The code is valid for 15 minutes; pairing
    takes up to a minute.
 4. The log shows `paired as node …`, then the plug's endpoints and clusters,

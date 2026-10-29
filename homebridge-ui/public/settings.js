@@ -380,8 +380,11 @@
         class: 'form-select', 'aria-label': 'Appliance',
         onchange: (e) => { selected = Number(e.target.value); render(); },
       }, sortedIndices().map((index) => {
-        const name = config.devices[index].name || '(no name)';
-        return el('option', { value: index, selected: index === selected }, `${name}${isPairedDevice(config.devices[index]) ? '  ✓' : ''}`);
+        // Marked only where something is to be done: read over Matter, and not paired yet.
+        const device = config.devices[index];
+        const name = device.name || '(no name)';
+        const unpaired = typeof device.mqttTopic !== 'string' && !isPairedDevice(device);
+        return el('option', { value: index, selected: index === selected }, `${name}${unpaired ? ' – not paired' : ''}`);
       }));
       const add = el('button', {
         type: 'button', class: 'btn btn-primary',
