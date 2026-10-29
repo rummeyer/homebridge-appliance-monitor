@@ -789,6 +789,14 @@ it has been on, when it is switched off, and a shot timer that counts while
 the pump runs.
 It is also on the [AWTRIX Hub](https://awtrix.de/script/n4Zx4bmvrpw8).
 
+With a plug that reports only every few seconds, as an Eve Energy does, the
+shot timer works too, the pump's phase counting **Always**: it starts once
+the pump has been in its range for "on after" — with an Eve, within its six
+seconds — and stops when "off after" is over, the hold that bridges the
+heater coming on beside the pump, showing then how long the pump was in its
+range. A Shelly, reporting every second, makes it start with the pump and
+stop with it, to the second.
+
 ### Readings over MQTT
 
 A plug that publishes its power over MQTT needs no Matter pairing: a
