@@ -8,21 +8,47 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **What electricity costs**, under General: **Pricing** on, **Price per kWh** (in cents),
-  **Base fee per month** and **Currency**. The Statistics tab and the
-  dashboard show each value's cost after it, and under the total the fee's
-  share of each period and the total cost with it. A changed price holds
-  from the next day: the plugin notes each price in `prices.json`, and
-  energy used before keeps the price it had.
+- **What electricity costs**, under General: **Pricing** on, **Price per
+  kWh** (in cents), **Base fee per month** and **Currency**. The Statistics
+  tab and the dashboard show each value's cost after it, and under the
+  total the fee's share of each period and the total cost with it; the
+  bubble over a row, what its standby costs a year.
+- **Prices that change**: a changed price holds from the next day. The
+  plugin notes each price in `prices.json` and prices each day at the one
+  that held then, so energy used before keeps its price; the first price
+  holds from the first recording. General lists the prices noted, and a
+  red line says when a change is waiting.
 - **The statistics sort by a column**, by name from A to begin with: a
   click on its header, the biggest first; again the other way round. An
-  appliance's parts stay under it.
+  appliance's parts stay under it, and the arrow shows on the column
+  sorted by only.
 - **By difference** tells the pump by its steps between levels: starting
   beside the steam or the heater — a coffee drawn while the milk froths —
   stopping beneath them, or seen only as it stops, having started with
   them. Settled back at what the heater draws alone, the pump has stopped.
 - A red sign at **By difference** for a plug that reports too seldom for it,
-  as an Eve Energy: the settings page measures how often its readings change.
+  as an Eve Energy: the settings page measures how often its readings
+  change. The README says to choose **Always** for such a plug, with which
+  the shot timer works too.
+
+### Changed
+
+- The dashboard's tiles are in the order of their names, after the total.
+- The appliance list in the settings marks only one not paired yet, rather
+  than each one paired; a pairing left over by one now read over MQTT does
+  not count.
+- The MQTT fields' help says what goes in them, and the README's
+  screenshots are new.
+
+### Fixed
+
+- A rinse whose pump stopped as the heater came on was counted as a coffee:
+  the heater alone after it counted on (a rinse of 6 s taken for a coffee
+  of 16).
+- A rinse's end was taken back by the heater's first reading passing
+  through the pump's range, and the clock counted on (5 s shown as 8).
+- A pump that stopped beneath the heater went unseen when the heater went
+  off right after, a single reading later (2 s shown as 6).
 
 ## [1.21.0] — 2026-10-28
 
