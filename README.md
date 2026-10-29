@@ -303,7 +303,7 @@ learn from; see [Learning](#learning).)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over twelve hours, with its phases Aufheizen, Bezug, Spülen, Pumpe and Milchschaum and a bar for each showing when it was on; below, each phase in one line — Bezug, Spülen and Pumpe counting by difference — and the MQTT messages for the shot timer" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/power-light.png" alt="The Power tab: a coffee machine's power over six hours, with its phases Aufheizen, Bezug, Spülen, Pumpe, Milchschaum and Mühle and a bar for each showing when it was on; below, each phase in one line — Bezug, Spülen, Pumpe and the grinder's Mühle counting by difference — and the MQTT messages for the shot timer" width="760">
 </picture>
 
 Name the phase, adjust the range if you like, and save; the chart shows a
