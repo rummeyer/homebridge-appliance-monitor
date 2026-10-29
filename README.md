@@ -127,7 +127,7 @@ the first plug.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with where its readings come from (here an MQTT topic, with its online topic and keys), its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle time and what it counts from, and under More its phases, with what each counts, and the thresholds it learned" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/settings-light.png" alt="The Settings tab: an appliance picked from the list, with where its readings come from (here an MQTT topic, with its online topic and keys), its dashboard icon, Part of, how it shows in HomeKit, its Overtime time, on a line of its own its Idle time and what it counts from, and General opened below it: recording, the dashboard, pricing at 28.56 cents per kWh and 13.89 EUR a month noted from 30 September, and MQTT" width="760">
 </picture>
 
 A paired plug is remembered by its name, so renaming it means pairing it
@@ -538,7 +538,7 @@ and **Last Year**, one row per plug and the total below.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-dark.png">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab: energy per appliance today, last week and last month, with the bubble open on the Kaffeemaschine — its last cycle, and overall its estimated duration, count and standby; two lamps that are part of another appliance indented in italics under it" width="760">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/stats-light.png" alt="The Statistics tab, sorted by name: energy per appliance today, last week and last month, each with its cost in EUR, and under the total the base fee and the total cost; the bubble open on the Server — its last cycle, and overall its estimated duration, count and standby with what it costs a year; two lamps that are part of another appliance indented in italics under it" width="760">
 </picture>
 
 Today counts from a plug's first reading of the day, so a plug added at noon
