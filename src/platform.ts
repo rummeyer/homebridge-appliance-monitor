@@ -17,6 +17,7 @@ import {
   usableMessages,
   usableMinutes,
   usablePhases,
+  usablePrice,
   usablePollSeconds,
   pairedWithProblem,
   partOfProblem,
@@ -580,6 +581,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const dashboard = new Dashboard({
       dataPath: this.#dataPath,
       devices: () => this.#devices,
+      price: () => usablePrice(this.config),
       live: () => this.#live(),
     });
     try {

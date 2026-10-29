@@ -550,6 +550,20 @@ plugs have a value and others do not yet, the total adds up those that have.
 The tables do not mark either; keep it in mind for a plug added recently. A period no plug has
 a figure for yet, Last Year in the first year, is left out until one has.
 
+**What it cost.** With **Pricing** on under **General** and a **Price per
+kWh** set — in cents, 28.56 for 28.56 ct — each value has its cost after it: *4.54 kWh (1.30 EUR)*.
+A **Base fee per month** adds two lines under the total: the fee's share of
+each period — a day's, a week's, the month, twelve for the year, a day
+being a twelfth of 365 days of a year — and the **Total cost** with it.
+**Currency** is written after each amount, EUR if left empty.
+
+**Sorted by a column.** A click on a column's header sorts by it: a period
+with the biggest first, to find what used the most last week; the names
+from A. A second click turns it round, a third goes back to the order of
+the settings. An appliance's parts stay right under it, sorted among
+themselves. The browser keeps the choice for the next visit; the dashboard
+sorts the same way.
+
 **Something measured twice** is counted once. A lamp that reports its own
 watts over Matter, plugged into a metered socket strip that is an appliance
 here too, is in the strip's figures already. Set the lamp's **Part of** to
@@ -900,6 +914,10 @@ config it writes looks like this:
 | `mqtt` | `false` | Publish each appliance's state to an MQTT broker. See [MQTT](#mqtt). |
 | `mqttUrl` | `mqtt://localhost:1883` | The broker; a login goes in it, `mqtt://user:password@host:1883`. |
 | `mqttPrefix` | `appliance-monitor` | The first level of every topic. |
+| `pricing` | `false` | Show what the electricity cost on the statistics, from the three below. |
+| `centsPerKwh` | none | What a kWh costs, in cents: the statistics show what each value cost. See [Statistics](#statistics). |
+| `baseFeePerMonth` | none | The fixed fee per month: its share of each period under the total, and the total cost with it. |
+| `currency` | `EUR` | Written after each amount. |
 
 ## Files
 

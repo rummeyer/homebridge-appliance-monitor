@@ -122,7 +122,8 @@
 
       let table;
       try {
-        table = await homebridge.request('/statistics', { devices });
+        const price = { pricing: config?.pricing, centsPerKwh: config?.centsPerKwh, baseFeePerMonth: config?.baseFeePerMonth, currency: config?.currency };
+        table = await homebridge.request('/statistics', { devices, price });
       } catch (error) {
         box.textContent = `Could not read the statistics: ${error?.message ?? error}`;
         return;

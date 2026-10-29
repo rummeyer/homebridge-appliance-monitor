@@ -177,6 +177,40 @@ export interface ApplianceMonitorPlatformConfig extends PlatformConfig {
   mqttUrl?: string;
   /** The first level of every topic; DEFAULT_MQTT_PREFIX if not set. */
   mqttPrefix?: string;
+  /** Show what electricity cost on the statistics, from the price below. Off by default. */
+  pricing?: boolean;
+  /** What a kWh costs, in cents: the statistics show what each used cost. */
+  centsPerKwh?: number;
+  /** The electricity contract's fixed fee per month, for the statistics' total. */
+  baseFeePerMonth?: number;
+  /** What the prices are in; DEFAULT_CURRENCY if not set. */
+  currency?: string;
+}
+
+export const DEFAULT_CURRENCY = 'EUR';
+
+/** What electricity costs, for the statistics: see usablePrice. */
+export interface Price {
+  /** In the currency, per kWh; none if not set. */
+  perKwh: number | null;
+  /** The fixed fee per month; none if not set. */
+  perMonth: number | null;
+  currency: string;
+}
+
+/** The price as set, or none with pricing off, or neither a price per kWh nor a fee set. */
+export function usablePrice(config: Pick<ApplianceMonitorPlatformConfig, 'pricing' | 'centsPerKwh' | 'baseFeePerMonth' | 'currency'>): Price | undefined {
+  if (config.pricing !== true) {
+    return undefined;
+  }
+  const amount = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null);
+  const cents = amount(config.centsPerKwh);
+  const perMonth = amount(config.baseFeePerMonth);
+  if (cents === null && perMonth === null) {
+    return undefined;
+  }
+  const currency = typeof config.currency === 'string' && config.currency.trim() ? config.currency.trim() : DEFAULT_CURRENCY;
+  return { perKwh: cents === null ? null : cents / 100, perMonth, currency };
 }
 
 export const DEFAULT_DASHBOARD_PORT = 8582;

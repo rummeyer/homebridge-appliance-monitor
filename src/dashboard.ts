@@ -13,7 +13,7 @@ import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 
 import { countsInTotal } from './config.ts';
-import type { DeviceConfig } from './config.ts';
+import type { DeviceConfig, Price } from './config.ts';
 import type { CycleProgress, CycleState } from './cycle.ts';
 import { chartHours, curve, statisticsTable, totalCurve } from './views.ts';
 
@@ -59,6 +59,8 @@ export interface DashboardSource {
   dataPath: string;
   /** The appliances, in the order the settings list them. */
   devices(): DeviceConfig[];
+  /** What electricity costs, if set, for the statistics. */
+  price?(): Price | undefined;
   live(): LiveAppliance[];
 }
 
@@ -151,7 +153,7 @@ export class Dashboard {
       case '/api/live':
         return { at: Date.now(), version: VERSION, appliances: this.#source.live() };
       case '/api/statistics':
-        return statisticsTable(this.#source.dataPath, devices);
+        return statisticsTable(this.#source.dataPath, devices, new Date(), this.#source.price?.());
       case '/api/curve': {
         // Only a configured appliance: the name goes on to a file name.
         const device = devices.find(({ name }) => name === url.searchParams.get('name'));

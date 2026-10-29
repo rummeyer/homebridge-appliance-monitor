@@ -16,7 +16,7 @@ import { join } from 'node:path';
 
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils';
 
-import { usablePhases } from '../dist/config.js';
+import { usablePhases, usablePrice } from '../dist/config.js';
 import { dataDir } from '../dist/data-dir.js';
 import { LEARNING_DEFAULTS, unlearnedRunWatts } from '../dist/monitor.js';
 import { reportSeconds, SLOW_REPORT_SECONDS } from '../dist/phases.js';
@@ -219,7 +219,8 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     const devices = Array.isArray(request?.devices)
       ? request.devices.filter((device) => typeof device?.name === 'string')
       : [];
-    return statisticsTable(this.dataDir, devices);
+    // The price from the page, as being edited, as the appliances are.
+    return statisticsTable(this.dataDir, devices, new Date(), usablePrice(request?.price ?? {}));
   }
 }
 

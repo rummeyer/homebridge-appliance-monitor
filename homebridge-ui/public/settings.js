@@ -33,9 +33,10 @@
   /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */
   const DEFAULT_DASHBOARD_PORT = 8582;
   const dashboardOn = (config) => config.dashboard ?? (config.dashboardPort !== undefined && config.dashboardPort !== null);
-  /** As DEFAULT_MQTT_URL and DEFAULT_MQTT_PREFIX in config.ts. */
+  /** As DEFAULT_MQTT_URL, DEFAULT_MQTT_PREFIX and DEFAULT_CURRENCY in config.ts. */
   const DEFAULT_MQTT_URL = 'mqtt://localhost:1883';
   const DEFAULT_MQTT_PREFIX = 'appliance-monitor';
+  const DEFAULT_CURRENCY = 'EUR';
   const PAIRING_CODE = /^\s*((\d[\s-]*){11}|(\d[\s-]*){21}|MT:[0-9A-Z.\-]+)\s*$/i;
   const LOG_LEVELS = [
     ['error', 'Errors only'],
@@ -450,20 +451,20 @@
             device.mqttTopic = value.trim();
             showError(input, topicError(value));
             changed();
-          }), 'JSON with the watts, or a number.', topicError(device.mqttTopic)),
+          }), "Where the plug publishes what it draws, a Shelly's <id>/power. A number of watts, or JSON with them.", topicError(device.mqttTopic)),
           field('Online topic', text(device.mqttOnlineTopic, 'plug/online', (value, input) => {
             setOrDrop(device, 'mqttOnlineTopic', value.trim());
             showError(input, topicError(value));
             changed();
-          }), 'Optional: true/false, online/offline.', topicError(device.mqttOnlineTopic)),
+          }), "Optional. Where the plug says whether it is connected, a Shelly's <id>/online: true or false, online or offline.", topicError(device.mqttOnlineTopic)),
           field('Watts key', text(device.mqttPowerKey, 'apower', (value) => {
             setOrDrop(device, 'mqttPowerKey', value.trim());
             changed();
-          }), 'a.b for one inside another.'),
+          }), "In JSON, the field with the watts: apower for a Shelly. One inside another as a.b."),
           field('Relay key', text(device.mqttRelayKey, 'output', (value) => {
             setOrDrop(device, 'mqttRelayKey', value.trim());
             changed();
-          }), 'True while switched on.'),
+          }), "In JSON, the field that is true while the plug is switched on: output for a Shelly."),
         ]
         : [];
 
@@ -924,11 +925,28 @@
             changed();
             showDashboardLinks();
           }, 1))),
+        // The price on a line of its own, for the Statistics tab.
+        el('div', { class: 'om-set-grid mt-3' },
+          el('div', {},
+            check('om-set-pricing', 'Pricing', config.pricing === true, (on) => { setOrDrop(config, 'pricing', on, false); changed(); }),
+            el('div', { class: 'om-set-help' }, 'What the electricity cost, on the Statistics tab and the dashboard.')),
+          field('Price per kWh (cents)', number(config.centsPerKwh, 'none', (value) => {
+            setOrDrop(config, 'centsPerKwh', numberOrUndefined(value));
+            changed();
+          }), 'What each value on the Statistics tab cost.'),
+          field('Base fee per month', number(config.baseFeePerMonth, 'none', (value) => {
+            setOrDrop(config, 'baseFeePerMonth', numberOrUndefined(value));
+            changed();
+          }), 'Its share of each period, in the total.'),
+          field('Currency', text(config.currency, DEFAULT_CURRENCY, (value) => {
+            setOrDrop(config, 'currency', value.trim() || undefined, DEFAULT_CURRENCY);
+            changed();
+          }))),
         // MQTT on a line of its own: its three fields belong together.
         el('div', { class: 'om-set-grid mt-3' },
           el('div', {},
             check('om-set-mqtt', 'MQTT', config.mqtt === true, (on) => { setOrDrop(config, 'mqtt', on, false); changed(); }),
-            el('div', { class: 'om-set-help' }, "Each appliance's state as topics: <prefix>/<name>/state, watts, phases and more.")),
+            el('div', { class: 'om-set-help' }, "Publishes each appliance's state for a clock, Node-RED or Home Assistant: <prefix>/<name>/state (running or idle), /watts, /phase/<phase> (ON or OFF) and more. The README's MQTT section lists them all.")),
           field('MQTT broker', text(config.mqttUrl, DEFAULT_MQTT_URL, (value) => {
             setOrDrop(config, 'mqttUrl', value.trim() || undefined, DEFAULT_MQTT_URL);
             changed();
@@ -936,7 +954,7 @@
           field('MQTT topic prefix', text(config.mqttPrefix, DEFAULT_MQTT_PREFIX, (value) => {
             setOrDrop(config, 'mqttPrefix', value.trim() || undefined, DEFAULT_MQTT_PREFIX);
             changed();
-          }))));
+          }), 'The first part of every topic: appliance-monitor/Kaffeemaschine/state.')));
     }
 
     /**

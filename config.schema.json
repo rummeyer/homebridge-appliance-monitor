@@ -400,6 +400,30 @@
         "placeholder": "8582",
         "description": "The port of the dashboard; 8582 if empty."
       },
+      "pricing": {
+        "title": "Pricing",
+        "type": "boolean",
+        "default": false,
+        "description": "Show what the electricity cost on the Statistics tab and the dashboard, from the price per kWh and the base fee."
+      },
+      "centsPerKwh": {
+        "title": "Price per kWh (cents)",
+        "type": "number",
+        "minimum": 0,
+        "description": "What a kWh costs, in cents of the currency: the Statistics tab and the dashboard show what each value cost."
+      },
+      "baseFeePerMonth": {
+        "title": "Base fee per month",
+        "type": "number",
+        "minimum": 0,
+        "description": "The electricity contract's fixed fee per month: its share of each period is shown under the total, and added to what it all cost."
+      },
+      "currency": {
+        "title": "Currency",
+        "type": "string",
+        "placeholder": "EUR",
+        "description": "What the prices are in, written after each amount; EUR if empty."
+      },
       "mqtt": {
         "title": "MQTT",
         "type": "boolean",

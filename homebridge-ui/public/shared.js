@@ -173,32 +173,165 @@
     return element;
   }
 
+  /** An amount of money with two decimals and its currency after it: "1.79 EUR". */
+  const money = (amount, currency) =>
+    `${amount.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+
+  /** The column headers that sort, and the cost after each value. */
+  const TABLE_CSS = `
+    th.om-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+    th.om-sort .om-arrow { display: inline-block; width: 1em; margin-left: .2em; opacity: .35; font-size: .8em; }
+    th.om-sort[aria-sort] .om-arrow { opacity: 1; }
+    th.om-sort:hover .om-arrow { opacity: .8; }
+    td .om-cost { opacity: .65; white-space: nowrap; }
+    tfoot tr.om-fee td { font-weight: normal; }`;
+
+  /**
+   * How the statistics are sorted: by a column, which way, or as the settings
+   * list them. Kept in the browser, for the next time.
+   */
+  const SORT_KEY = 'appliance-monitor.statistics-sort';
+  function savedSort() {
+    try {
+      const sort = JSON.parse(localStorage.getItem(SORT_KEY) ?? 'null');
+      return sort && Number.isInteger(sort.column) && typeof sort.descending === 'boolean' ? sort : null;
+    } catch {
+      return null;
+    }
+  }
+  function saveSort(sort) {
+    try {
+      if (sort) {
+        localStorage.setItem(SORT_KEY, JSON.stringify(sort));
+      } else {
+        localStorage.removeItem(SORT_KEY);
+      }
+    } catch {
+      // Not kept, as in a private window: sorted for now only.
+    }
+  }
+
+  /**
+   * The rows' indexes in the order to show them: each appliance with the ones
+   * that are part of it right under it, sorted among themselves, and the
+   * appliances sorted by `compare` — or as given, without one.
+   */
+  function sortedRows(depths, count, compare) {
+    const children = (from, depth) => {
+      const found = [];
+      for (let index = from; index < count && (depths?.[index] ?? 0) >= depth; index++) {
+        if ((depths?.[index] ?? 0) === depth) {
+          found.push(index);
+        }
+      }
+      return found;
+    };
+    const order = [];
+    const visit = (indexes, depth) => {
+      const sorted = compare ? [...indexes].sort(compare) : indexes;
+      for (const index of sorted) {
+        order.push(index);
+        visit(children(index + 1, depth + 1), depth + 1);
+      }
+    };
+    visit(children(0, 0), 0);
+    return order;
+  }
+
   /**
    * The statistics as a table. `dates` puts each period's dates under its
    * name; `decorate(cell, name)` adds to the first cell of a row, as the
    * settings page does its reset checkbox. A period counted only in part is
    * not marked: the README says how such a period is counted.
+   *
+   * With a price, each value has its cost after it, and the foot the fixed
+   * fee and what it all cost. A click on a column's header sorts by it — the
+   * biggest first, names from A — again the other way, and a third time
+   * back as the settings list them; an appliance's parts stay under it.
    */
   function statisticsTable(table, { className = '', dates = false, decorate } = {}) {
+    if (!document.getElementById('om-table-style')) {
+      const style = document.createElement('style');
+      style.id = 'om-table-style';
+      style.textContent = TABLE_CSS;
+      document.head.append(style);
+    }
+    const price = table.price ?? null;
+    const cost = (wattHours) => (price?.perKwh !== null && price?.perKwh !== undefined && wattHours !== null
+      ? ` (${money((wattHours / 1000) * price.perKwh, price.currency)})`
+      : '');
+    const withCost = (row, wattHours) => {
+      const element = cell(row, kwh(wattHours));
+      const text = cost(wattHours);
+      if (text) {
+        const small = document.createElement('span');
+        small.className = 'om-cost';
+        small.textContent = text;
+        element.append(small);
+      }
+      return element;
+    };
+
     const element = document.createElement('table');
     element.className = className;
     const head = element.createTHead().insertRow();
-    cell(head, 'Appliance', 'th');
     // A period nobody has a figure for yet — last year, in the first year — is left out until someone has.
     const shown = table.periods.map((_, column) => table.rows.some(({ values }) => values[column] !== null));
     const shownOnly = (values) => values.filter((_, column) => shown[column]);
-    for (const period of shownOnly(table.periods)) {
+
+    // Column 0 is the name, 1 on the periods'; none, the settings' order.
+    let sort = savedSort();
+    if (sort && sort.column > 0 && !shown[sort.column - 1]) {
+      sort = null;
+    }
+    const headers = [];
+    const sortable = (th, column) => {
+      th.classList.add('om-sort');
+      th.tabIndex = 0;
+      const arrow = document.createElement('span');
+      arrow.className = 'om-arrow';
+      arrow.setAttribute('aria-hidden', 'true');
+      // Right after the name, before the dates under it.
+      th.insertBefore(arrow, th.querySelector('small'));
+      headers.push({ th, column, arrow });
+      const click = () => {
+        const firstWay = column > 0; // the biggest first; names from A
+        if (sort?.column !== column) {
+          sort = { column, descending: firstWay };
+        } else if (sort.descending === firstWay) {
+          sort = { column, descending: !firstWay };
+        } else {
+          sort = null;
+        }
+        saveSort(sort);
+        fill();
+      };
+      th.addEventListener('click', click);
+      th.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          click();
+        }
+      });
+    };
+    sortable(cell(head, 'Appliance', 'th'), 0);
+    table.periods.forEach((period, column) => {
+      if (!shown[column]) {
+        return;
+      }
       const th = cell(head, period.label, 'th');
       if (dates) {
         const small = document.createElement('small');
         small.textContent = period.dates;
         th.append(small);
       }
-    }
+      sortable(th, column + 1);
+    });
 
     const body = element.createTBody();
-    for (const [index, { name, values, standby, partOf }] of table.rows.entries()) {
-      const row = body.insertRow();
+    const rowFor = (index) => {
+      const { name, values, standby, partOf } = table.rows[index];
+      const row = document.createElement('tr');
       const first = cell(row, name);
       // In italics, as not in the total, and indented under the appliance it
       // is part of, which comes right before it.
@@ -227,16 +360,57 @@
             : `still learning · ${typical?.cycles ?? 0} of 2 cycles`]);
       lines.push(['Count', `${count} × ${label}`], ['Standby', standbyText(standby) ?? 'not counted yet']);
       addInfo(row, name, lines);
-      shownOnly(values).forEach((value) => cell(row, kwh(value)));
-    }
+      shownOnly(values).forEach((value) => withCost(row, value));
+      return row;
+    };
+    const rows = table.rows.map((_, index) => rowFor(index));
+
+    const fill = () => {
+      for (const { th, column, arrow } of headers) {
+        const on = sort?.column === column;
+        // Faint, the way a first click sorts.
+        arrow.textContent = on ? (sort.descending ? '▼' : '▲') : (column > 0 ? '▼' : '▲');
+        if (on) {
+          th.setAttribute('aria-sort', sort.descending ? 'descending' : 'ascending');
+        } else {
+          th.removeAttribute('aria-sort');
+        }
+      }
+      let compare;
+      if (sort?.column === 0) {
+        compare = (a, b) => table.rows[a].name.localeCompare(table.rows[b].name, LOCALE) * (sort.descending ? -1 : 1);
+      } else if (sort) {
+        // None last, whichever way.
+        const of = (index) => table.rows[index].values[sort.column - 1];
+        compare = (a, b) => (of(a) === null) - (of(b) === null) || (of(a) - of(b)) * (sort.descending ? -1 : 1);
+      }
+      body.replaceChildren(...sortedRows(table.depths, rows.length, compare).map((index) => rows[index]));
+    };
+    fill();
+
     const { total } = table;
-    const foot = element.createTFoot().insertRow();
-    cell(foot, 'Total');
+    const foot = element.createTFoot();
+    const totalRow = foot.insertRow();
+    cell(totalRow, 'Total');
     // Last cycles and counts of different appliances add up to nothing; standby does.
     if (standbyText(total.standby)) {
-      addInfo(foot, 'Total', [['Standby', standbyText(total.standby)]]);
+      addInfo(totalRow, 'Total', [['Standby', standbyText(total.standby)]]);
     }
-    shownOnly(total.values).forEach((value) => cell(foot, kwh(value)));
+    shownOnly(total.values).forEach((value) => withCost(totalRow, value));
+    // The fixed fee, its share of each period, and with it what the electricity cost.
+    if (price && price.baseFees.some((fee) => fee !== null)) {
+      const fees = shownOnly(price.baseFees);
+      const feeRow = foot.insertRow();
+      feeRow.className = 'om-fee';
+      cell(feeRow, 'Base fee');
+      fees.forEach((fee) => cell(feeRow, fee === null ? '' : money(fee, price.currency)));
+      if (price.perKwh !== null) {
+        const sumRow = foot.insertRow();
+        cell(sumRow, 'Total cost');
+        shownOnly(total.values).forEach((value, column) => cell(sumRow, value === null ? ''
+          : money((value / 1000) * price.perKwh + (fees[column] ?? 0), price.currency)));
+      }
+    }
     return element;
   }
 
@@ -283,5 +457,5 @@
     return { toChart, inPlot, hover, long };
   }
 
-  root.ApplianceViews = { LOCALE, kwh, duration, clock, byName, statisticsTable, chartPointer };
+  root.ApplianceViews = { LOCALE, kwh, money, duration, clock, byName, statisticsTable, sortedRows, chartPointer };
 })(typeof window !== 'undefined' ? window : globalThis);

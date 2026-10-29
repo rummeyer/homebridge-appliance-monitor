@@ -6,6 +6,22 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **What electricity costs**, under General: **Pricing** on, **Price per kWh** (in cents),
+  **Base fee per month** and **Currency**. The Statistics tab and the
+  dashboard show each value's cost after it, and under the total the fee's
+  share of each period and the total cost with it.
+- **The statistics sort by a column**: a click on its header, the biggest
+  first; again the other way round, a third time back to the settings'
+  order. An appliance's parts stay under it.
+- **By difference** tells the pump by its steps between levels: starting
+  beside the steam or the heater — a coffee drawn while the milk froths —
+  stopping beneath them, or seen only as it stops, having started with
+  them. Settled back at what the heater draws alone, the pump has stopped.
+- A red sign at **By difference** for a plug that reports too seldom for it,
+  as an Eve Energy: the settings page measures how often its readings change.
+
 ## [1.21.0] — 2026-10-28
 
 ### Changed

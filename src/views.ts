@@ -6,11 +6,11 @@
 import { join } from 'node:path';
 
 import { usablePhases, wholeOf, withParts } from './config.ts';
-import type { DeviceConfig } from './config.ts';
+import type { DeviceConfig, Price } from './config.ts';
 import { shownCount } from './counts.ts';
 import { phaseSpans, sumSamples, thin } from './curve.ts';
 import { statistics } from './energy.ts';
-import type { DeviceEnergy, Statistics } from './energy.ts';
+import type { DeviceEnergy, PeriodKind, Statistics } from './energy.ts';
 import { readJson } from './json-file.ts';
 import { findLevels, RECALL_MS } from './phases.ts';
 import type { Level, PhaseConfig } from './phases.ts';
@@ -80,13 +80,26 @@ export interface StatisticsTable extends Statistics {
    * for too few. `median` is the median of all, close to it or not.
    */
   typicals: { seconds: number | null; cycles: number; byStart: number[]; median: number | null }[];
+  /**
+   * What electricity costs, if set: per kWh, and the fixed fee's share of
+   * each period — a day's, a week's, a month's or a year's — for the total.
+   */
+  price: { perKwh: number | null; currency: string; baseFees: (number | null)[] } | null;
 }
+
+/** The months a period is, for its share of a fee per month: a day a twelfth of 365 days of a year. */
+const MONTHS: Record<PeriodKind, number> = { day: 12 / 365, week: (7 * 12) / 365, month: 1, year: 12 };
 
 /**
  * The table for the plugs given, in that order but for each one's parts,
  * which come right after it, with what each has counted.
  */
-export function statisticsTable(dir: string | undefined, given: Pick<DeviceConfig, 'name' | 'phases' | 'partOf'>[], now = new Date()): StatisticsTable {
+export function statisticsTable(
+  dir: string | undefined,
+  given: Pick<DeviceConfig, 'name' | 'phases' | 'partOf'>[],
+  now = new Date(),
+  price?: Price,
+): StatisticsTable {
   const ordered = withParts(given);
   const devices = ordered.map(({ device }) => device);
   const ledger = readData<Record<string, DeviceEnergy>>(dir, 'energy.json', {});
@@ -111,5 +124,19 @@ export function statisticsTable(dir: string | undefined, given: Pick<DeviceConfi
     const partOf = wholeOf(device, devices);
     return partOf === undefined ? { name: device.name } : { name: device.name, partOf };
   });
-  return { ...statistics(ledger, plugs, now), counts, lastCycles, typicals, depths: ordered.map(({ depth }) => depth) };
+  const table = statistics(ledger, plugs, now);
+  return {
+    ...table,
+    counts,
+    lastCycles,
+    typicals,
+    depths: ordered.map(({ depth }) => depth),
+    price: price
+      ? {
+        perKwh: price.perKwh,
+        currency: price.currency,
+        baseFees: table.periods.map(({ kind }) => (price.perMonth === null ? null : price.perMonth * MONTHS[kind])),
+      }
+      : null,
+  };
 }
