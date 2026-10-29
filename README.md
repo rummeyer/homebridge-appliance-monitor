@@ -557,6 +557,14 @@ each period — a day's, a week's, the month, twelve for the year, a day
 being a twelfth of 365 days of a year — and the **Total cost** with it.
 **Currency** is written after each amount, EUR if left empty.
 
+**A changed price** holds from the day after Homebridge restarts with it;
+what was used until then keeps the price it had. Nothing to set for it: the
+plugin notes each price it starts with in `prices.json`, next to its other
+data, and prices each day at the price that held then — the fee too, each
+day its share. Changed twice in a day, the last counts. The first price of
+all also prices everything recorded before it. **General** lists the prices
+noted so far, and says when a change is waiting to be noted.
+
 **Sorted by a column.** A click on a column's header sorts by it: a period
 with the biggest first, to find what used the most last week; the names
 from A. A second click turns it round, a third goes back to the order of

@@ -43,6 +43,7 @@ import { FINISHED, phaseKey } from './counts.ts';
 import { dataDir } from './data-dir.ts';
 import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker, RECALL_MS } from './phases.ts';
+import { notePrice } from './prices.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, OFF_WATTS } from './power.ts';
 import { fillMessage, MqttPublisher, parseOnline, parseReading, phaseTopic, stateTopics } from './mqtt.ts';
@@ -192,6 +193,20 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const controller = new MatterController(this.log, join(this.#dataPath, 'matter'), level);
     await controller.start();
     this.#controller = controller;
+
+    // A price changed in the settings holds from tomorrow; what was used before keeps its own.
+    const price = usablePrice(this.config);
+    if (price) {
+      try {
+        const noted = notePrice(this.#dataPath, price);
+        if (noted) {
+          this.log.info(`Price ${noted.perKwh === null ? 'none' : `${Math.round(noted.perKwh * 10000) / 100} cents`} per kWh, `
+            + `base fee ${noted.perMonth ?? 'none'} ${noted.currency} per month, from ${noted.from}`);
+        }
+      } catch (error) {
+        this.log.warn(`Could not note the price: ${message(error)}`);
+      }
+    }
 
     if (this.config.recordPower !== false) {
       const days = Number.isInteger(this.config.recordDays) && this.config.recordDays! > 0 ? this.config.recordDays : undefined;

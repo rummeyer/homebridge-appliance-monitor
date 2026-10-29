@@ -20,6 +20,7 @@ import { usablePhases, usablePrice } from '../dist/config.js';
 import { dataDir } from '../dist/data-dir.js';
 import { LEARNING_DEFAULTS, unlearnedRunWatts } from '../dist/monitor.js';
 import { reportSeconds, SLOW_REPORT_SECONDS } from '../dist/phases.js';
+import { readPrices } from '../dist/prices.js';
 import { readSeries } from '../dist/recorder.js';
 import { applyResets, pendingResets, requestReset } from '../dist/resets.js';
 import { addRequest, dropRequest, takeAnswer } from '../dist/requests.js';
@@ -39,6 +40,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
     this.onRequest('/endpoints', () => this.endpoints());
     this.onRequest('/address', () => this.address());
     this.onRequest('/learned', () => this.learned());
+    this.onRequest('/prices', () => readPrices(this.dataDir));
     this.onRequest('/reset', (request) => this.reset(request));
     this.onRequest('/learn', (request) => this.learn(request));
     this.onRequest('/forget', (request) => this.forget(request));

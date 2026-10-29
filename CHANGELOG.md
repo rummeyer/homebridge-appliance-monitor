@@ -11,7 +11,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - **What electricity costs**, under General: **Pricing** on, **Price per kWh** (in cents),
   **Base fee per month** and **Currency**. The Statistics tab and the
   dashboard show each value's cost after it, and under the total the fee's
-  share of each period and the total cost with it.
+  share of each period and the total cost with it. A changed price holds
+  from the next day: the plugin notes each price in `prices.json`, and
+  energy used before keeps the price it had.
 - **The statistics sort by a column**: a click on its header, the biggest
   first; again the other way round, a third time back to the settings'
   order. An appliance's parts stay under it.

@@ -9,10 +9,11 @@ import { usablePhases, wholeOf, withParts } from './config.ts';
 import type { DeviceConfig, Price } from './config.ts';
 import { shownCount } from './counts.ts';
 import { phaseSpans, sumSamples, thin } from './curve.ts';
-import { statistics } from './energy.ts';
-import type { DeviceEnergy, PeriodKind, Statistics } from './energy.ts';
+import { dayKey, lastPeriods, statistics } from './energy.ts';
+import type { DeviceEnergy, Statistics } from './energy.ts';
 import { readJson } from './json-file.ts';
 import { findLevels, RECALL_MS } from './phases.ts';
+import { baseFee, energyCost, readPrices, withPrice } from './prices.ts';
 import type { Level, PhaseConfig } from './phases.ts';
 import { readSamples, readSeries } from './recorder.ts';
 import type { DeviceRecord, LastCycle } from './store.ts';
@@ -81,14 +82,12 @@ export interface StatisticsTable extends Statistics {
    */
   typicals: { seconds: number | null; cycles: number; byStart: number[]; median: number | null }[];
   /**
-   * What electricity costs, if set: per kWh, and the fixed fee's share of
-   * each period — a day's, a week's, a month's or a year's — for the total.
+   * What the electricity cost, with pricing on: per row and period, each day
+   * at the price that held then (see prices.ts), the total of the rows in
+   * the total, and the fixed fee's share of each period.
    */
-  price: { perKwh: number | null; currency: string; baseFees: (number | null)[] } | null;
+  price: { currency: string; costs: (number | null)[][]; totalCosts: (number | null)[]; baseFees: (number | null)[] } | null;
 }
-
-/** The months a period is, for its share of a fee per month: a day a twelfth of 365 days of a year. */
-const MONTHS: Record<PeriodKind, number> = { day: 12 / 365, week: (7 * 12) / 365, month: 1, year: 12 };
 
 /**
  * The table for the plugs given, in that order but for each one's parts,
@@ -125,6 +124,15 @@ export function statisticsTable(
     return partOf === undefined ? { name: device.name } : { name: device.name, partOf };
   });
   const table = statistics(ledger, plugs, now);
+  // The price as set, as the plugin will note it once it starts with it: from tomorrow, or the first of all from always.
+  const history = price ? withPrice(readPrices(dir), price, dayKey(now)) : [];
+  const periods = lastPeriods(now);
+  const costs = table.rows.map(({ name, values }) => periods.map((period, column) =>
+    (values[column] === null ? null : energyCost(ledger[name], period, history))));
+  const totalCosts = periods.map((_, column) => {
+    const counted = table.rows.flatMap(({ partOf }, row) => (partOf || costs[row]![column] === null ? [] : [costs[row]![column]!]));
+    return counted.length > 0 ? counted.reduce((sum, cost) => sum + cost, 0) : null;
+  });
   return {
     ...table,
     counts,
@@ -132,11 +140,7 @@ export function statisticsTable(
     typicals,
     depths: ordered.map(({ depth }) => depth),
     price: price
-      ? {
-        perKwh: price.perKwh,
-        currency: price.currency,
-        baseFees: table.periods.map(({ kind }) => (price.perMonth === null ? null : price.perMonth * MONTHS[kind])),
-      }
+      ? { currency: price.currency, costs, totalCosts, baseFees: periods.map((period) => baseFee(period, history)) }
       : null,
   };
 }

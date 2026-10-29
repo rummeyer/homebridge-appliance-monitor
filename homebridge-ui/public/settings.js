@@ -210,6 +210,8 @@
     let inUse = (await homebridge.request('/learned').catch(() => null)) ?? {};
     /** Where this machine can be reached, for the link to the dashboard. */
     const address = await homebridge.request('/address').catch(() => null);
+    /** The prices the plugin has noted, oldest first; see prices.ts. */
+    const prices = (await homebridge.request('/prices').catch(() => null)) ?? [];
 
     let selected = config.devices.length ? sortedIndices()[0] : -1;
     let pending;
@@ -895,6 +897,52 @@
       [...phaseView.target.querySelectorAll('.om-set-phase')].at(-1)?.querySelector('input')?.focus();
     }
 
+    /** The price being set, as the plugin reads it (usablePrice in config.ts); none with pricing off. */
+    function settingPrice() {
+      const amount = (value) => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null);
+      const cents = amount(config.centsPerKwh);
+      const perMonth = amount(config.baseFeePerMonth);
+      if (config.pricing !== true || (cents === null && perMonth === null)) {
+        return null;
+      }
+      return { perKwh: cents === null ? null : cents / 100, perMonth, currency: (config.currency ?? '').trim() || DEFAULT_CURRENCY };
+    }
+    const priceText = (price) => [
+      price.perKwh === null ? null : `${Math.round(price.perKwh * 10000) / 100} cents per kWh`,
+      price.perMonth === null ? null : `${price.perMonth} ${price.currency} a month`,
+    ].filter(Boolean).join(' and ');
+    const dayText = (day) => new Date(`${day}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const todayKey = () => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    };
+
+    /**
+     * Under the price: the ones it had, and what a change does — it holds from
+     * the day after the plugin starts with it, and what was used before keeps
+     * its own; the first price of all prices everything before it too.
+     */
+    function priceNote() {
+      const price = settingPrice();
+      const lines = [];
+      if (prices.length) {
+        lines.push(`Noted so far: ${prices.slice(-3).map((change) => `${priceText(change)} from ${dayText(change.from)}`).join('; ')}.`);
+      }
+      const today = todayKey();
+      const holding = prices.filter(({ from }) => from <= today).at(-1) ?? prices[0];
+      const waiting = prices.filter(({ from }) => from > today).at(-1);
+      const same = (a, b) => a && b && a.perKwh === b.perKwh && a.perMonth === b.perMonth && a.currency === b.currency;
+      if (price && !prices.length) {
+        lines.push('Once Homebridge restarts with it, this first price also prices everything recorded before.');
+      } else if (price && !same(price, waiting ?? holding)) {
+        lines.push(`${SLOW_SIGN} A changed price holds from the day after Homebridge restarts with it: what was used until then keeps ${priceText(holding)}.`);
+      }
+      return el('div', { class: 'om-set-help om-set-price-note', hidden: lines.length === 0 }, lines.join(' '));
+    }
+    function drawPriceNote() {
+      container.querySelector('.om-set-price-note')?.replaceWith(priceNote());
+    }
+
     function general() {
       showDashboardLinks(); // the config may have been read again
       return el('details', { class: 'om-set-more om-set-section mt-4' },
@@ -928,20 +976,24 @@
         // The price on a line of its own, for the Statistics tab.
         el('div', { class: 'om-set-grid mt-3' },
           el('div', {},
-            check('om-set-pricing', 'Pricing', config.pricing === true, (on) => { setOrDrop(config, 'pricing', on, false); changed(); }),
+            check('om-set-pricing', 'Pricing', config.pricing === true, (on) => { setOrDrop(config, 'pricing', on, false); changed(); drawPriceNote(); }),
             el('div', { class: 'om-set-help' }, 'What the electricity cost, on the Statistics tab and the dashboard.')),
           field('Price per kWh (cents)', number(config.centsPerKwh, 'none', (value) => {
             setOrDrop(config, 'centsPerKwh', numberOrUndefined(value));
             changed();
+            drawPriceNote();
           }), 'What each value on the Statistics tab cost.'),
           field('Base fee per month', number(config.baseFeePerMonth, 'none', (value) => {
             setOrDrop(config, 'baseFeePerMonth', numberOrUndefined(value));
             changed();
+            drawPriceNote();
           }), 'Its share of each period, in the total.'),
           field('Currency', text(config.currency, DEFAULT_CURRENCY, (value) => {
             setOrDrop(config, 'currency', value.trim() || undefined, DEFAULT_CURRENCY);
             changed();
+            drawPriceNote();
           }))),
+        priceNote(),
         // MQTT on a line of its own: its three fields belong together.
         el('div', { class: 'om-set-grid mt-3' },
           el('div', {},

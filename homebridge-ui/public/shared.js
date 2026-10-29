@@ -256,13 +256,11 @@
       style.textContent = TABLE_CSS;
       document.head.append(style);
     }
+    // What each value cost, each day at the price that held then, worked out by the plugin.
     const price = table.price ?? null;
-    const cost = (wattHours) => (price?.perKwh !== null && price?.perKwh !== undefined && wattHours !== null
-      ? ` (${money((wattHours / 1000) * price.perKwh, price.currency)})`
-      : '');
-    const withCost = (row, wattHours) => {
+    const withCost = (row, wattHours, cost) => {
       const element = cell(row, kwh(wattHours));
-      const text = cost(wattHours);
+      const text = wattHours !== null && cost !== null && cost !== undefined && price ? ` (${money(cost, price.currency)})` : '';
       if (text) {
         const small = document.createElement('span');
         small.className = 'om-cost';
@@ -360,7 +358,8 @@
             : `still learning · ${typical?.cycles ?? 0} of 2 cycles`]);
       lines.push(['Count', `${count} × ${label}`], ['Standby', standbyText(standby) ?? 'not counted yet']);
       addInfo(row, name, lines);
-      shownOnly(values).forEach((value) => withCost(row, value));
+      const costs = shownOnly(price?.costs?.[index] ?? values.map(() => null));
+      shownOnly(values).forEach((value, column) => withCost(row, value, costs[column]));
       return row;
     };
     const rows = table.rows.map((_, index) => rowFor(index));
@@ -396,7 +395,8 @@
     if (standbyText(total.standby)) {
       addInfo(totalRow, 'Total', [['Standby', standbyText(total.standby)]]);
     }
-    shownOnly(total.values).forEach((value) => withCost(totalRow, value));
+    const totalCosts = shownOnly(price?.totalCosts ?? total.values.map(() => null));
+    shownOnly(total.values).forEach((value, column) => withCost(totalRow, value, totalCosts[column]));
     // The fixed fee, its share of each period, and with it what the electricity cost.
     if (price && price.baseFees.some((fee) => fee !== null)) {
       const fees = shownOnly(price.baseFees);
@@ -404,11 +404,10 @@
       feeRow.className = 'om-fee';
       cell(feeRow, 'Base fee');
       fees.forEach((fee) => cell(feeRow, fee === null ? '' : money(fee, price.currency)));
-      if (price.perKwh !== null) {
+      if (price.totalCosts.some((cost) => cost !== null)) {
         const sumRow = foot.insertRow();
         cell(sumRow, 'Total cost');
-        shownOnly(total.values).forEach((value, column) => cell(sumRow, value === null ? ''
-          : money((value / 1000) * price.perKwh + (fees[column] ?? 0), price.currency)));
+        totalCosts.forEach((cost, column) => cell(sumRow, cost === null ? '' : money(cost + (fees[column] ?? 0), price.currency)));
       }
     }
     return element;
