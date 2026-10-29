@@ -925,6 +925,7 @@
     function priceNote() {
       const price = settingPrice();
       const lines = [];
+      let warning = '';
       if (prices.length) {
         lines.push(`Noted so far: ${prices.slice(-3).map((change) => `${priceText(change)} from ${dayText(change.from)}`).join('; ')}.`);
       }
@@ -933,11 +934,13 @@
       const waiting = prices.filter(({ from }) => from > today).at(-1);
       const same = (a, b) => a && b && a.perKwh === b.perKwh && a.perMonth === b.perMonth && a.currency === b.currency;
       if (price && !prices.length) {
-        lines.push('Once Homebridge restarts with it, this first price also prices everything recorded before.');
+        lines.push('Once Homebridge restarts with it, this first price holds from the first day anything was recorded.');
       } else if (price && !same(price, waiting ?? holding)) {
-        lines.push(`${SLOW_SIGN} A changed price holds from the day after Homebridge restarts with it: what was used until then keeps ${priceText(holding)}.`);
+        warning = `${SLOW_SIGN} A changed price holds from the day after Homebridge restarts with it: what was used until then keeps ${priceText(holding)}.`;
       }
-      return el('div', { class: 'om-set-help om-set-price-note', hidden: lines.length === 0 }, lines.join(' '));
+      return el('div', { class: 'om-set-help om-set-price-note', hidden: lines.length === 0 && !warning },
+        ...lines.map((line) => el('div', {}, line)),
+        warning ? el('div', { class: 'text-danger' }, warning) : null);
     }
     function drawPriceNote() {
       container.querySelector('.om-set-price-note')?.replaceWith(priceNote());

@@ -3,7 +3,7 @@
  * notes each change of it here, holding from the day after it starts with
  * it, so that energy used before keeps the price it had then — a list of
  * prices with dates nobody has to keep. Today is priced as it began; the
- * first price ever set prices everything before it too.
+ * first price ever set holds from the first day anything was recorded.
  */
 import { join } from 'node:path';
 
@@ -30,11 +30,11 @@ const samePrice = (a: Price, b: Price) => a.perKwh === b.perKwh && a.perMonth ==
  * The history with `price` holding from the day after `today` on: added when
  * it is not the one holding then already, replacing one waiting for
  * tomorrow — changed twice in a day, the last counts. The first price of
- * all holds from today, and for everything before.
+ * all holds from `first`, the first day anything was recorded, or today.
  */
-export function withPrice(history: PriceChange[], price: Price, today: string): PriceChange[] {
+export function withPrice(history: PriceChange[], price: Price, today: string, first = today): PriceChange[] {
   if (history.length === 0) {
-    return [{ ...price, from: today }];
+    return [{ ...price, from: first < today ? first : today }];
   }
   const [year, month, day] = today.split('-').map(Number) as [number, number, number];
   const tomorrow = dayKey(new Date(year, month - 1, day + 1));
@@ -54,6 +54,17 @@ export function priceOn(history: PriceChange[], day: string): PriceChange | unde
   return found;
 }
 
+/** The first day anything was recorded, `YYYY-MM-DD`: the first price holds from it. */
+export function firstRecordedDay(dir: string | undefined): string | undefined {
+  try {
+    const ledger = dir ? readJson(join(dir, 'energy.json')) as Record<string, DeviceEnergy> | undefined : undefined;
+    const days = Object.values(ledger ?? {}).flatMap((energy) => Object.keys(energy?.days ?? {}));
+    return days.length ? days.reduce((a, b) => (a < b ? a : b)) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function readPrices(dir: string | undefined): PriceChange[] {
   try {
     const data = dir ? readJson(join(dir, PRICES_FILE)) : undefined;
@@ -69,7 +80,13 @@ export function readPrices(dir: string | undefined): PriceChange[] {
  */
 export function notePrice(dir: string, price: Price, now = new Date()): PriceChange | undefined {
   const history = readPrices(dir);
-  const updated = withPrice(history, price, dayKey(now));
+  const first = firstRecordedDay(dir);
+  // The first price holds from the first recording, as noted before this was so too.
+  if (first && history[0] && history[0].from > first) {
+    history[0] = { ...history[0], from: first };
+    writeJson(join(dir, PRICES_FILE), history);
+  }
+  const updated = withPrice(history, price, dayKey(now), first);
   if (JSON.stringify(updated) === JSON.stringify(history)) {
     return undefined;
   }

@@ -13,7 +13,7 @@ import { dayKey, lastPeriods, statistics } from './energy.ts';
 import type { DeviceEnergy, Statistics } from './energy.ts';
 import { readJson } from './json-file.ts';
 import { findLevels, RECALL_MS } from './phases.ts';
-import { baseFee, energyCost, readPrices, withPrice } from './prices.ts';
+import { baseFee, energyCost, firstRecordedDay, readPrices, withPrice } from './prices.ts';
 import type { Level, PhaseConfig } from './phases.ts';
 import { readSamples, readSeries } from './recorder.ts';
 import type { DeviceRecord, LastCycle } from './store.ts';
@@ -124,8 +124,8 @@ export function statisticsTable(
     return partOf === undefined ? { name: device.name } : { name: device.name, partOf };
   });
   const table = statistics(ledger, plugs, now);
-  // The price as set, as the plugin will note it once it starts with it: from tomorrow, or the first of all from always.
-  const history = price ? withPrice(readPrices(dir), price, dayKey(now)) : [];
+  // The price as set, as the plugin will note it once it starts with it: from tomorrow, or the first of all from the first recording.
+  const history = price ? withPrice(readPrices(dir), price, dayKey(now), firstRecordedDay(dir)) : [];
   const periods = lastPeriods(now);
   const costs = table.rows.map(({ name, values }) => periods.map((period, column) =>
     (values[column] === null ? null : energyCost(ledger[name], period, history))));

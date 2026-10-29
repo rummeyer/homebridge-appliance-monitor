@@ -562,7 +562,7 @@ what was used until then keeps the price it had. Nothing to set for it: the
 plugin notes each price it starts with in `prices.json`, next to its other
 data, and prices each day at the price that held then — the fee too, each
 day its share. Changed twice in a day, the last counts. The first price of
-all also prices everything recorded before it. **General** lists the prices
+all holds from the first day anything was recorded. **General** lists the prices
 noted so far, and says when a change is waiting to be noted.
 
 **Sorted by a column.** A click on a column's header sorts by it: a period

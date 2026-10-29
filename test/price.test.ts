@@ -62,6 +62,7 @@ test('a changed price holds from the next day; changed twice in a day, the last;
   let history = withPrice([], eur(0.2856, 13.89), '2026-10-29');
   assert.deepEqual(history, [{ ...eur(0.2856, 13.89), from: '2026-10-29' }], 'the first, from today');
   assert.equal(priceOn(history, '2025-01-01')!.perKwh, 0.2856, 'and for everything before');
+  assert.equal(withPrice([], eur(0.2856, 13.89), '2026-10-29', '2026-10-06')[0]!.from, '2026-10-06', 'from the first recording');
   assert.deepEqual(withPrice(history, eur(0.2856, 13.89), '2026-11-02'), history, 'the same again: nothing new');
   history = withPrice(history, eur(0.31, 13.89), '2026-11-02');
   assert.deepEqual(history.map(({ from, perKwh }) => [from, perKwh]), [['2026-10-29', 0.2856], ['2026-11-03', 0.31]]);
