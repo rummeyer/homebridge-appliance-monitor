@@ -368,12 +368,12 @@
       }
       let compare;
       if (sort.column === 0) {
-        compare = (a, b) => table.rows[a].name.localeCompare(table.rows[b].name, LOCALE) * (sort.descending ? -1 : 1);
+        compare = (a, b) => byName(table.rows[a].name, table.rows[b].name) * (sort.descending ? -1 : 1);
       } else {
         // None last, whichever way; the same by name from A.
         const of = (index) => table.rows[index].values[sort.column - 1];
         compare = (a, b) => (of(a) === null) - (of(b) === null) || (of(a) - of(b)) * (sort.descending ? -1 : 1)
-          || table.rows[a].name.localeCompare(table.rows[b].name, LOCALE);
+          || byName(table.rows[a].name, table.rows[b].name);
       }
       body.replaceChildren(...sortedRows(table.depths, rows.length, compare).map((index) => rows[index]));
     };

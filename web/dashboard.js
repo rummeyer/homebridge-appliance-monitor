@@ -190,9 +190,10 @@
       names = fresh;
       fillPlugs();
     }
+    // The total first, then the appliances by name, as the statistics begin.
     $('tiles').replaceChildren(
       totalTile(appliances),
-      ...appliances.map((appliance) => tile(appliance, live.at)),
+      ...[...appliances].sort((a, b) => byName(a.name, b.name)).map((appliance) => tile(appliance, live.at)),
     );
   }
 
