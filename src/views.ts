@@ -84,9 +84,10 @@ export interface StatisticsTable extends Statistics {
   /**
    * What the electricity cost, with pricing on: per row and period, each day
    * at the price that held then (see prices.ts), the total of the rows in
-   * the total, and the fixed fee's share of each period.
+   * the total, and the fixed fee's share of each period; and the price per
+   * kWh as set, for what standby costs a year.
    */
-  price: { currency: string; costs: (number | null)[][]; totalCosts: (number | null)[]; baseFees: (number | null)[] } | null;
+  price: { currency: string; perKwh: number | null; costs: (number | null)[][]; totalCosts: (number | null)[]; baseFees: (number | null)[] } | null;
 }
 
 /**
@@ -140,7 +141,7 @@ export function statisticsTable(
     typicals,
     depths: ordered.map(({ depth }) => depth),
     price: price
-      ? { currency: price.currency, costs, totalCosts, baseFees: periods.map((period) => baseFee(period, history)) }
+      ? { currency: price.currency, perKwh: price.perKwh, costs, totalCosts, baseFees: periods.map((period) => baseFee(period, history)) }
       : null,
   };
 }

@@ -555,7 +555,9 @@ kWh** set — in cents, 28.56 for 28.56 ct — each value has its cost after it:
 A **Base fee per month** adds two lines under the total: the fee's share of
 each period — a day's, a week's, the month, twelve for the year, a day
 being a twelfth of 365 days of a year — and the **Total cost** with it.
-**Currency** is written after each amount, EUR if left empty.
+**Currency** is written after each amount, EUR if left empty. The bubble
+over a row says what its standby costs a year, at the price per kWh as set:
+*11 % · about 25.8 kWh a year (7.37 EUR)*.
 
 **A changed price** holds from the day after Homebridge restarts with it;
 what was used until then keeps the price it had. Nothing to set for it: the

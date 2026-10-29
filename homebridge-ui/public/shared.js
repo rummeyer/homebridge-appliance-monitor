@@ -25,8 +25,10 @@
   };
 
   /** Standby as a line: "8 % · about 7.6 kWh a year"; nothing when there is none to show. */
-  const standbyText = (standby) => (standby && standby.share !== null
+  /** Standby's share and a year of it, with what that costs at the price per kWh, if there is one. */
+  const standbyText = (standby, price) => (standby && standby.share !== null
     ? `${Math.round(standby.share * 100)} % · about ${kwh(standby.yearWattHours)} a year`
+      + (price?.perKwh !== null && price?.perKwh !== undefined ? ` (${money((standby.yearWattHours / 1000) * price.perKwh, price.currency)})` : '')
     : undefined);
 
   // ---- The bubble over a row ---------------------------------------------------
@@ -347,7 +349,7 @@
           : typical?.median ? `median ${duration(typical.median)}, lengths vary`
             // Two: MIN_CYCLES in typical.ts.
             : `still learning · ${typical?.cycles ?? 0} of 2 cycles`]);
-      lines.push(['Count', `${count} × ${label}`], ['Standby', standbyText(standby) ?? 'not counted yet']);
+      lines.push(['Count', `${count} × ${label}`], ['Standby', standbyText(standby, price) ?? 'not counted yet']);
       addInfo(row, name, lines);
       const costs = shownOnly(price?.costs?.[index] ?? values.map(() => null));
       shownOnly(values).forEach((value, column) => withCost(row, value, costs[column]));
@@ -385,7 +387,7 @@
     cell(totalRow, 'Total');
     // Last cycles and counts of different appliances add up to nothing; standby does.
     if (standbyText(total.standby)) {
-      addInfo(totalRow, 'Total', [['Standby', standbyText(total.standby)]]);
+      addInfo(totalRow, 'Total', [['Standby', standbyText(total.standby, price)]]);
     }
     const totalCosts = shownOnly(price?.totalCosts ?? total.values.map(() => null));
     shownOnly(total.values).forEach((value, column) => withCost(totalRow, value, totalCosts[column]));
