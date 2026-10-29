@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.22.0] — 2026-10-29
+
 ### Added
 
 - **What electricity costs**, under General: **Pricing** on, **Price per
@@ -1176,7 +1178,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.21.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.0...HEAD
+[1.22.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.18.0...v1.19.0
