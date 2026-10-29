@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { Sample } from '../src/learn.ts';
-import { findLevels, PhaseTracker } from '../src/phases.ts';
+import { findLevels, PhaseTracker, reportSeconds } from '../src/phases.ts';
 import type { PhaseChange, PhaseConfig } from '../src/phases.ts';
 
 const S = 1000;
@@ -415,4 +415,28 @@ test('by difference: the heater coming on and off beside the steam is not the pu
   for (const phase of Object.values(coffeePhases)) {
     assert.deepEqual(draws(phase, froth), [], phase.name);
   }
+});
+
+test('how often a plug\'s readings change while it draws: an Eve every 6 s however often asked, a Shelly every second', () => {
+  // Asked every 2 s, its value changing every 6 s: each repeated three times.
+  const eve = Array.from({ length: 90 }, (_, i) => ({ at: i * 2 * S, watts: 1200 + Math.floor(i / 3) }));
+  assert.equal(reportSeconds(eve), 6);
+  const shelly = Array.from({ length: 60 }, (_, i) => ({ at: i * S, watts: 1250 + (i % 2) }));
+  assert.equal(reportSeconds(shelly), 1);
+  // At rest a plug reports little, and that says nothing; nor do a few readings.
+  assert.equal(reportSeconds(Array.from({ length: 60 }, (_, i) => ({ at: i * 30 * S, watts: 2 + (i % 2) / 10 }))), undefined);
+  assert.equal(reportSeconds(shelly.slice(0, 10)), undefined);
+});
+
+test('by difference: settled at what the heater draws alone, the pump has stopped beneath it, though heater and pump were never a level', () => {
+  // As the plug read it on 29.10.2026 at 08:29–08:30: a heater burst alone
+  // at 1223 W, then a rinse of 6 s, the heater coming on a second before
+  // the pump stopped and running on alone 8 s more.
+  const rinse: [number, number][] = [
+    [0, 2], [46, 1223.1], [47, 1225.2], [48, 1223.1], [49, 1220.3], [50, 1012], [51, 32], [52, 2],
+    [62, 2], [82, 41.1], [83, 57.1], [86, 57], [87, 56.9], [88, 1222.3], [89, 1274.6], [90, 1226.9], [91, 1219.8],
+    [92, 1217.4], [93, 1216], [94, 1215.7], [95, 1214.3], [96, 1214.2], [97, 1213.7], [98, 365], [99, 2],
+  ];
+  assert.deepEqual(draws(coffeePhases.bezug, rinse), [], 'not a coffee');
+  assert.deepEqual(draws(coffeePhases.spuelen, rinse), [{ from: 83, until: 88 }], 'a rinse, to the heater coming on');
 });

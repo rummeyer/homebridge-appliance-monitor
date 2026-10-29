@@ -309,6 +309,51 @@
       down: 'Only when the draw comes down into the range, as a washing machine done after its run; not when it rises into it',
       difference: 'Also while something bigger runs on top, as a pump under a heater: seen as the difference, and over when that is gone',
     };
+    /** A plug that reports too seldom for By difference, as an Eve Energy: see reportSeconds. */
+    function slowReports(device) {
+      return inUse[String(device.name ?? '').trim()]?.slowReports === true;
+    }
+    const SLOW_SIGN = '\u26a0\ufe0e';
+    const SLOW_WARNING = 'This plug reports too seldom for "By difference", which looks for steps a second long. Choose "Always".';
+    /** Under the phases, while one counts by difference on a plug that reports too seldom for it. */
+    function slowWarningLine(device) {
+      const show = slowReports(device) && (device.phases ?? []).some((phase) => countsOf(phase) === 'difference');
+      return el('div', { class: 'om-set-help om-set-slow', hidden: !show }, ...(show ? [el('span', { class: 'text-danger' }, SLOW_SIGN), ` ${SLOW_WARNING}`] : []));
+    }
+    function drawSlowWarning(device) {
+      phaseView?.target.querySelector('.om-set-slow')?.replaceWith(slowWarningLine(device));
+    }
+
+    /** The choices for Counts, By difference marked for a plug that reports too seldom for it. */
+    function countsChoices(device) {
+      return slowReports(device) ? COUNTS.map(([key, label]) => [key, key === 'difference' ? `${SLOW_SIGN} ${label}` : label]) : COUNTS;
+    }
+    /**
+     * The Counts list red while it says By difference on a plug that reports
+     * too seldom for it, and that choice red in the list where the browser
+     * colours options.
+     */
+    function markSlow(select, device) {
+      if (!slowReports(device)) {
+        return;
+      }
+      for (const option of select.options) {
+        option.style.color = option.value === 'difference' ? 'var(--bs-danger, #dc3545)' : 'var(--bs-body-color)';
+      }
+      select.classList.toggle('text-danger', select.value === 'difference');
+    }
+    function countsCell(device, phase) {
+      const counts = countsOf(phase);
+      const label = Object.fromEntries(COUNTS)[counts];
+      return counts === 'difference' && slowReports(device)
+        ? [el('span', { class: 'text-danger' }, SLOW_SIGN), ` ${label}`]
+        : [label];
+    }
+
+    function countsHelp(device, counts) {
+      return counts === 'difference' && slowReports(device) ? `${COUNTS_HELP.difference}. ${SLOW_WARNING}` : COUNTS_HELP[counts];
+    }
+
     function countsOf(phase) {
       if ((phase.byDifference ?? phase.offOnDrop ?? phase.offBelow) === true) {
         return 'difference';
@@ -673,12 +718,13 @@
           el('td', {}, phase.minSeconds ?? 5),
           el('td', {}, phase.holdSeconds ?? 30),
           el('td', {}, phase.maxSeconds ?? 'any'),
-          el('td', { title: COUNTS_HELP[countsOf(phase)], style: 'white-space: nowrap' }, Object.fromEntries(COUNTS)[countsOf(phase)]),
+          el('td', { title: countsHelp(device, countsOf(phase)), style: 'white-space: nowrap' }, ...countsCell(device, phase)),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
       return el('div', { class: 'om-set-section' },
         el('h6', {}, 'Phases'),
         phases.length ? table : null,
+        slowWarningLine(device),
         el('div', { class: 'om-set-help' }, phases.length ? 'Changed on the Power tab.' : 'None yet. They are set up on the Power tab.'),
         Array.isArray(device.messages) && device.messages.length
           ? el('div', { class: 'om-set-help' }, `MQTT messages: ${device.messages.length}, also on the Power tab.`)
@@ -738,7 +784,7 @@
           el('div', { class: 'om-set-phase-switches' },
             (() => {
               const counts = countsOf(phase);
-              const list = labelled(choice(counts, COUNTS, (value) => {
+              const list = labelled(choice(counts, countsChoices(device), (value) => {
                 update((p) => {
                   for (const key of ['fromAbove', 'rampDown', 'offBelow', 'offOnDrop']) {
                     delete p[key];
@@ -746,9 +792,12 @@
                   setOrDrop(p, 'onDown', value === 'down', false);
                   setOrDrop(p, 'byDifference', value === 'difference', false);
                 });
-                list.title = COUNTS_HELP[value];
+                list.title = countsHelp(device, value);
+                markSlow(list, device);
+                drawSlowWarning(device);
               }), 'Counts');
-              list.title = COUNTS_HELP[counts];
+              list.title = countsHelp(device, counts);
+              markSlow(list, device);
               return list;
             })(),
             check(`${id}-sensor`, 'Switch', phase.sensor !== false, (on) => update((p) => setOrDrop(p, 'sensor', on, true))),
@@ -772,7 +821,8 @@
               el('span', {}, 'Name'), el('span', {}, 'From (W)'), el('span', {}, 'To (W)'),
               el('span', {}, 'On after (s)'), el('span', {}, 'Off after (s)'),
               el('span', { title: 'Only draws shorter than this; the phase then goes on briefly once the draw is over.' }, 'Shorter than (s)'), el('span', {}, 'Counts'), el('span', {}), el('span', {}), el('span', {})),
-            rows)
+            rows,
+            slowWarningLine(device))
           : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
         el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));
     }

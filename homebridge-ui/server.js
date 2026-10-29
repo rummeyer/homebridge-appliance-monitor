@@ -12,12 +12,15 @@
 import { randomUUID } from 'node:crypto';
 import { createSocket } from 'node:dgram';
 import { networkInterfaces } from 'node:os';
+import { join } from 'node:path';
 
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils';
 
 import { usablePhases } from '../dist/config.js';
 import { dataDir } from '../dist/data-dir.js';
 import { LEARNING_DEFAULTS, unlearnedRunWatts } from '../dist/monitor.js';
+import { reportSeconds, SLOW_REPORT_SECONDS } from '../dist/phases.js';
+import { readSeries } from '../dist/recorder.js';
 import { applyResets, pendingResets, requestReset } from '../dist/resets.js';
 import { addRequest, dropRequest, takeAnswer } from '../dist/requests.js';
 import { chartHours, curve, readData, statisticsTable } from '../dist/views.js';
@@ -64,14 +67,24 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
   /**
    * The thresholds each appliance uses unless the settings fix them, and
    * where each comes from — learned, found from standby, or the default —
-   * for the Settings tab to show in its empty fields.
+   * for the Settings tab to show in its empty fields — and how often each
+   * plug's readings change while it draws power, for a warning where that is
+   * too seldom for a phase by difference.
    */
   async learned() {
     const result = {};
-    for (const [name, record] of Object.entries(this.readData('devices.json'))) {
+    const devices = Object.entries(this.readData('devices.json'));
+    const now = Date.now();
+    const series = this.dataDir
+      ? readSeries(join(this.dataDir, 'power'), devices.map(([name]) => name), now - 7 * 86_400_000, now)
+      : new Map();
+    for (const [name, record] of devices) {
+      const seconds = reportSeconds(series.get(name) ?? []);
+      const reports = { reportSeconds: seconds ?? null, slowReports: seconds !== undefined && seconds >= SLOW_REPORT_SECONDS };
       const learned = record?.learned?.params;
       if (learned) {
         result[name] = {
+          ...reports,
           cycles: record.cycles ?? 1,
           runWatts: { value: learned.runWatts, from: 'learned' },
           startSeconds: { value: learned.startSeconds, from: 'default' },
@@ -81,6 +94,7 @@ class ApplianceMonitorUiServer extends HomebridgePluginUiServer {
       }
       const standby = record?.standbyWatts;
       result[name] = {
+        ...reports,
         cycles: 0,
         standbyWatts: standby ?? null,
         runWatts: typeof standby === 'number'

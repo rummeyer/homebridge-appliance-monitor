@@ -391,6 +391,10 @@ seen as the difference it makes:
   as much as the range** from one level to the next is the pump starting
   beside what was running already — a coffee drawn while the milk froths, the
   steam at 497 W and the pump taking it to 553.
+- **Back at what the heater draws alone, it has stopped.** The heater's own
+  level is remembered from its last burst from rest: should the draw settle
+  there again while the pump counts, the pump stopped beneath it on the way,
+  though heater and pump were never a level together.
 - **Started unseen, it is still seen as it stops.** A pump that started at
   the same moment as something else — a rinse as the steam is opened — shows
   only as its step down. It is then counted from the move into the level it

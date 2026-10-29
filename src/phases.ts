@@ -134,6 +134,52 @@ export const STEADY_WATTS = 15;
 export const SETTLED_MS = 2000;
 
 /**
+ * With byDifference, how long a level something else held on its own is
+ * remembered: one reached from rest and left back to it, nothing in the
+ * band beside it — the heater warming the water between two coffees. While
+ * the draw counts, settling within half the band's lower end of it is that
+ * alone, the pump stopped beneath it (29.10.2026: the pump stopped a second
+ * after the heater came on, heater and pump never a level; the heater
+ * alone after it counted on, and a rinse of 7 s was a coffee of 16).
+ */
+export const ALONE_MS = 10 * 60_000;
+
+/**
+ * A plug whose readings change this many seconds apart or more, while it
+ * draws power, reports too seldom for byDifference: its readings are
+ * averages, and the steps are lost in them. An Eve Energy measures every
+ * 6 s, however often it is asked; a Shelly every second. The settings page
+ * warns of it.
+ */
+export const SLOW_REPORT_SECONDS = 3;
+
+/** Readings below this are left out of reportSeconds: resting, a plug reports little, whatever it could. */
+const REPORT_WATTS = 20;
+
+/** How many seconds apart a plug's readings typically change while it draws power; none if too few to tell. */
+export function reportSeconds(samples: Sample[]): number | undefined {
+  const gaps: number[] = [];
+  let changedAt: number | undefined;
+  let last: number | undefined;
+  for (const { at, watts } of samples) {
+    if (watts < REPORT_WATTS) {
+      changedAt = undefined;
+    } else if (watts !== last) {
+      if (changedAt !== undefined) {
+        gaps.push(at - changedAt);
+      }
+      changedAt = at;
+    }
+    last = watts;
+  }
+  if (gaps.length < 20) {
+    return undefined;
+  }
+  gaps.sort((a, b) => a - b);
+  return Math.round(gaps[Math.floor(gaps.length / 2)]! / 1000);
+}
+
+/**
  * How far back the recording is read for where the draw came from. A plug
  * reports changes only, so a machine resting since the morning has its last
  * reading there; before that, it counts as having come from above.
@@ -197,6 +243,10 @@ export class PhaseTracker {
   #countedAtMove = { inMs: 0, inBandOnlyMs: 0 };
   /** The level the draw left last: its last reading, and when the move into it started. */
   #left: { watts: number; from: number | undefined } | undefined;
+  /** A level reached from rest with nothing counted, until it is known to have been left back to rest. */
+  #restLevel: { watts: number; at: number } | undefined;
+  /** The last level something else held alone: see ALONE_MS. */
+  #alone: { watts: number; at: number } | undefined;
   /** With byDifference, the pump seen starting by a step up beside something else, and not stopped. */
   #beside = false;
 
@@ -257,6 +307,10 @@ export class PhaseTracker {
     if (watts < this.#phase.minWatts) {
       this.#belowSince ??= at;
       this.#beside = false;
+      if (this.#restLevel !== undefined) {
+        this.#alone = this.#restLevel;
+        this.#restLevel = undefined;
+      }
     } else if (this.#inBand(watts)) {
       this.#belowSince = undefined;
     }
@@ -301,6 +355,19 @@ export class PhaseTracker {
     }
     const { minWatts } = this.#phase;
     const maxWatts = this.#phase.maxWatts ?? Infinity;
+    const counting = this.#beside || this.#firstIn !== undefined;
+    this.#restLevel = left.watts < minWatts && !counting && watts >= maxWatts ? { watts, at } : undefined;
+    const alone = this.#alone;
+    if (counting && this.#belowSince === undefined && watts >= maxWatts && alone !== undefined && at - alone.at <= ALONE_MS
+      && Math.abs(watts - alone.watts) < minWatts / 2) {
+      // Settled at what the heater draws alone: the pump stopped beneath it on the way, the time since counted no more.
+      this.#belowSince = movedAt;
+      if (this.#movedAt !== undefined) {
+        ({ inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs } = this.#countedAtMove);
+      }
+      this.#beside = false;
+      return;
+    }
     const step = watts - left.watts;
     if (step >= minWatts && step < maxWatts && watts >= maxWatts && !this.#beside) {
       // The pump starting beside what was drawn already.
