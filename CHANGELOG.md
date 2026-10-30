@@ -6,6 +6,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- A rinse whose pump was in its range alone just short of two seconds
+  before the heater came on beside it went unseen, though its stop beneath
+  the heater was: its time from the start counts now (a rinse of 5 s).
+
 ## [1.22.0] — 2026-10-29
 
 ### Added

@@ -103,6 +103,16 @@ export const FORGET_BELOW_MS = 3000;
 export const IN_BAND_BEFORE_ABOVE_MS = 2000;
 
 /**
+ * With byDifference, in the band alone at least this long, a draw then seen
+ * stopping beneath something above the band — a step down by the band's
+ * size — was the pump all along: its time above counts after all, though
+ * short of IN_BAND_BEFORE_ABOVE_MS (30.10.2026: a rinse of 5 s, 2 s of it
+ * alone and 3 s beneath the heater, was not seen). One reading on the
+ * heater's way up is in the band for a second at most.
+ */
+export const IN_BAND_SEEN_MS = 1500;
+
+/**
  * With byDifference, above the band: a step down from one level to the next
  * by this share of the band's lower end, and no more than its upper end, is
  * what was in the band stopping beneath what is above — the pump under the
@@ -402,6 +412,11 @@ export class PhaseTracker {
         this.#belowSince ??= movedAt;
         if (this.#belowSince === movedAt && this.#movedAt !== undefined) {
           ({ inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs } = this.#countedAtMove);
+          // Seen stopping beneath it, the pump ran from entering the band, the time above it too,
+          // though it was in the band alone too short for that to count (see IN_BAND_SEEN_MS).
+          if (this.#firstIn !== undefined && this.#inBandOnlyMs >= IN_BAND_SEEN_MS) {
+            this.#inMs = Math.max(this.#inMs, movedAt - this.#firstIn);
+          }
         }
       } else if (left.from !== undefined) {
         // It stopped having started unseen, as something else did: since the move into the level it left.

@@ -466,3 +466,14 @@ test('by difference: a reading at what the heater draws alone, held 1.5 s, is it
   const off = changes.find(({ active }) => !active)!;
   assert.deepEqual([off.from! / S, off.until! / S], [24, 26], 'the pump from 24 s to its fall at 26 s, not on to the heater going off');
 });
+
+test('by difference: a pump in the band alone just short of counting the time above, seen stopping beneath the heater, ran all along', () => {
+  // As the plug read it on 30.10.2026 at 12:45: the pump alone 2 s, the
+  // heater beside it 3 s (1320 W), the pump stopping beneath it (1266 W).
+  const rinse: [number, number][] = [
+    [0, 2], [3, 1.9], [9, 56.7], [10, 58.4], [11, 661.9], [12, 1319.8], [13, 1314.1], [14, 1265.8], [15, 1261.3],
+    [16, 1259.5], [17, 1259.4], [18, 1259], [19, 1174.1], [20, 72.9], [21, 2.1], [22, 2],
+  ];
+  assert.deepEqual(draws(coffeePhases.spuelen, rinse), [{ from: 9, until: 14 }], 'a rinse of 5 s');
+  assert.deepEqual(draws(coffeePhases.bezug, rinse), [], 'not a coffee');
+});
