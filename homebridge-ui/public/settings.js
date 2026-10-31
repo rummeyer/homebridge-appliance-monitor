@@ -191,7 +191,15 @@
     return configs.length ? configs : [{ platform: PLATFORM, name: 'Appliance Monitor', devices: [] }];
   }
 
-  const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
+  // Loaded after shared.js, as the page has them: its name order and its amounts of money.
+  const { byName, money } = root.ApplianceViews;
+
+  /** A field's name for screen readers and the pointer, where a row has no room for a label. */
+  function labelled(input, label) {
+    input.setAttribute('aria-label', label);
+    input.title = label;
+    return input;
+  }
 
   /**
    * Mounts the form in `container`. `homebridge` is the host's object; `paired`
@@ -765,11 +773,6 @@
       const rows = phases.map((phase, index) => {
         const id = `om-set-phase-${index}`;
         const update = (mutate) => { mutate(phase); phasesChanged(); };
-        const labelled = (input, label) => {
-          input.setAttribute('aria-label', label);
-          input.title = label;
-          return input;
-        };
         return el('div', { class: 'om-set-phase' },
           labelled(text(phase.name, 'Heating', (value) => {
             // Its messages go with it: they name the phase.
@@ -842,11 +845,6 @@
       const messages = Array.isArray(device.messages) ? device.messages : [];
       const rows = messages.map((message, index) => {
         const update = (mutate) => { mutate(message); changed(); };
-        const labelled = (input, label) => {
-          input.setAttribute('aria-label', label);
-          input.title = label;
-          return input;
-        };
         // A phase since removed stays chosen, so that the line does not quietly change.
         const phases = names.includes(message.phase) || !message.phase ? names : [message.phase, ...names];
         return el('div', { class: 'om-set-message' },
@@ -912,7 +910,7 @@
     }
     const priceText = (price) => [
       price.perKwh === null ? null : `${Math.round(price.perKwh * 10000) / 100} cents per kWh`,
-      price.perMonth === null ? null : `${price.perMonth} ${price.currency} a month`,
+      price.perMonth === null ? null : `${money(price.perMonth, price.currency)} a month`,
     ].filter(Boolean).join(' and ');
     const dayText = (day) => new Date(`${day}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const todayKey = () => {

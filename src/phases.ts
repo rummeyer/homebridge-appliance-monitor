@@ -72,7 +72,8 @@ export interface PhaseConfig {
    * the pump is running under the heater. Above the band, the draw is told by
    * its steps from one level to the next: a step up by as much as the band
    * is the pump starting beside the steam or the heater, a step down by
-   * about as much the pump stopping beneath them (see STEADY_WATTS). On
+   * about as much the pump stopping beneath them (see STEADY_WATTS), and so
+   * is settling back at what the heater lately drew alone (see ALONE_MS). On
    * after then measures the draw as Shorter than does — a coffee on after
    * fifteen seconds and a rinse shorter than fifteen in the same band are
    * one or the other, never both nor neither, whether the heater came on
