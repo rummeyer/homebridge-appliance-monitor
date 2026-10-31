@@ -253,8 +253,6 @@ export class PhaseTracker {
   #firstIn: number | undefined;
   /** Where the last reading out of the band was, if any. */
   #side: 'above' | 'below' | undefined;
-  /** Whether the last reading was in the band. */
-  #lastInBand = false;
   /** With byDifference, the levels the draw holds at: see STEADY_WATTS. */
   #last: { at: number; watts: number } | undefined;
   /** Whether the last reading is at a level, the one before it as close. */
@@ -313,11 +311,11 @@ export class PhaseTracker {
     if (watts === undefined) {
       return this.#check(at);
     }
+    const before = this.#watts;
     this.#watts = watts;
     const drawing = this.#firstIn !== undefined;
-    const lastInBand = this.#lastInBand;
-    this.#lastInBand = this.#inBand(watts);
-    if (!this.#inBand(watts)) {
+    const inBand = this.#inBand(watts);
+    if (!inBand) {
       this.#side = this.#sideOf(watts);
     }
     if (this.#phase.byDifference) {
@@ -338,7 +336,7 @@ export class PhaseTracker {
         this.#alone = this.#restLevel;
         this.#restLevel = undefined;
       }
-    } else if (this.#inBand(watts) && (!this.#phase.byDifference || !drawing || lastInBand)) {
+    } else if (inBand && (!this.#phase.byDifference || !drawing || (before !== undefined && this.#inBand(before)))) {
       // By difference, once the draw has fallen below, it is back on a second
       // reading in the band: one alone may be the heater on its way up
       // (29.10.2026: 53 W for a second, 3 s after a rinse, and the rinse
@@ -361,9 +359,7 @@ export class PhaseTracker {
     // At what the heater draws alone while the pump counts, a reading held
     // ALONE_HELD_MS is that level, whatever comes next: the heater may go off
     // before a second reading (29.10.2026: a pump stopped beneath it unseen).
-    const alone = this.#alone;
-    if (!this.#holding && at - last.at >= ALONE_HELD_MS && (this.#beside || this.#firstIn !== undefined)
-      && alone !== undefined && Math.abs(last.watts - alone.watts) < this.#phase.minWatts / 2) {
+    if (!this.#holding && at - last.at >= ALONE_HELD_MS && this.#pumping() && this.#atAlone(last.watts, at)) {
       this.#settle(at, last.watts, last.at);
     }
     if (Math.abs(watts - last.watts) > STEADY_WATTS) {
@@ -394,17 +390,11 @@ export class PhaseTracker {
     }
     const { minWatts } = this.#phase;
     const maxWatts = this.#phase.maxWatts ?? Infinity;
-    const counting = this.#beside || this.#firstIn !== undefined;
-    this.#restLevel = left.watts < minWatts && !counting && watts >= maxWatts ? { watts, at } : undefined;
-    const alone = this.#alone;
-    if (counting && this.#belowSince === undefined && watts >= maxWatts && alone !== undefined && at - alone.at <= ALONE_MS
-      && Math.abs(watts - alone.watts) < minWatts / 2) {
-      // Settled at what the heater draws alone: the pump stopped beneath it on the way, the time since counted no more.
-      this.#belowSince = movedAt;
-      if (this.#movedAt !== undefined) {
-        ({ inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs } = this.#countedAtMove);
-      }
-      this.#beside = false;
+    const pumping = this.#pumping();
+    this.#restLevel = left.watts < minWatts && !pumping && watts >= maxWatts ? { watts, at } : undefined;
+    if (pumping && this.#belowSince === undefined && watts >= maxWatts && this.#atAlone(watts, at)) {
+      // Settled at what the heater draws alone: the pump stopped beneath it on the way.
+      this.#stoppedAt(movedAt);
       return;
     }
     const step = watts - left.watts;
@@ -416,16 +406,14 @@ export class PhaseTracker {
       this.#inMs += at - movedAt;
       this.#inBandOnlyMs += at - movedAt;
     } else if (-step >= minWatts * STOPPED_BENEATH_SHARE && -step < maxWatts && left.watts >= maxWatts && watts >= minWatts) {
-      if (this.#beside || this.#firstIn !== undefined) {
-        // The pump stopping beneath what runs on, the time since counted no more.
-        this.#belowSince ??= movedAt;
-        if (this.#belowSince === movedAt && this.#movedAt !== undefined) {
-          ({ inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs } = this.#countedAtMove);
-          // Seen stopping beneath it, the pump ran from entering the band, the time above it too,
-          // though it was in the band alone too short for that to count (see IN_BAND_SEEN_MS).
-          if (this.#firstIn !== undefined && this.#inBandOnlyMs >= IN_BAND_SEEN_MS) {
-            this.#inMs = Math.max(this.#inMs, movedAt - this.#firstIn);
-          }
+      if (pumping) {
+        // The pump stopping beneath what runs on. Seen stopping beneath it, it ran from entering
+        // the band, the time above it too, though it was in the band alone too short for that to
+        // count (see IN_BAND_SEEN_MS).
+        const fresh = this.#belowSince === undefined;
+        this.#stoppedAt(movedAt);
+        if (fresh && this.#movedAt !== undefined && this.#firstIn !== undefined && this.#inBandOnlyMs >= IN_BAND_SEEN_MS) {
+          this.#inMs = Math.max(this.#inMs, movedAt - this.#firstIn);
         }
       } else if (left.from !== undefined && movedAt - left.from <= UNSEEN_MAX_MS) {
         // It stopped having started unseen, as something else did: since the move into the level it left.
@@ -441,6 +429,37 @@ export class PhaseTracker {
   /** The pump known to be running beside something else, from its steps. */
   #besideNow(watts: number): boolean {
     return this.#beside && watts >= this.#phase.minWatts;
+  }
+
+  /** A draw in the band, or beside something else, being counted. */
+  #pumping(): boolean {
+    return this.#beside || this.#firstIn !== undefined;
+  }
+
+  /** At what something else lately drew alone, the heater say: see ALONE_MS. */
+  #atAlone(watts: number, at: number): boolean {
+    const alone = this.#alone;
+    return alone !== undefined && at - alone.at <= ALONE_MS && Math.abs(watts - alone.watts) < this.#phase.minWatts / 2;
+  }
+
+  /**
+   * The pump stopped beneath what runs on, when the draw started moving: the
+   * time counted since then taken back.
+   */
+  #stoppedAt(movedAt: number): void {
+    this.#belowSince ??= movedAt;
+    if (this.#belowSince === movedAt && this.#movedAt !== undefined) {
+      ({ inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs } = this.#countedAtMove);
+    }
+    this.#beside = false;
+  }
+
+  /** A draw over or forgotten: the next one starts afresh. */
+  #forget(): void {
+    this.#inMs = 0;
+    this.#inBandOnlyMs = 0;
+    this.#beside = false;
+    this.#firstIn = undefined;
   }
 
   /**
@@ -509,11 +528,13 @@ export class PhaseTracker {
     if (watts === undefined) {
       return false;
     }
-    if (this.#counts(watts) || (this.#besideNow(watts) && this.#belowSince === undefined)) {
+    if (this.#counts(watts)) {
       return true;
     }
-    return this.#phase.byDifference === true && this.#firstIn !== undefined && this.#belowSince === undefined
-      && this.#inBandOnlyMs >= IN_BAND_BEFORE_ABOVE_MS && watts >= (this.#phase.maxWatts ?? Infinity);
+    if (!this.#phase.byDifference || this.#firstIn === undefined || this.#belowSince !== undefined) {
+      return false;
+    }
+    return this.#besideNow(watts) || (this.#inBandOnlyMs >= IN_BAND_BEFORE_ABOVE_MS && watts >= (this.#phase.maxWatts ?? Infinity));
   }
 
   #check(at: number): PhaseChange | undefined {
@@ -534,10 +555,7 @@ export class PhaseTracker {
         // The draw is over. For a short phase, that is when it is known;
         // otherwise a start in the making is forgotten.
         const short = this.#short(at, minMs);
-        this.#inMs = 0;
-        this.#inBandOnlyMs = 0;
-        this.#beside = false;
-        this.#firstIn = undefined;
+        this.#forget();
         return short;
       }
       return undefined;
@@ -545,10 +563,7 @@ export class PhaseTracker {
     if (outLong || (belowLong && this.#phase.byDifference)) {
       this.#active = false;
       const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
-      this.#inMs = 0;
-      this.#inBandOnlyMs = 0;
-      this.#beside = false;
-      this.#firstIn = undefined;
+      this.#forget();
       return change;
     }
     return undefined;
