@@ -8,6 +8,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A step down by the pump's size while the heater ran, eight minutes after
+  switching on, was taken for a pump that had started unseen: a pump run
+  and a coffee of 478 s, which ended the clock's heating display and made
+  Idle switch the machine off before the coffee. Such a pump is now no
+  longer than two minutes.
 - A rinse whose pump was in its range alone just short of two seconds
   before the heater came on beside it went unseen, though its stop beneath
   the heater was: its time from the start counts now (a rinse of 5 s).

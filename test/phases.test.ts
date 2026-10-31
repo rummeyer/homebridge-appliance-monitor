@@ -477,3 +477,16 @@ test('by difference: a pump in the band alone just short of counting the time ab
   assert.deepEqual(draws(coffeePhases.spuelen, rinse), [{ from: 9, until: 14 }], 'a rinse of 5 s');
   assert.deepEqual(draws(coffeePhases.bezug, rinse), [], 'not a coffee');
 });
+
+test('by difference: a step down by the band\'s size eight minutes into heating up is not a pump seen only as it stopped', () => {
+  // As the plug read it on 31.10.2026 from 08:27: switched on into heating
+  // at 1267 W, slowly down to 1250, then 39 W gone (1211 W) and off.
+  const heating: [number, number][] = [[0, 2.8], [1, 2.6], [2, 922.9], [3, 1266.9]];
+  for (let t = 4; t < 478; t++) {
+    heating.push([t, 1266.9 - (t / 478) * 17 + (t % 2 ? 0.3 : -0.3)]);
+  }
+  heating.push([478, 1247.2], [479, 1211.4], [480, 1211.5], [481, 1212], [482, 1211.8], [483, 748], [484, 2.8], [485, 2.7]);
+  for (const phase of Object.values(coffeePhases)) {
+    assert.deepEqual(draws(phase, heating, 520), [], phase.name);
+  }
+});

@@ -154,6 +154,15 @@ export const SETTLED_MS = 2000;
  */
 export const ALONE_MS = 10 * 60_000;
 
+/**
+ * With byDifference, the longest a pump seen only as it stops can have run:
+ * a long coffee. A step down by the band's size after longer is something
+ * else beneath the heater (31.10.2026: 39 W gone from it eight minutes into
+ * heating up, taken for a pump run of 478 s — the shot timer ended the
+ * heating display, and Idle switched the machine off before the coffee).
+ */
+export const UNSEEN_MAX_MS = 120_000;
+
 /** A reading at what the heater draws alone, held this long, is that level: see #follow. */
 export const ALONE_HELD_MS = 1500;
 
@@ -418,7 +427,7 @@ export class PhaseTracker {
             this.#inMs = Math.max(this.#inMs, movedAt - this.#firstIn);
           }
         }
-      } else if (left.from !== undefined) {
+      } else if (left.from !== undefined && movedAt - left.from <= UNSEEN_MAX_MS) {
         // It stopped having started unseen, as something else did: since the move into the level it left.
         this.#firstIn = left.from;
         this.#inMs += movedAt - left.from;
