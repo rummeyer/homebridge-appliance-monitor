@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.3
+# @version 5.4
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -9,6 +9,7 @@
 # @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after"
 # @config  heat   text   "Heating phase"    default="Aufheizen" help="The phase while the machine heats up"
 # @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that is this phase shows as RINSE"
+# @config  rinsemax number "Rinse under"    default=15 min=0 max=60 unit=s help="A pump run shorter than this shows as RINSE as soon as it stops, whatever the plugin says; 0 for only the rinse phase"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
@@ -21,7 +22,7 @@
 # @config  red    color  "Heated"           default=#FF3B30
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
-  var rinse_topic, rinsed
+  var rinse_topic, rinsed, rinse_s   # rinse_s: Rinse under, in seconds
   var pump_topic, until_topic   # the pump phase, and where the plugin says its draw fell below its range
   var by_phase, on_after        # no shot messages: the pump phase starts and ends the shot; its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
@@ -74,6 +75,7 @@ class ShotTimer
     self.idle_topic = base + "/idle/at"
     self.over_topic = base + "/overtime/at"
     self.rinse_topic = base + "/phase/" + store.get("rinse")
+    self.rinse_s = store.get("rinsemax") == nil ? 15 : int(store.get("rinsemax"))
     self.rinsed = false
     self.temp_topic = store.get("temp")
     self.ready = store.get("ready")
@@ -370,6 +372,11 @@ class ShotTimer
       return
     end
     self.final_s = int(seconds + 0.5)
+    # Shorter than Rinse under, a rinse, as the plugin's own rinse phase has it; too short for
+    # that phase's on after, a rinse all the same.
+    if self.final_s < self.rinse_s
+      self.rinsed = true
+    end
     self.shot = "done"
     self.built = -1
     rotation.show()
@@ -496,7 +503,9 @@ class ShotTimer
     # every three seconds the other one of how long it has been on and how long
     # heating took.
     if self.shot == "run"
-      self.line1 = self.pair("SHOT", self.secs(shot_s), self.white)
+      # Stopped short of Rinse under: a rinse, said at once rather than when the plugin knows.
+      var rinse = self.stopped != nil && shot_s < self.rinse_s
+      self.line1 = self.pair(rinse ? "RINSE" : "SHOT", self.secs(shot_s), rinse ? self.done : self.white)
     elif self.shot == "done"
       self.line1 = self.pair(self.rinsed ? "RINSE" : "SHOT", self.secs(self.final_s), self.done)
     elif heating

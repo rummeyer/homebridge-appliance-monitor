@@ -110,6 +110,7 @@ cup it never draws. [`tc001.py`](tc001.py) makes it from `ShotTimer.be`: run
 | Pump on after | 1 s | The pump phase's "on after", used when the shot topic is empty. |
 | Heating phase | `Aufheizen` | |
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
+| Rinse under | 15 s | A pump run shorter than this shows as RINSE as soon as the pump stops, before the plugin knows, and also one too short for the rinse phase; 0 for only the rinse phase. The rinse phase's "shorter than" is a good value. |
 | Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
 | Preheated from | 38 °C | |
 | Heating up as | bar | How far it has heated up: `bar`, small blocks lighting up one after the other, or `percent`. |
