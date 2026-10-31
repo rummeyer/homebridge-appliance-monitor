@@ -5,6 +5,11 @@ clock, a 52 × 16 Ulanzi TC002 or a 32 × 8 TC001. It shows what Appliance Monit
 knows about a coffee machine, from the plugin's [MQTT](../../README.md#mqtt)
 topics:
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/awtrix-shottimer.gif" alt="ShotTimer on a TC002, from switching on to the countdown to switching off: HEATING with orange steam over the cup, taking turns with how long until preheated and a bar filling up; HEATED in red; a rinse counted and shown as RINSE 7s in green; a shot counted second by second to SHOT 25s in green, with OFF 4:54 under it counting down; then HEATED and the time it has been on taking turns over the countdown" width="548">
+</p>
+<p align="center"><sub>Heating up sped up six times, the rinse and the shot as they run, the countdown sped up.</sub></p>
+
 | When | Line 1 | Line 2 |
 |---|---|---|
 | Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then at the rate it rose over the last five minutes; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |

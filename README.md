@@ -812,6 +812,10 @@ it has been on, when it is switched off, and a shot timer that counts while
 the pump runs.
 It is also on the [AWTRIX Hub](https://awtrix.de/script/n4Zx4bmvrpw8).
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/awtrix-shottimer.gif" alt="ShotTimer on a TC002, from switching on to the countdown to switching off: HEATING with orange steam over the cup, taking turns with how long until preheated and a bar filling up; HEATED in red; a rinse counted and shown as RINSE 7s in green; a shot counted second by second to SHOT 25s in green, with OFF 4:54 under it counting down; then HEATED and the time it has been on taking turns over the countdown" width="548">
+</p>
+
 With a plug that reports only every few seconds, as an Eve Energy does, the
 shot timer works too, the pump's phase counting **Always**: it starts once
 the pump has been in its range for "on after" — with an Eve, within its six
