@@ -102,6 +102,12 @@ cup it never draws. [`tc001.py`](tc001.py) makes it from `ShotTimer.be`: run
 
 ## Settings
 
+In AWTRIX NG's web page, on the **Apps** tab, behind the app's gear button:
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/awtrix-shottimer-settings.png" alt="ShotTimer's settings in AWTRIX NG's web page: the appliance topic, the shot topic, the pump, heating and rinse phases, Rinse under, the plug delay, a deCONZ thermometer's topic with Preheated from 37.5 °C, heating up as a bar, Cold after and Cold preheat, how long a result shows, and its three colours" width="600">
+</p>
+
 | Setting | Default | |
 |---|---|---|
 | Appliance topic | `appliance-monitor/Kaffeemaschine` | The machine's topics: the plugin's prefix and its name. |

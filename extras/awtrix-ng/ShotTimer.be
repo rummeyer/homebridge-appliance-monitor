@@ -1,20 +1,20 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.4
+# @version 5.5
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
-# @config  pump   text   "Pump phase"       default="Pumpe" help="The count stops as the plugin sees the draw fall below its range; without shot messages it also starts and ends the shot"
+# @config  pump   text   "Pump phase"       default="Pumpe" help="Stops the count as its draw falls below; with no shot topic, also starts and ends the shot"
 # @config  after  number "Pump on after"    default=1 min=0 max=60 unit=s help="The pump phase's on after"
 # @config  heat   text   "Heating phase"    default="Aufheizen" help="The phase while the machine heats up"
 # @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that is this phase shows as RINSE"
-# @config  rinsemax number "Rinse under"    default=15 min=0 max=60 unit=s help="A pump run shorter than this shows as RINSE as soon as it stops, whatever the plugin says; 0 for only the rinse phase"
+# @config  rinsemax number "Rinse under"    default=15 min=0 max=60 unit=s help="Shorter runs show as RINSE as soon as the pump stops; 0: only the rinse phase says so"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
-# @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="Without a thermometer: switched on after being off this long, it heats up for Cold preheat; else until the heating phase ends"
+# @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends"
 # @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="Without a thermometer: how long a cold machine heats up"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  done   color  "Result"           default=#30D158
