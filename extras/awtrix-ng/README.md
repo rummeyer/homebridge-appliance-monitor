@@ -7,18 +7,20 @@ topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up, until the first coffee | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then at the rate it rose over the last five minutes; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
+| Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then at the rate it rose over the last five minutes; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute; while the machine is in use, which holds Idle, its full time standing still |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
 
 The app is on the display, and holds it, exactly while the machine's plug
 is switched on, as Appliance Monitor tells it on `relay`: from switching on
-to switching off, and nothing of it otherwise. A coffee made while
-it is still heating up ends the heating up: from then on line 2 is the
+to switching off, and nothing of it otherwise. The first coffee once the
+machine is heated ends the heating up: from then on line 2 is the
 countdown to switching off. A rinse does not, as a pump a moment long when
-it is switched on, and neither does a reading that dips below **Preheated
-from** once it was reached. The app keeps what it knows of the machine's
+it is switched on, nor a shot before the machine is heated — nobody draws
+an espresso from a cold machine, and a boiler filling beneath the heater
+may look like one — and neither does a reading that dips below
+**Preheated from** once it was reached. The app keeps what it knows of the machine's
 switching on in the clock's store, so after an update or a restart of the
 clock it carries on where it was, from the temperature it was switched on at.
 

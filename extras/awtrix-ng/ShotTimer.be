@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.2
+# @version 5.3
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -380,8 +380,10 @@ class ShotTimer
 
   def finish()
     # A coffee ends the heating up, a rinse does not: some machines pump a moment as they are
-    # switched on. Which it was is known by now.
-    if !self.rinsed && !self.pumped
+    # switched on. Which it was is known by now. Nor does a shot before the machine is heated:
+    # nobody draws an espresso from a cold machine, and a boiler filling beneath the heater may
+    # look like one (31.10.2026: eight minutes into heating up, the heating display ended).
+    if !self.rinsed && !self.pumped && self.heated()
       self.pumped = true
       self.keep()
     end
