@@ -24,16 +24,15 @@
 
 ---
 
-Watches the power draw of **Matter smart plugs and power meters** and tells
+Watches the power draw of **smart plugs and power meters** and tells
 HomeKit while an appliance is **Running** and when it is done, and what
-it is doing in between: heating, spinning, a coffee being drawn. Built for the
-**Eve Energy** and the **Shelly Plug PM Gen3** (a meter without a relay), and
-meant for any Matter device the Home app shows watts for: also a light that
-reports its own draw, such as the Dyson Solarcycle Morph through
-[homebridge-dyson-solarcycle-morph](https://github.com/rummeyer/homebridge-dyson-solarcycle-morph).
-A plug that publishes its power over MQTT, such as a Shelly Plug S Gen3
-whose Matter side has no power reading, works too: see
-[Readings over MQTT](#readings-over-mqtt).
+it is doing in between: heating, spinning, a coffee being drawn. It reads
+any device that reports watts, with or without a relay: one paired over
+**Matter**, as the Home app shows watts for — also a light that reports its
+own draw, such as the Dyson Solarcycle Morph through
+[homebridge-dyson-solarcycle-morph](https://github.com/rummeyer/homebridge-dyson-solarcycle-morph) —
+or one whose readings come over **MQTT**, from the plug itself or from
+another Homebridge plugin or bridge: see [Readings over MQTT](#readings-over-mqtt).
 
 There are no thresholds to work out: add the plug, run the appliance once, and
 the plugin learns from that cycle what running, pausing and finished look like
@@ -143,8 +142,8 @@ MQTT is set up with **Readings from** instead; see
 
 ### Behind a Matter bridge
 
-A Matter bridge — homebridge-shelly-matter, say, with several metering
-Shellys behind it — is paired once and carries many devices. So is a plug
+A Matter bridge, with several metering plugs behind it, is paired once
+and carries many devices. So is a plug
 with several channels, each measuring on its own endpoint. Without a choice,
 every reading of the node would count towards one appliance; so each
 appliance chooses its device.
@@ -208,10 +207,9 @@ An appliance is running or it is not:
   for a few seconds does not add up to a start.
 - **Finished**, and so no longer running: the draw has stayed below the
   running level for longer than the longest pause in the programme. Or, on
-  a plug with a relay such as the Eve Energy, the plug was switched off: that
-  is the end straight away, since no pause in a programme switches the plug.
-  A meter without a relay, such as the Shelly Plug PM Gen3, has no such
-  state, and finishes by the quiet alone.
+  a plug with a relay, the plug was switched off: that is the end straight
+  away, since no pause in a programme switches the plug. A meter without a
+  relay has no such state, and finishes by the quiet alone.
 
 Whether it then sits on standby or is switched off at the plug makes no
 difference. To tell something apart that the machine does after it has
@@ -408,9 +406,9 @@ seen as the difference it makes:
 A level is two readings within 15 W of each other, or one that holds for two
 seconds: a plug that averages over a second reads half the heater as it comes
 on, a moment on the way and not a level. It wants a plug that reports about
-every second, as a Shelly does. With a plug that reports only every few
-seconds, as an Eve Energy does, choose **Always**: its readings are averages
-over those seconds, and the steps By difference looks for are lost in them.
+every second. With a plug that reports only every few seconds, choose
+**Always**: its readings are averages over those seconds, and the steps By
+difference looks for are lost in them.
 
 A rinse and then a coffee, as the plug read them one morning:
 
@@ -456,8 +454,7 @@ tell, to hang automations on:
   or the plug's relay is switched off. Set **Idle after**
   (`idleOnMinutes`; until 1.12 the sensor was called Idle On, and one
   still so called is renamed, with its automations). On a plug without
-  a relay, such as the Shelly Plug PM, it stays on until the appliance runs
-  again. A part counts as running while what it is part of runs, so a
+  a relay it stays on until the appliance runs again. A part counts as running while what it is part of runs, so a
   desk lamp is not idle while the desk is in use.
 
   An appliance that keeps itself warm, as a coffee machine does, never
@@ -816,27 +813,29 @@ It is also on the [AWTRIX Hub](https://awtrix.de/script/n4Zx4bmvrpw8).
   <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/awtrix-shottimer.gif" alt="ShotTimer on a TC002, from switching on to the countdown to switching off: HEATING with orange steam over the cup, taking turns with how long until preheated and a bar filling up; HEATED in red; a rinse counted and shown as RINSE 7s in green; a shot counted second by second to SHOT 25s in green, with OFF 4:54 under it counting down; then HEATED and the time it has been on taking turns over the countdown" width="548">
 </p>
 
-With a plug that reports only every few seconds, as an Eve Energy does, the
-shot timer works too, the pump's phase counting **Always**: it starts once
-the pump has been in its range for "on after" — with an Eve, within its six
-seconds — and stops when "off after" is over, the hold that bridges the
-heater coming on beside the pump, showing then how long the pump was in its
-range. A Shelly, reporting every second, makes it start with the pump and
-stop with it, to the second.
+With a plug that reports only every few seconds, the shot timer works too,
+the pump's phase counting **Always**: it starts once the pump has been in
+its range for "on after" — within the plug's next report or two — and stops
+when "off after" is over, the hold that bridges the heater coming on beside
+the pump, showing then how long the pump was in its range. A plug reporting
+every second makes it start with the pump and stop with it, to the second.
 
 ### Readings over MQTT
 
-A plug that publishes its power over MQTT needs no Matter pairing: a
-Shelly, whose Matter side may offer only its relay and no power reading
-(the Plug S Gen3 does). On the **Settings** tab, set **Readings from** to
-**MQTT topic** and give the topic, and the plugin listens to it instead.
-The payload is a number of watts, or a JSON object with them under
-**Watts key** (`apower`, a Shelly's) and the relay under **Relay key**
-(`output`): `{"apower":1231.4,"output":true}`. An **Online topic** saying
-`true`/`false` or `online`/`offline` tells when the plug is gone; a
-Shelly's `<id>/online` does, set by the broker when it drops off. Without
-one it counts as connected from its first reading. It needs MQTT switched
-on, on the same broker.
+Readings that arrive over MQTT need no Matter pairing: from a plug that
+publishes its power itself, from a bridge such as Zigbee2MQTT, or from
+another Homebridge plugin that passes a device's watts on — also a plug
+whose Matter side offers only its relay and no power reading. On the
+**Settings** tab, set **Readings from** to **MQTT topic** and give the
+topic, and the plugin listens to it instead. The payload is a number of
+watts, or a JSON object with them under **Watts key** and the relay under
+**Relay key**: with `apower` and `output`, `{"apower":1231.4,"output":true}`.
+An **Online topic** saying `true`/`false` or `online`/`offline` tells when
+the plug is gone, such as a last will set by the broker when it drops off.
+Without one it counts as connected from its first reading. It needs MQTT
+switched on, on the same broker.
+
+#### A Shelly
 
 A Shelly's own status messages, on `<id>/status/switch:0` once **Generic
 status update over MQTT** is on, leave out small changes: a pump of 50 W
@@ -860,14 +859,15 @@ are at the top of the script.
 
 ## Plugs that report seldom
 
-A plug decides itself how often it reports its power. The Shelly Plug PM
-reports when the draw changes; the Eve Energy about once a minute. A minute
-is fine for a wash cycle or for heating, but a coffee runs through in half a
-minute and may fall between two reports, or show as a single one.
+A plug decides itself how often it reports its power: some when the draw
+changes, others about once a minute. A minute is fine for a wash cycle or
+for heating, but a coffee runs through in half a minute and may fall
+between two reports, or show as a single one.
 
-For such a plug, set **Polling interval** (under **More**), and the plugin asks it
-on top of listening. The Eve Energy measures far more often than it reports,
-so asking every 5 seconds gives a fresh reading every 5 seconds. Each ask is a
+For such a plug paired over Matter, set **Polling interval** (under
+**More**), and the plugin asks it on top of listening. Most plugs measure
+far more often than they report, so asking every 5 seconds gives a fresh
+reading every 5 seconds. Each ask is a
 message over Thread or Wi-Fi, so keep it to the plugs that need it.
 
 A plug that draws nothing is not asked: the appliance is off, and the plug
