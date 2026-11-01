@@ -137,9 +137,10 @@ The count runs on the clock, every second. It starts when the plugin
 first sees the pump, set back by the plug delay, and stops as soon as the
 plugin sees the draw fall below the pump phase's range — it says so at once
 on `phase/<pump>/until`, before the phase's "off after" is over, and takes
-it back if the draw comes back into the range. When the phase ends, the plugin's
-own count — from the draw entering the pump's range to it falling below
-it — replaces it. Without the two messages the clock's count stays: it hangs on
+it back if the draw comes back into the range. It holds where it is then,
+never counting back. When the phase ends, the plugin's own count — from
+the draw entering the pump's range to it falling below it — replaces it,
+in green: that is the result. Without the two messages the clock's count stays: it hangs on
 when the plug's readings come, so it can be a few seconds off.
 
 The heater often runs beside the pump during a coffee; the plug then reads

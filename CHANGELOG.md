@@ -6,6 +6,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- ShotTimer 5.7: the running count holds where it is when the pump stops,
+  rather than going back by the plug delay; only the result in green is the
+  plugin's exact count. A rinse says RINSE at once, in white until then.
+
 ## [1.22.1] — 2026-10-31
 
 ### Fixed

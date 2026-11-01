@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.6
+# @version 5.7
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -42,7 +42,7 @@ class ShotTimer
   var done, hot, red, white, grey, warn
   var shot         # "idle", "run" or "done"
   var t0           # now_ms() when the pump started
-  var stopped      # now_ms() when the pump stopped, as the plugin said, or nil
+  var stopped      # now_ms() when the plugin said the pump stopped, or nil
   var final_s      # the plugin's own count at the end
   var running      # the machine is on: its plug switched on, or without word of that, running
   var known        # a state has come at all; the first is the retained one, not a change
@@ -225,10 +225,12 @@ class ShotTimer
       # after the phase's off after, and running on if it comes back into it. The heater beside
       # the pump, above the range, counts on; the heater alone after it does not start it again.
       if self.shot == "run"
-        var v = num(p, 0)
-        # Reported as late as the start was: set back by the plug delay, as t0 is, or the count
-        # stopped a second past the plugin's own (31.10.2026: RINSE 8s, then 7s).
-        self.stopped = v > 0 ? max(self.t0, now_ms() - (epoch_ms() / 1000 - v) * 1000 - self.lead_ms) : nil
+        # Held where it is, never counted back: the plugin's own count at the end is the result.
+        if num(p, 0) <= 0
+          self.stopped = nil
+        elif self.stopped == nil
+          self.stopped = now_ms()
+        end
       end
     elif t == self.relay_topic
       # The one rule: on the display while the plug is switched on, off it once it is not. The
@@ -505,9 +507,10 @@ class ShotTimer
     # every three seconds the other one of how long it has been on and how long
     # heating took.
     if self.shot == "run"
-      # Stopped short of Rinse under: a rinse, said at once rather than when the plugin knows.
+      # Stopped short of Rinse under: a rinse, said at once rather than when the plugin knows;
+      # in the result's colour only once it is the plugin's count.
       var rinse = self.stopped != nil && shot_s < self.rinse_s
-      self.line1 = self.pair(rinse ? "RINSE" : "SHOT", self.secs(shot_s), rinse ? self.done : self.white)
+      self.line1 = self.pair(rinse ? "RINSE" : "SHOT", self.secs(shot_s), self.white)
     elif self.shot == "done"
       self.line1 = self.pair(self.rinsed ? "RINSE" : "SHOT", self.secs(self.final_s), self.done)
     elif heating

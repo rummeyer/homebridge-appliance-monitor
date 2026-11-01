@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.6
+# @version 5.7
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -183,8 +183,11 @@ end
 def machine(t, p)
 if t == self.until_topic
 if self.shot == "run"
-var v = num(p, 0)
-self.stopped = v > 0 ? max(self.t0, now_ms() - (epoch_ms() / 1000 - v) * 1000 - self.lead_ms) : nil
+if num(p, 0) <= 0
+self.stopped = nil
+elif self.stopped == nil
+self.stopped = now_ms()
+end
 end
 elif t == self.relay_topic
 var on = p == "ON"
@@ -399,7 +402,7 @@ var on_s = self.since_s > 0 ? unix - self.since_s : 0
 var heating = self.warming()
 if self.shot == "run"
 var rinse = self.stopped != nil && shot_s < self.rinse_s
-self.line1 = self.pair(rinse ? "RINSE" : "SHOT", self.secs(shot_s), rinse ? self.done : self.white)
+self.line1 = self.pair(rinse ? "RINSE" : "SHOT", self.secs(shot_s), self.white)
 elif self.shot == "done"
 self.line1 = self.pair(self.rinsed ? "RINSE" : "SHOT", self.secs(self.final_s), self.done)
 elif heating
