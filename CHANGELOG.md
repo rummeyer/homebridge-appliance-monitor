@@ -18,6 +18,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   without a reading, also once it had risen, not only when it had not
   changed since switching on.
 
+### Fixed
+
+- By difference, a rinse whose pump ran alone a moment too short before the
+  heater came on beside it, and that ended with the heater alone, was missed
+  about every second time, by how the readings fell between seconds: the
+  pump's step down beneath the heater now counts it all along there too.
+
 ## [1.22.1] — 2026-10-31
 
 ### Fixed

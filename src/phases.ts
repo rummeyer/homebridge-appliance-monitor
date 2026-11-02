@@ -395,7 +395,7 @@ export class PhaseTracker {
     this.#restLevel = left.watts < minWatts && !pumping && watts >= maxWatts ? { watts, at } : undefined;
     if (pumping && this.#belowSince === undefined && watts >= maxWatts && this.#atAlone(watts, at)) {
       // Settled at what the heater draws alone: the pump stopped beneath it on the way.
-      this.#stoppedAt(movedAt);
+      this.#stoppedBeneath(movedAt, left.watts - watts);
       return;
     }
     const step = watts - left.watts;
@@ -408,14 +408,8 @@ export class PhaseTracker {
       this.#inBandOnlyMs += at - movedAt;
     } else if (-step >= minWatts * STOPPED_BENEATH_SHARE && -step < maxWatts && left.watts >= maxWatts && watts >= minWatts) {
       if (pumping) {
-        // The pump stopping beneath what runs on. Seen stopping beneath it, it ran from entering
-        // the band, the time above it too, though it was in the band alone too short for that to
-        // count (see IN_BAND_SEEN_MS).
-        const fresh = this.#belowSince === undefined;
-        this.#stoppedAt(movedAt);
-        if (fresh && this.#movedAt !== undefined && this.#firstIn !== undefined && this.#inBandOnlyMs >= IN_BAND_SEEN_MS) {
-          this.#inMs = Math.max(this.#inMs, movedAt - this.#firstIn);
-        }
+        // The pump stopping beneath what runs on.
+        this.#stoppedBeneath(movedAt, -step);
       } else if (left.from !== undefined && movedAt - left.from <= UNSEEN_MAX_MS) {
         // It stopped having started unseen, as something else did: since the move into the level it left.
         this.#firstIn = left.from;
@@ -441,6 +435,25 @@ export class PhaseTracker {
   #atAlone(watts: number, at: number): boolean {
     const alone = this.#alone;
     return alone !== undefined && at - alone.at <= ALONE_MS && Math.abs(watts - alone.watts) < this.#phase.minWatts / 2;
+  }
+
+  /**
+   * The pump stopped beneath what runs on, when the draw started moving, by
+   * a step down of *drop*. Seen stopping beneath it — a drop of the band's
+   * size — it ran from entering the band, the time above it too, though it
+   * was in the band alone too short for that to count (see
+   * IN_BAND_SEEN_MS); also when it settled at what the heater draws alone
+   * (2.11.2026: a rinse of 14 s, the pump alone 1.7 s before the heater came
+   * on beside it, was not seen).
+   */
+  #stoppedBeneath(movedAt: number, drop: number): void {
+    const fresh = this.#belowSince === undefined;
+    this.#stoppedAt(movedAt);
+    const { minWatts } = this.#phase;
+    const band = drop >= minWatts * STOPPED_BENEATH_SHARE && drop < (this.#phase.maxWatts ?? Infinity);
+    if (fresh && band && this.#movedAt !== undefined && this.#firstIn !== undefined && this.#inBandOnlyMs >= IN_BAND_SEEN_MS) {
+      this.#inMs = Math.max(this.#inMs, movedAt - this.#firstIn);
+    }
   }
 
   /**
