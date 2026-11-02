@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.7
+# @version 5.8
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -14,8 +14,8 @@
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
-# @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends"
-# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="Without a thermometer: how long a cold machine heats up"
+# @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends, Cold preheat at the most"
+# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="Without a thermometer: how long a cold machine heats up, and any at the most"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
@@ -184,24 +184,26 @@ class ShotTimer
     end
   end
 
-  # The thermometer tells: it has read something, and the same as at switching on for fifteen
-  # minutes at the most. One that has gone quiet — a Zigbee sensor fallen off its network —
-  # would hold it at 0 % and HEATING for good; then it is as without one. A sensor that only
-  # sends a change can say nothing for several minutes while a warm group starts to rise.
+  # The thermometer tells: it has read something, and while on, something new within fifteen
+  # minutes. One that has gone quiet — a Zigbee sensor fallen off its network, at switching on
+  # or halfway up — would hold it at HEATING for good; then it is as without one. A sensor that
+  # only sends a change can say nothing for several minutes while a warm group starts to rise.
   def thermo()
     if self.temp == nil
       return false
     end
-    if !self.running || self.temp0 == nil || self.temp != self.temp0
+    if !self.running
       return true
     end
     var on = self.since_s > 0 ? self.since_s : self.temp0_s
-    return epoch_ms() / 1000 - on < 900
+    var last = self.temp_s > on ? self.temp_s : on
+    return epoch_ms() / 1000 - last < 900
   end
 
   # Preheated: warm enough where there is a thermometer, and still when a reading dips below.
-  # Without one, a heat exchanger's boiler is hot long before its group: from cold, once it has
-  # been on for Cold preheat; else once the heating phase has ended.
+  # Without one, a heat exchanger's boiler is hot long before its group: once it has been on for
+  # Cold preheat; from warm, once the heating phase has ended if that is sooner. It need not
+  # end: the heater keeping the boiler hot every half a minute can hold it on for hours.
   def heated()
     if self.warm
       return true
@@ -209,7 +211,8 @@ class ShotTimer
     if self.thermo()
       return self.temp >= self.ready
     end
-    return self.cold ? self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s : self.heat_done
+    return (self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s) ||
+      (!self.cold && self.heat_done)
   end
 
   # Heating up: until warm enough where the thermometer tells, else while the heating phase is on;

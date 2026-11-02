@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.7
+# @version 5.8
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -161,11 +161,12 @@ def thermo()
 if self.temp == nil
 return false
 end
-if !self.running || self.temp0 == nil || self.temp != self.temp0
+if !self.running
 return true
 end
 var on = self.since_s > 0 ? self.since_s : self.temp0_s
-return epoch_ms() / 1000 - on < 900
+var last = self.temp_s > on ? self.temp_s : on
+return epoch_ms() / 1000 - last < 900
 end
 def heated()
 if self.warm
@@ -174,7 +175,8 @@ end
 if self.thermo()
 return self.temp >= self.ready
 end
-return self.cold ? self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s : self.heat_done
+return (self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s) ||
+(!self.cold && self.heat_done)
 end
 def warming()
 return self.running && !self.pumped && !(self.shot == "done" && !self.rinsed) &&

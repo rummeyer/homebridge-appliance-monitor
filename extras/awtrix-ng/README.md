@@ -79,10 +79,12 @@ ended. A heat exchanger's boiler, on a Rocket Appartamento say, is hot long
 before its group, and the coffee is not hot enough before the group is.
 Without a thermometer, a machine switched on after being off for **Cold
 after** counts as cold and is heated once it has been on for **Cold
-preheat**; one switched on sooner, once the heating phase has ended. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
+preheat**; one switched on sooner, once the heating phase has ended, and
+after **Cold preheat** at the latest — a heater keeping the boiler hot in
+short bursts can hold the phase on for hours. Any topic with degrees works; for a Zigbee sensor on a deCONZ gateway,
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
-One that still reads what it did at switching on fifteen minutes later has
+One that has sent nothing for fifteen minutes while the machine is on has
 gone quiet, and the app goes on as without one until it reads again.
 
 ## Installing
@@ -126,7 +128,7 @@ In AWTRIX NG's web page, on the **Apps** tab, behind the app's gear button:
 | Preheated from | 38 °C | |
 | Heating up as | bar | How far it has heated up: `bar`, small blocks lighting up one after the other, or `percent`. |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
-| Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up. |
+| Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up, and any at the most. |
 | Plug delay | 5 s | How much later the plugin sees the pump than it started: 5 s for a plug that reports an average over 6 seconds, as the Eve Energy does; 0 for one that reports every second, as a Shelly does. |
 | Show result for | 20 s | |
 | Colours | | Result, heating, heated. The cup is drawn as it is. |

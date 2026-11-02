@@ -11,6 +11,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - ShotTimer 5.7: the running count holds where it is when the pump stops,
   rather than going back by the plug delay; only the result in green is the
   plugin's exact count. A rinse says RINSE at once, in white until then.
+- ShotTimer 5.8: HEATING ends after **Cold preheat** at the latest. Switched
+  on warm without a thermometer, it waited for the heating phase to end,
+  which the heater keeping the boiler hot every half a minute can hold off
+  for hours. A thermometer counts as gone quiet after fifteen minutes
+  without a reading, also once it had risen, not only when it had not
+  changed since switching on.
 
 ## [1.22.1] — 2026-10-31
 
