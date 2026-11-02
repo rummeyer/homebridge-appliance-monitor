@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.22.2] — 2026-11-02
+
 ### Changed
 
 - ShotTimer 5.7: the running count holds where it is when the pump stops,
@@ -1210,7 +1212,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.1...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.2...HEAD
+[1.22.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.1...v1.22.2
 [1.22.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.0...v1.22.1
 [1.22.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.20.0...v1.21.0
