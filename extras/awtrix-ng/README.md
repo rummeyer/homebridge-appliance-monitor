@@ -6,9 +6,9 @@ knows about a coffee machine, from the plugin's [MQTT](../../README.md#mqtt)
 topics:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/awtrix-shottimer.gif" alt="ShotTimer on a TC002, from switching on to the countdown to switching off: HEATING with orange steam over the cup, taking turns with how long until preheated and a bar filling up; HEATED in red; a rinse counted and shown as RINSE 7s in green; a shot counted second by second to SHOT 25s in green, with OFF 4:54 under it counting down; then HEATED and the time it has been on taking turns over the countdown" width="548">
+  <img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/awtrix-shottimer.gif" alt="ShotTimer on a TC002 during a morning coffee, from switching on to switching off: HEATING with orange steam over the cup and a bar filling up; HEATED in red over OFF and the countdown to switching off; the time it has been on taking turns with HEATED; a shot counted second by second to SHOT 20s in green; HEATED over the countdown, yellow in its last minute; then OFF as the plug switches off" width="548">
 </p>
-<p align="center"><sub>Heating up sped up six times, the rinse and the shot as they run, the countdown sped up.</sub></p>
+<p align="center"><sub>A morning coffee: heating up sped up three times, the shot almost as it runs, the countdown sped up twice.</sub></p>
 
 | When | Line 1 | Line 2 |
 |---|---|---|
