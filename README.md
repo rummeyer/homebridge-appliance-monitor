@@ -5,7 +5,7 @@
 <h1 align="center">homebridge-appliance-monitor</h1>
 
 <p align="center">
-  Your <b>washing machine, dryer and coffee machine</b> in the Apple Home app &mdash; <b>Running</b> or done, from their power draw through Matter smart plugs.
+  Your <b>washing machine, dryer and coffee machine</b> in the Apple Home app &mdash; <b>Running</b> or done, from their power draw through <b>Matter</b> smart plugs or readings over <b>MQTT</b>.
 </p>
 
 <p align="center">
