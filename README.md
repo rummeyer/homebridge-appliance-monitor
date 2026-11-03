@@ -725,6 +725,17 @@ The log says `Dashboard on port 8582` when it is up. If the port is taken,
 the log says so, and the plugin runs on without the dashboard. Untick
 **Dashboard** and restart to turn it off again.
 
+### All monitors on one page
+
+With [Synology Monitor](#more-monitors) or [Connection Monitor](#more-monitors)
+beside it, [Monitor Dashboard](https://github.com/rummeyer/monitor-dashboard)
+puts their dashboards on one page, a tab each, at
+`http://<your Homebridge machine>/`. It is a small Caddy setup, not a
+plugin: each dashboard keeps running on its own port, and the tabs show only
+the dashboards that answer.
+
+<img src="https://raw.githubusercontent.com/rummeyer/monitor-dashboard/main/docs/overview.png" alt="Monitor Dashboard: the Appliances, Synology and Connection tabs under one header, the Appliances tab open" width="760">
+
 ### Read only, and no login
 
 Nothing can be changed on the page: it has no settings, no learning and no
@@ -990,6 +1001,23 @@ controller like this one, so it only shows with Homebridge's debug logging.
   and what it draws in use.
 - **A setting changed in the config has no effect.** Restart the child
   bridge from the Homebridge UI; the plugin reads its config only on start.
+
+## More monitors
+
+Two more plugins in the same spirit, each with a dashboard in the same Home
+look:
+
+- [**Synology Monitor**](https://github.com/rummeyer/homebridge-synology-monitor)
+  — a Synology NAS in the Home app: switch it on and off, and see its
+  temperature, CPU and memory, storage health, drives and DSM updates.
+- [**Connection Monitor**](https://github.com/rummeyer/homebridge-connection-monitor)
+  — whether the router, the internet, a phone or anything else on the
+  network answers, as an occupancy sensor, switch or outlet, and how fast:
+  Smokeping on a dashboard.
+
+[Monitor Dashboard](https://github.com/rummeyer/monitor-dashboard) shows all
+three dashboards on one page, a tab each: see
+[All monitors on one page](#all-monitors-on-one-page).
 
 ## Licence
 
