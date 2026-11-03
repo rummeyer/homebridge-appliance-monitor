@@ -521,6 +521,27 @@ test('by difference: a pump in the band alone just short of counting the time ab
   assert.deepEqual(run(coffeePhases.bezug), [], 'not a coffee');
 });
 
+test('by difference: the pump stopping as the heater goes off beside the steam, the draw falling straight to the steam alone', () => {
+  // As the plug read it on 3.11.2026 from 14:25:13: the milk frothing at
+  // 493 W, a rinse beside it with the heater on, the pump on again for 3 s,
+  // then pump and heater off at once, down to the steam alone, and the
+  // heater twice more beside the steam until it closed.
+  const froth: [number, number][] = [
+    [0, 1749.3], [1, 1118.5], [2, 506.9], [3, 492.7], [4, 493], [5, 492.9], [7, 493], [8, 493.3], [10, 492.9], [11, 492.2],
+    [12, 492.1], [13, 492.3], [14, 492.4], [15, 492.7], [16, 493], [17, 492.9], [18, 492.4], [19, 492.9], [20, 493], [21, 492.6],
+    [23, 492.4], [24, 523.1], [25, 548.9], [26, 703.7], [27, 1754.7], [28, 1806.8], [29, 1805.1], [30, 1803.2], [31, 1802.8], [32, 1801.8],
+    [33, 1800.1], [34, 1785.5], [35, 1746.5], [36, 1745.7], [37, 1745.5], [38, 1744.8], [39, 1796.8], [41, 1797.6], [42, 1771.8], [43, 1743.4],
+    [44, 870.5], [45, 507.5], [46, 492.7], [48, 492.4], [49, 492.2], [50, 492.4], [51, 492.5], [52, 492.7], [53, 492.8], [54, 1252.5],
+    [55, 1737.7], [56, 1743.2], [57, 1741.3], [58, 1739.7], [59, 1740], [60, 1739.9], [61, 794.1], [62, 505.6], [63, 493.8], [64, 491.9],
+    [65, 492], [66, 493.1], [67, 493.7], [68, 494], [69, 494.4], [70, 494.6], [71, 495.5], [72, 495.8], [74, 496.1], [75, 495.3],
+    [76, 495], [77, 495.5], [78, 495.8], [79, 496.3], [80, 579.4], [81, 1676], [82, 1749.8], [84, 1747.9], [85, 1746.1], [86, 1507],
+    [87, 532.8], [88, 506.4], [89, 497.7], [90, 497.4], [92, 497.2], [93, 497.5], [94, 497.7], [95, 497.2], [96, 497.8], [97, 498.1],
+    [98, 498.3], [99, 498.1], [100, 498.2], [101, 498.5], [102, 498.2], [103, 498.3], [104, 498.4], [105, 498.7], [106, 155], [108, 8.9],
+  ];
+  assert.deepEqual(draws(coffeePhases.bezug, froth, 140), [], 'not a coffee');
+  assert.deepEqual(draws(coffeePhases.spuelen, froth, 140), [{ from: 24, until: 35 }], 'the rinse of 11 s; the pump\'s 3 s after it too short for one');
+});
+
 test('by difference: a step down by the band\'s size eight minutes into heating up is not a pump seen only as it stopped', () => {
   // As the plug read it on 31.10.2026 from 08:27: switched on into heating
   // at 1267 W, slowly down to 1250, then 39 W gone (1211 W) and off.

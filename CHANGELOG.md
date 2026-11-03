@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Coffee machine: a rinse while the milk froths, the heater going off just
+  as the pump stops, is no longer counted as a coffee. The draw fell from
+  heater, pump and steam straight to the steam alone, and the pump counted
+  on beside the steam until it closed (3.11.2026: a coffee of 69 s). Levels
+  held for 10 s with nothing pumping, such as the steam, are remembered now,
+  and settling back at one ends the pump.
+
 ## [1.22.2] — 2026-11-02
 
 ### Changed

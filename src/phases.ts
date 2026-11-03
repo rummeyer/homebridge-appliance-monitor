@@ -164,6 +164,26 @@ export const ALONE_MS = 10 * 60_000;
  */
 export const UNSEEN_MAX_MS = 120_000;
 
+/**
+ * With byDifference, how many levels held while nothing counted are
+ * remembered, besides the one reached from rest: the steam on its own, say.
+ * While the draw counts, settling back at one of them is the pump stopped
+ * beneath what runs on, however far the draw fell (3.11.2026: a rinse while
+ * the milk frothed, the heater going off with the pump, the draw falling
+ * from 1800 W straight to the steam's 493 — and the pump counted on beside
+ * the steam for a minute, a coffee of 69 s).
+ */
+export const QUIET_LEVELS = 4;
+
+/**
+ * With byDifference, how long a level has to be held, nothing counting, to
+ * be remembered as quiet: the steam for a while, not the heater's draw for
+ * a moment with the pump started unseen beside it (2.11.2026: 1265 W for
+ * 2 s, the heater drifting up as the pump came on, and a coffee of 20 s
+ * taken for two rinses).
+ */
+export const QUIET_HELD_MS = 10_000;
+
 /** A reading at what the heater draws alone, held this long, is that level: see #follow. */
 export const ALONE_HELD_MS = 1500;
 
@@ -270,6 +290,10 @@ export class PhaseTracker {
   #restLevel: { watts: number; at: number } | undefined;
   /** The last level something else held alone: see ALONE_MS. */
   #alone: { watts: number; at: number } | undefined;
+  /** Levels above the band held while nothing counted, the latest last: see QUIET_LEVELS. */
+  #quiet: { watts: number; at: number }[] = [];
+  /** The level held now, nothing counting at it, since when: quiet once held QUIET_HELD_MS. */
+  #quietFrom: { watts: number; at: number } | undefined;
   /** With byDifference, the pump seen starting by a step up beside something else, and not stopped. */
   #beside = false;
 
@@ -365,6 +389,7 @@ export class PhaseTracker {
     }
     if (Math.abs(watts - last.watts) > STEADY_WATTS) {
       if (this.#holding) {
+        this.#keepQuiet(last.at);
         this.#left = { watts: last.watts, from: this.#levelFrom };
         this.#holding = false;
         this.#movedAt = at;
@@ -385,13 +410,14 @@ export class PhaseTracker {
     this.#holding = true;
     const movedAt = this.#movedAt ?? firstAt;
     this.#levelFrom = movedAt;
-    const left = this.#left;
-    if (left === undefined) {
-      return;
-    }
     const { minWatts } = this.#phase;
     const maxWatts = this.#phase.maxWatts ?? Infinity;
     const pumping = this.#pumping();
+    const left = this.#left;
+    if (left === undefined) {
+      this.#quietAt(watts, at);
+      return;
+    }
     this.#restLevel = left.watts < minWatts && !pumping && watts >= maxWatts ? { watts, at } : undefined;
     if (pumping && this.#belowSince === undefined && watts >= maxWatts && this.#atAlone(watts, at)) {
       // Settled at what the heater draws alone: the pump stopped beneath it on the way.
@@ -412,6 +438,8 @@ export class PhaseTracker {
         this.#stoppedBeneath(movedAt, -step);
       } else if (left.from !== undefined && movedAt - left.from <= UNSEEN_MAX_MS) {
         // It stopped having started unseen, as something else did: since the move into the level it left.
+        // That level had the pump in it, and was not quiet.
+        this.#quiet = this.#quiet.filter((level) => Math.abs(level.watts - left.watts) >= minWatts / 2);
         this.#firstIn = left.from;
         this.#inMs += movedAt - left.from;
         this.#inBandOnlyMs += movedAt - left.from;
@@ -419,6 +447,25 @@ export class PhaseTracker {
       }
       this.#beside = false;
     }
+    if (!pumping) {
+      this.#quietAt(watts, at);
+    }
+  }
+
+  /** A level settled at above the band, nothing counting there, not even the pump starting beside it: see QUIET_LEVELS. */
+  #quietAt(watts: number, at: number): void {
+    this.#quietFrom = this.#pumping() || watts < (this.#phase.maxWatts ?? Infinity) ? undefined : { watts, at };
+  }
+
+  /** The level left at *at*: quiet, if it was held long enough with nothing counting. */
+  #keepQuiet(at: number): void {
+    const level = this.#quietFrom;
+    this.#quietFrom = undefined;
+    if (level === undefined || this.#pumping() || at - level.at < QUIET_HELD_MS) {
+      return;
+    }
+    const { minWatts } = this.#phase;
+    this.#quiet = [...this.#quiet.filter((other) => Math.abs(other.watts - level.watts) >= minWatts / 2), { watts: level.watts, at }].slice(-QUIET_LEVELS);
   }
 
   /** The pump known to be running beside something else, from its steps. */
@@ -431,10 +478,11 @@ export class PhaseTracker {
     return this.#beside || this.#firstIn !== undefined;
   }
 
-  /** At what something else lately drew alone, the heater say: see ALONE_MS. */
+  /** At what something else lately drew alone, the heater or the steam say: see ALONE_MS and QUIET_LEVELS. */
   #atAlone(watts: number, at: number): boolean {
-    const alone = this.#alone;
-    return alone !== undefined && at - alone.at <= ALONE_MS && Math.abs(watts - alone.watts) < this.#phase.minWatts / 2;
+    const near = (level: { watts: number; at: number } | undefined): boolean =>
+      level !== undefined && at - level.at <= ALONE_MS && Math.abs(watts - level.watts) < this.#phase.minWatts / 2;
+    return near(this.#alone) || this.#quiet.some(near);
   }
 
   /**
