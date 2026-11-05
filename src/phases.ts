@@ -296,6 +296,8 @@ export class PhaseTracker {
   #quietFrom: { watts: number; at: number } | undefined;
   /** With byDifference, the pump seen starting by a step up beside something else, and not stopped. */
   #beside = false;
+  /** The level the pump was last seen starting beside, while the draw counts: see #backBeneath. */
+  #beneath: number | undefined;
 
   constructor(phase: PhaseConfig) {
     this.#phase = phase;
@@ -388,12 +390,17 @@ export class PhaseTracker {
       this.#settle(at, last.watts, last.at);
     }
     if (Math.abs(watts - last.watts) > STEADY_WATTS) {
-      if (this.#holding) {
+      const back = this.#backBeneath(last.watts, watts);
+      if (this.#holding || back) {
         this.#keepQuiet(last.at);
         this.#left = { watts: last.watts, from: this.#levelFrom };
         this.#holding = false;
         this.#movedAt = at;
         this.#countedAtMove = { inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs };
+      }
+      if (back) {
+        // Stopped there and then, whatever comes next.
+        this.#settle(at, watts, at);
       }
       return;
     }
@@ -428,6 +435,7 @@ export class PhaseTracker {
     if (step >= minWatts && step < maxWatts && watts >= maxWatts && !this.#beside) {
       // The pump starting beside what was drawn already.
       this.#beside = true;
+      this.#beneath = left.watts;
       this.#belowSince = undefined;
       this.#firstIn ??= movedAt;
       this.#inMs += at - movedAt;
@@ -486,6 +494,22 @@ export class PhaseTracker {
   }
 
   /**
+   * A step down by the band's size, straight back to what the pump was seen
+   * starting beside: the pump stopping beneath it, though the draw may move
+   * on a second later, the heater coming on. Nothing else stopping lands
+   * there (4. and 5.11.2026: coffees of 21 s drawn while the milk frothed,
+   * the milk's 497 W held under 10 s between the heater's bursts and not
+   * known as quiet, taken for 55 and 31 s, until the milk stopped).
+   */
+  #backBeneath(from: number, to: number): boolean {
+    const { minWatts } = this.#phase;
+    const drop = from - to;
+    return this.#pumping() && this.#belowSince === undefined && this.#beneath !== undefined &&
+      Math.abs(to - this.#beneath) < minWatts / 2 &&
+      drop >= minWatts * STOPPED_BENEATH_SHARE && drop < (this.#phase.maxWatts ?? Infinity);
+  }
+
+  /**
    * The pump stopped beneath what runs on, when the draw started moving, by
    * a step down of *drop*. Seen stopping beneath it — a drop of the band's
    * size — it ran from entering the band, the time above it too, though it
@@ -521,6 +545,7 @@ export class PhaseTracker {
     this.#inMs = 0;
     this.#inBandOnlyMs = 0;
     this.#beside = false;
+    this.#beneath = undefined;
     this.#firstIn = undefined;
   }
 

@@ -542,6 +542,34 @@ test('by difference: the pump stopping as the heater goes off beside the steam, 
   assert.deepEqual(draws(coffeePhases.spuelen, froth, 140), [{ from: 24, until: 35 }], 'the rinse of 11 s; the pump\'s 3 s after it too short for one');
 });
 
+test('by difference: the pump stopping beneath the steam it started beside, the heater coming and going around it', () => {
+  // As the plug read it on 4.11.2026 from 12:51:50: the milk frothing at
+  // 497 W, held only a few seconds between the heater's bursts, a coffee
+  // of 21 s beside it, then the milk on alone for half a minute.
+  const froth: [number, number][] = [
+    [0, 492.2], [1, 492.5], [2, 492.3], [3, 492.8], [4, 493], [5, 1060.4], [6, 1717.8], [7, 1722.6], [8, 1725.7], [9, 1725.1],
+    [10, 1724.5], [11, 1723.8], [12, 504.8], [13, 499.9], [14, 497.1], [15, 497.6], [16, 497.1], [17, 497], [18, 506.6], [19, 550.8],
+    [20, 552.1], [21, 551.8], [22, 551.5], [24, 551], [25, 551.1], [26, 1757.3], [27, 1772.2], [28, 1778.9], [29, 1778.6], [30, 1776.7],
+    [31, 1774.9], [32, 1775.3], [33, 1774.7], [34, 1776.9], [35, 1777.1], [36, 1776], [37, 1448.1], [38, 577.4], [39, 559.9], [40, 498.7],
+    [41, 497.1], [42, 497.3], [43, 497.5], [44, 497.6], [45, 497.4], [46, 497.7], [47, 1722.6], [48, 1726.8], [49, 1733.8], [50, 1726.8],
+    [51, 1725.6], [52, 1728.4], [53, 1702.2], [54, 499.5], [56, 497.9], [57, 497.7], [58, 497.8], [59, 497.6], [60, 497.8], [61, 498],
+    [62, 498.1], [64, 498.3], [65, 498.7], [66, 499.2], [67, 500.1], [68, 500.4], [69, 501], [70, 501.7], [71, 1488.2], [72, 1733.6],
+    [73, 1734.5], [74, 1488.1], [75, 1247.5], [76, 1246.3], [77, 211.7], [78, 8.8],
+  ];
+  assert.deepEqual(draws(coffeePhases.bezug, froth).map(({ from, until }) => ({ from, until })), [{ from: 19, until: 40 }], 'a coffee of 21 s, not of 55 until the milk stopped');
+
+  // On 5.11.2026 from 08:24:25: back at the steam for a single reading, the
+  // heater on beside it a second later.
+  const brief: [number, number][] = [
+    [0, 498.5], [1, 499.3], [2, 499.6], [3, 500.1], [4, 499.8], [5, 500.1], [6, 499.8], [8, 499.4], [9, 499.6], [10, 499.8],
+    [13, 501.5], [14, 553.6], [15, 567.2], [16, 1621.3], [17, 1757.6], [18, 1760.3], [19, 1759.2], [20, 1757.4], [21, 1754.2], [22, 1754.1],
+    [23, 1751.7], [24, 1752.2], [25, 1245.4], [26, 568.5], [27, 549.1], [28, 549], [30, 548.9], [31, 549.2], [32, 549.1], [34, 548.9],
+    [35, 536.2], [36, 499.8], [37, 1688.4], [38, 1702.5], [40, 1708.9], [41, 1707.9], [42, 1697.9], [43, 1268.6], [44, 1175.7], [45, 8.3],
+    [46, 8.1], [47, 8.2], [48, 8.1],
+  ];
+  assert.deepEqual(draws(coffeePhases.bezug, brief).map(({ from, until }) => ({ from, until })), [{ from: 14, until: 36 }], 'a coffee of 22 s, not of 31');
+});
+
 test('by difference: a step down by the band\'s size eight minutes into heating up is not a pump seen only as it stopped', () => {
   // As the plug read it on 31.10.2026 from 08:27: switched on into heating
   // at 1267 W, slowly down to 1250, then 39 W gone (1211 W) and off.

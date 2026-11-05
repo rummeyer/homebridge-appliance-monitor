@@ -14,6 +14,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   on beside the steam until it closed (3.11.2026: a coffee of 69 s). Levels
   held for 10 s with nothing pumping, such as the steam, are remembered now,
   and settling back at one ends the pump.
+- Coffee machine: a coffee drawn while the milk froths ends when the pump
+  stops, not when the milk does. The draw stepped back down to the steam,
+  for a second or a few before the heater came on again, and the pump counted
+  on (4.11.2026: a coffee of 21 s counted as 55 s; 5.11.2026: 21 s as 31 s).
+  A step down by the pump's size, straight back to the draw the pump started
+  beside, ends it now.
 
 ## [1.22.2] — 2026-11-02
 
