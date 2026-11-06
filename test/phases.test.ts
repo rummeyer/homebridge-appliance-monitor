@@ -570,6 +570,31 @@ test('by difference: the pump stopping beneath the steam it started beside, the 
   assert.deepEqual(draws(coffeePhases.bezug, brief).map(({ from, until }) => ({ from, until })), [{ from: 14, until: 36 }], 'a coffee of 22 s, not of 31');
 });
 
+test('by difference: the pump counted on above the band while the heater and the milk come and go, or started as the heater went off', () => {
+  // As the plug read it on 6.11.2026 from 08:26:24: the pump alone, then the
+  // heater beside it, the milk too, the heater off, and the pump stopping
+  // beneath the milk 22 s after it started, never back in the band alone.
+  const alone: [number, number][] = [
+    [0, 3.1], [1, 2.9], [2, 2.8], [3, 2.9], [4, 57.7], [5, 57.6], [6, 57.8], [7, 57.1], [8, 172.2], [9, 1218], [10, 1270],
+    [11, 1266.4], [12, 1263.7], [13, 1262.8], [14, 1694.1], [15, 1719.7], [16, 1728.3], [17, 1732.3], [18, 1732.2], [19, 1699.1],
+    [20, 652.3], [21, 540.9], [22, 537], [23, 536.8], [25, 522.2], [26, 488.2], [27, 487.6], [28, 487.7], [29, 488.4],
+    [30, 488.5], [31, 489.5], [32, 1675.6], [33, 1687.2], [34, 1691.6], [35, 1690.4], [36, 1688.2],
+  ];
+  assert.deepEqual(draws(coffeePhases.bezug, alone).map(({ from, until }) => ({ from, until })), [{ from: 4, until: 26 }], 'a coffee of 22 s, not of 4');
+
+  // From 13:24:16: the milk at 492 W, the heater beside it for 5 s, and as
+  // it went off the pump on, 54 W above the milk until it stopped.
+  const unseen: [number, number][] = [
+    [0, 7.4], [3, 7.3], [5, 456.6], [6, 478.4], [7, 525.1], [8, 543.7], [9, 543.9], [10, 512.9], [11, 490.6], [12, 492],
+    [13, 494], [14, 1541], [15, 1713.3], [16, 1718.8], [17, 1715.8], [18, 1715.6], [19, 1644.7], [20, 622.3], [21, 559.6],
+    [22, 548.1], [23, 546.4], [24, 546.2], [26, 545], [27, 662.5], [28, 1709.8], [29, 1760.8], [30, 1769.5], [31, 1768.6],
+    [32, 1767.4], [33, 1766.9], [34, 1766.7], [35, 1488.2], [37, 556.6], [38, 548.5], [39, 548.4], [40, 549.3], [41, 551],
+    [42, 521.4], [43, 500.2], [44, 501.6], [45, 816.3], [46, 1711.5], [47, 1726.9], [48, 1247], [49, 1245.8], [50, 1245.6],
+    [51, 1229.1], [52, 142.6], [53, 8.5], [54, 8.1], [55, 8],
+  ];
+  assert.deepEqual(draws(coffeePhases.bezug, unseen).map(({ from, until }) => ({ from, until })), [{ from: 19, until: 42 }], 'a coffee of 23 s, not none');
+});
+
 test('by difference: a step down by the band\'s size eight minutes into heating up is not a pump seen only as it stopped', () => {
   // As the plug read it on 31.10.2026 from 08:27: switched on into heating
   // at 1267 W, slowly down to 1250, then 39 W gone (1211 W) and off.

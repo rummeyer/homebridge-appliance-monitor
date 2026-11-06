@@ -284,8 +284,8 @@ export class PhaseTracker {
   #levelFrom: number | undefined;
   /** What had counted towards minSeconds when the draw last started moving. */
   #countedAtMove = { inMs: 0, inBandOnlyMs: 0 };
-  /** The level the draw left last: its last reading, and when the move into it started. */
-  #left: { watts: number; from: number | undefined } | undefined;
+  /** The level the draw left last: its last reading, when the move into it started, and the level left before it. */
+  #left: { watts: number; from: number | undefined; before: number | undefined } | undefined;
   /** A level reached from rest with nothing counted, until it is known to have been left back to rest. */
   #restLevel: { watts: number; at: number } | undefined;
   /** The last level something else held alone: see ALONE_MS. */
@@ -393,7 +393,7 @@ export class PhaseTracker {
       const back = this.#backBeneath(last.watts, watts);
       if (this.#holding || back) {
         this.#keepQuiet(last.at);
-        this.#left = { watts: last.watts, from: this.#levelFrom };
+        this.#left = { watts: last.watts, from: this.#levelFrom, before: this.#left?.watts };
         this.#holding = false;
         this.#movedAt = at;
         this.#countedAtMove = { inMs: this.#inMs, inBandOnlyMs: this.#inBandOnlyMs };
@@ -421,6 +421,13 @@ export class PhaseTracker {
     const maxWatts = this.#phase.maxWatts ?? Infinity;
     const pumping = this.#pumping();
     const left = this.#left;
+    if (this.#outSince !== undefined && this.#counting()) {
+      // Above the band, the pump counting on: the hold is for the level held
+      // now, a stop beneath it not seen. One moving on, another coming or
+      // going beside it, is not the end (6.11.2026: a coffee of 22 s, the
+      // pump started alone, then the heater and the milk, taken for 4 s).
+      this.#outSince = movedAt;
+    }
     if (left === undefined) {
       this.#quietAt(watts, at);
       return;
@@ -432,10 +439,16 @@ export class PhaseTracker {
       return;
     }
     const step = watts - left.watts;
-    if (step >= minWatts && step < maxWatts && watts >= maxWatts && !this.#beside) {
+    // Back down from a burst, the heater on and off again, the pump may have
+    // started on the way, its step lost in the fall: from where the draw was
+    // before the burst (6.11.2026: a coffee of 23 s started as the heater went
+    // off beside the milk, only its last 7 s seen).
+    const beneath = -step >= maxWatts && left.before !== undefined ? left.before : left.watts;
+    const rise = watts - beneath;
+    if (rise >= minWatts && rise < maxWatts && watts >= maxWatts && !this.#beside) {
       // The pump starting beside what was drawn already.
       this.#beside = true;
-      this.#beneath = left.watts;
+      this.#beneath = beneath;
       this.#belowSince = undefined;
       this.#firstIn ??= movedAt;
       this.#inMs += at - movedAt;
