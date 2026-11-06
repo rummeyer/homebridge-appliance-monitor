@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.22.3] — 2026-11-06
+
 ### Fixed
 
 - Coffee machine: a rinse while the milk froths, the heater going off just
@@ -18,6 +20,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   stops, not when the milk does. The draw stepped back down to the steam,
   for a second or a few before the heater came on again, and the pump counted
   on (4.11.2026: a coffee of 21 s counted as 55 s; 5.11.2026: 21 s as 31 s).
+  A step down by the pump's size, straight back to the draw the pump started
+  beside, ends it now.
 - Coffee machine: a coffee started alone, then the heater and the milk on
   beside it, is no longer ended after the hold. The draw stayed above the
   pump's range throughout, and the hold ran from when it first rose there
@@ -27,8 +31,6 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   milk is seen. Its step was lost in the fall, so the level after the burst
   is now compared with the one before it (6.11.2026: a coffee of 23 s not
   counted, only its last 7 s shown).
-  A step down by the pump's size, straight back to the draw the pump started
-  beside, ends it now.
 
 ## [1.22.2] — 2026-11-02
 
@@ -1236,7 +1238,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.3...HEAD
+[1.22.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.2...v1.22.3
 [1.22.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.1...v1.22.2
 [1.22.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.0...v1.22.1
 [1.22.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.21.0...v1.22.0
