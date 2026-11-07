@@ -595,6 +595,43 @@ test('by difference: the pump counted on above the band while the heater and the
   assert.deepEqual(draws(coffeePhases.bezug, unseen).map(({ from, until }) => ({ from, until })), [{ from: 19, until: 42 }], 'a coffee of 23 s, not none');
 });
 
+test('by difference: the pump alone a moment, then the heater on beside it, a band\'s size above what the heater draws alone', () => {
+  // As the plug read it on 7.11.2026 from 07:02:40: the heater alone at
+  // 1215 W, then the pump alone for 1.9 s, too short for the time above to
+  // count, the heater on beside it at 1267 W, the pump alone again, and
+  // beside the heater once more until it stopped beneath it (1262 → 1217 W).
+  const shot: [number, number][] = [
+    [0, 2], [1, 1.9], [4, 2], [5, 98.9], [6, 1159.9], [7, 1217], [8, 1215.2], [9, 1213.9], [10, 671.9], [11, 6.8], [12, 1.9],
+    [13, 2], [15, 1.9], [16, 2], [20, 1.9], [21, 2], [22, 1.9], [27, 2], [29, 1.9], [37, 2], [38, 1.9], [42, 2], [44, 1.8],
+    [45, 738.2], [46, 1250.2], [47, 1268.7], [48, 1267.8], [49, 1265.2], [50, 1255.9], [51, 277.9], [52, 2.6], [53, 1.9],
+    [54, 2], [55, 1.9], [56, 2], [57, 1.9], [60, 803.5], [61, 1216.4], [62, 1215.3], [63, 1212.7], [64, 1211.9], [65, 1211.3],
+    [67, 11.8], [68, 1.9], [69, 2], [70, 1.9], [72, 1.8], [73, 1.9], [76, 2], [77, 1.9], [79, 0], [88, 2.4], [89, 1.2],
+    [90, 2.1], [91, 228.7], [92, 1193.2], [93, 1218.1], [94, 1214.5], [95, 1213.1], [97, 1211.7], [98, 1210.9], [99, 506.5],
+    [100, 5.1], [101, 2.9], [102, 2.7], [103, 3], [104, 2.8], [105, 2.9], [106, 3.1], [107, 2.7], [108, 2.6], [109, 3],
+    [110, 2.7], [112, 2.9], [113, 2.8], [114, 2.7], [115, 3], [116, 2.7], [118, 3], [119, 2.8], [121, 3], [122, 2.7], [123, 2.8],
+    [124, 2.9], [125, 2.8], [126, 57.5], [127, 57.4], [127.9, 684.1], [130, 1266.9], [131, 1266], [132, 1264.3], [133, 1262.5],
+    [134, 1259.3], [135, 1257.6], [136, 1256.5], [137, 1255.5], [138, 1154.3], [139, 111.9], [140, 53.9], [141, 53.6],
+    [142, 53.7], [143, 53.6], [144, 53.5], [145, 53.7], [146, 53.5], [147, 53.3], [148, 728.7], [149, 1261], [150, 1262.2],
+    [151, 1216.9], [152, 1210.3], [153, 1209.3], [154, 1208.3], [155, 1165], [156, 97], [157, 3.2], [158, 2.7], [159, 2.8],
+    [160, 3],
+  ];
+  const tracker = new PhaseTracker(coffeePhases.pumpe);
+  const changes: PhaseChange[] = [];
+  const keep = (change: PhaseChange | undefined) => change && changes.push(change);
+  let tick = 0;
+  for (const [seconds, watts] of [...shot, [200, 3] as [number, number]]) {
+    for (; tick < seconds; tick++) {
+      keep(tracker.tick(tick * S));
+    }
+    keep(tracker.reading(seconds * S, watts));
+  }
+  assert.deepEqual(
+    changes.map(({ active, at, from, until }) => [active, at / S, from! / S, until === undefined ? undefined : until / S]),
+    [[true, 131, 126, undefined], [false, 154, 126, 151]],
+    'on once settled beside the heater, not 11 s later back in the band alone; a coffee of 25 s',
+  );
+});
+
 test('by difference: a step down by the band\'s size eight minutes into heating up is not a pump seen only as it stopped', () => {
   // As the plug read it on 31.10.2026 from 08:27: switched on into heating
   // at 1267 W, slowly down to 1250, then 39 W gone (1211 W) and off.

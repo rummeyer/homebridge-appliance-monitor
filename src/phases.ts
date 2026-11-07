@@ -443,16 +443,29 @@ export class PhaseTracker {
     // started on the way, its step lost in the fall: from where the draw was
     // before the burst (6.11.2026: a coffee of 23 s started as the heater went
     // off beside the milk, only its last 7 s seen).
-    const beneath = -step >= maxWatts && left.before !== undefined ? left.before : left.watts;
+    const lost = -step >= maxWatts && left.before !== undefined ? left.before : left.watts;
+    // Seen alone a moment, too short for its time above to count, the pump
+    // settled at a band's size above what the heater draws alone: it runs on
+    // beside it (7.11.2026: a coffee alone for 2 s, then the heater on beside
+    // it, started on the clock 16 s late). Only a level seen ends it on a
+    // single reading back at it: see #backBeneath.
+    const seen = pumping && this.#belowSince === undefined && this.#inBandOnlyMs >= IN_BAND_SEEN_MS;
+    const alone = seen ? this.#aloneBeneath(watts, at) : undefined;
+    const beneath = alone ?? lost;
     const rise = watts - beneath;
     if (rise >= minWatts && rise < maxWatts && watts >= maxWatts && !this.#beside) {
       // The pump starting beside what was drawn already.
       this.#beside = true;
-      this.#beneath = beneath;
+      this.#beneath = alone === undefined ? beneath : undefined;
       this.#belowSince = undefined;
-      this.#firstIn ??= movedAt;
-      this.#inMs += at - movedAt;
-      this.#inBandOnlyMs += at - movedAt;
+      if (alone !== undefined && this.#firstIn !== undefined) {
+        // On since it entered the band, the time above it too.
+        this.#inMs = Math.max(this.#inMs, at - this.#firstIn);
+      } else {
+        this.#firstIn ??= movedAt;
+        this.#inMs += at - movedAt;
+        this.#inBandOnlyMs += at - movedAt;
+      }
     } else if (-step >= minWatts * STOPPED_BENEATH_SHARE && -step < maxWatts && left.watts >= maxWatts && watts >= minWatts) {
       if (pumping) {
         // The pump stopping beneath what runs on.
@@ -506,6 +519,14 @@ export class PhaseTracker {
     return near(this.#alone) || this.#quiet.some(near);
   }
 
+  /** What something else lately drew alone, a band's size beneath *watts*: see ALONE_MS and QUIET_LEVELS. */
+  #aloneBeneath(watts: number, at: number): number | undefined {
+    const { minWatts } = this.#phase;
+    const maxWatts = this.#phase.maxWatts ?? Infinity;
+    return [this.#alone, ...this.#quiet].find((level) =>
+      level !== undefined && at - level.at <= ALONE_MS && watts - level.watts >= minWatts && watts - level.watts < maxWatts)?.watts;
+  }
+
   /**
    * A step down by the band's size, straight back to what the pump was seen
    * starting beside: the pump stopping beneath it, though the draw may move
@@ -557,6 +578,7 @@ export class PhaseTracker {
   #forget(): void {
     this.#inMs = 0;
     this.#inBandOnlyMs = 0;
+    this.#countedAtMove = { inMs: 0, inBandOnlyMs: 0 };
     this.#beside = false;
     this.#beneath = undefined;
     this.#firstIn = undefined;
@@ -637,6 +659,21 @@ export class PhaseTracker {
     return this.#besideNow(watts) || (this.#inBandOnlyMs >= IN_BAND_BEFORE_ABOVE_MS && watts >= (this.#phase.maxWatts ?? Infinity));
   }
 
+  /**
+   * What has counted towards minSeconds, though not while the draw falls
+   * from a level above the band by no more than the band: the pump may be
+   * stopping beneath it, and where it settles tells (2.11.2026: a rinse of
+   * 14 s, beside the heater, taken for a coffee a second into its fall).
+   */
+  #countedMs(): number {
+    const left = this.#left;
+    const last = this.#last;
+    const maxWatts = this.#phase.maxWatts ?? Infinity;
+    const falling = !this.#holding && left !== undefined && last !== undefined &&
+      left.watts >= maxWatts && last.watts < left.watts && left.watts - last.watts < maxWatts;
+    return falling ? this.#countedAtMove.inMs : this.#inMs;
+  }
+
   #check(at: number): PhaseChange | undefined {
     const minMs = (this.#phase.minSeconds ?? DEFAULT_MIN_SECONDS) * 1000;
     const holdMs = (this.#phase.holdSeconds ?? DEFAULT_HOLD_SECONDS) * 1000;
@@ -646,7 +683,7 @@ export class PhaseTracker {
     if (!this.#active) {
       // On first, should a draw only seen once it stopped be long enough
       // (see STEADY_WATTS): it ends on the next tick.
-      if (this.#phase.maxSeconds === undefined && this.#inMs >= minMs) {
+      if (this.#phase.maxSeconds === undefined && this.#countedMs() >= minMs) {
         this.#active = true;
         this.#since = at;
         return { active: true, at, from: this.#firstIn };

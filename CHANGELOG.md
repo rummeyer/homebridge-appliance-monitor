@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Coffee machine: a coffee whose pump ran alone only a moment before the
+  heater came on beside it starts on the clock at once. The time above the
+  pump's range counted only after 2 s alone; settled at a band's size above
+  what the heater lately drew alone, the pump runs on beside it now
+  (7.11.2026: started 16 s late).
+- A phase no longer switches on while the draw falls by no more than its
+  range from a level above it: the pump may be stopping beneath it
+  (2.11.2026: a rinse of 14 s counted as a coffee).
+
 ## [1.22.3] — 2026-11-06
 
 ### Fixed
