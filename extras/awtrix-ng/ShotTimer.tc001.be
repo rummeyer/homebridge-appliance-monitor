@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.8
+# @version 5.9
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -433,12 +433,16 @@ from_v = r[1]
 end
 end
 var rise = self.temp - from_v
-if rise > 0 && self.temp_s > from_s && (unix / 3) % 2 == 1
-var at = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
-if at > unix
+var at = self.since_s > 0 ? self.since_s + self.coldpre_s : 0
+if rise > 0 && self.temp_s > from_s
+var by_rate = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
+if at <= unix || by_rate < at
+at = by_rate
+end
+end
+if at > unix && (unix / 3) % 2 == 1
 self.bar = nil
 self.line2 = [[self.clock(at - unix), self.white]]
-end
 end
 elif self.cold && self.since_s > 0
 self.line2 = [[self.clock(self.since_s + self.coldpre_s - unix), self.white]]

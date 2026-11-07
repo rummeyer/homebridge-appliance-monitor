@@ -12,7 +12,7 @@ topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then at the rate it rose over the last five minutes; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
+| Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then: until **Cold preheat** is up from switching on, or sooner once the rate it rose over the last five minutes says so, and past it by that rate; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute; while the machine is in use, which holds Idle, its full time standing still |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
@@ -128,7 +128,7 @@ In AWTRIX NG's web page, on the **Apps** tab, behind the app's gear button:
 | Preheated from | 38 °C | |
 | Heating up as | bar | How far it has heated up: `bar`, small blocks lighting up one after the other, or `percent`. |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
-| Cold preheat | 30 min | Without a thermometer: how long a cold machine heats up, and any at the most. |
+| Cold preheat | 30 min | How long a cold machine heats up. Without a thermometer, any at the most; with one, the time left shown until it rises fast enough to tell sooner. |
 | Plug delay | 5 s | How much later the plugin sees the pump than it started: 5 s for a plug that reports an average over 6 seconds, as the Eve Energy does; 0 for one that reports every second, as a Shelly does. |
 | Show result for | 20 s | |
 | Colours | | Result, heating, heated. The cup is drawn as it is. |

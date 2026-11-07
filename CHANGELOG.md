@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- ShotTimer 5.9: while heating up with a thermometer, the time left counts
+  down from **Cold preheat** as switched on, until the rate the group rises
+  at says sooner; past it, the rate. At first it hardly rises, and the rate
+  alone said hours.
+
 ### Fixed
 
 - Coffee machine: a coffee whose pump ran alone only a moment before the

@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.8
+# @version 5.9
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -15,7 +15,7 @@
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
 # @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends, Cold preheat at the most"
-# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="Without a thermometer: how long a cold machine heats up, and any at the most"
+# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the time left shown until it rises fast enough to tell sooner"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
@@ -549,14 +549,20 @@ class ShotTimer
             from_v = r[1]
           end
         end
+        # Cold preheat from switching on, until the rate says sooner: at first it hardly rises,
+        # and the rate alone says hours (7.11.2026: 3:00 at switching on). Past it, the rate.
         var rise = self.temp - from_v
-        if rise > 0 && self.temp_s > from_s && (unix / 3) % 2 == 1
-          var at = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
-          # Not a 0:00 that stands still when it rises slower than so far: the percentage then.
-          if at > unix
-            self.bar = nil
-            self.line2 = [[self.clock(at - unix), self.white]]
+        var at = self.since_s > 0 ? self.since_s + self.coldpre_s : 0
+        if rise > 0 && self.temp_s > from_s
+          var by_rate = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
+          if at <= unix || by_rate < at
+            at = by_rate
           end
+        end
+        # Not a 0:00 that stands still when it rises slower than so far: the percentage then.
+        if at > unix && (unix / 3) % 2 == 1
+          self.bar = nil
+          self.line2 = [[self.clock(at - unix), self.white]]
         end
       elif self.cold && self.since_s > 0
         # How long until preheated from cold.
