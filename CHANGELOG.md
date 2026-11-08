@@ -23,6 +23,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - A phase no longer switches on while the draw falls by no more than its
   range from a level above it: the pump may be stopping beneath it
   (2.11.2026: a rinse of 14 s counted as a coffee).
+- Coffee machine: a coffee drawn beside the milk ends where the heater came
+  on over it, when the draw comes back down to the milk alone. It ran on
+  until the milk stopped (8.11.2026: 23 s taken for 95 s).
 
 ## [1.22.3] — 2026-11-06
 

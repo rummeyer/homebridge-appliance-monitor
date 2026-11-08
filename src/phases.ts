@@ -439,6 +439,14 @@ export class PhaseTracker {
       return;
     }
     const step = watts - left.watts;
+    if (pumping && this.#belowSince === undefined && this.#beneath !== undefined && -step >= maxWatts &&
+      Math.abs(watts - this.#beneath) < minWatts / 2) {
+      // Back down from a burst to what the pump started beside: it stopped
+      // as the burst began (8.11.2026: a coffee of 23 s beside the milk, the
+      // heater on and off after it, taken for 95 s until the milk stopped).
+      this.#stoppedAt(left.from ?? movedAt);
+      return;
+    }
     // Back down from a burst, the heater on and off again, the pump may have
     // started on the way, its step lost in the fall: from where the draw was
     // before the burst (6.11.2026: a coffee of 23 s started as the heater went

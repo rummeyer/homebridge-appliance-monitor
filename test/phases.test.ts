@@ -595,6 +595,25 @@ test('by difference: the pump counted on above the band while the heater and the
   assert.deepEqual(draws(coffeePhases.bezug, unseen).map(({ from, until }) => ({ from, until })), [{ from: 19, until: 42 }], 'a coffee of 23 s, not none');
 });
 
+test('by difference: the pump stopped beneath the milk as the heater came on, back down at the milk alone', () => {
+  // As the plug read it on 8.11.2026 from 11:17:44: the milk at 491 W, the
+  // heater beside it, the pump on as it went off, 55 W above the milk, then
+  // the heater on and off again over the pump stopping, and the milk alone
+  // until it stopped.
+  const readings: [number, number][] = [
+    [0, 491.2], [1, 491.3], [2, 985.7], [3, 1721.6], [4, 1721.7], [5, 1716], [7, 1713.6], [8, 1745], [9, 1507.4], [10, 552.9], [11, 546.4],
+    [12, 545.8], [13, 546.3], [14, 546.4], [15, 546], [16, 704.4], [17, 1759.8], [18, 1763.6], [19, 1762.9], [20, 1761.7], [21, 1762.3], [22, 1765.6],
+    [23, 1764.5], [24, 1443.2], [25, 570], [26, 548.5], [27, 546.3], [28, 545.9], [29, 546], [31, 545.9], [33, 516.2], [34, 1704.1], [35, 1721.7],
+    [36, 1722.9], [37, 1722.4], [39, 1719.5], [40, 1718.6], [41, 1719.8], [42, 610.3], [43, 506.5], [44, 498.5], [45, 495.1], [46, 495], [47, 495.3],
+    [48, 495], [49, 494.8], [50, 494.3], [51, 494.9], [52, 495.2], [56, 495.3], [57, 495.4], [58, 744.4], [59, 1696.3], [60, 1729], [61, 1727.8],
+    [62, 1725.8], [63, 1721.9], [64, 987.4], [65, 509.3], [66, 493.1], [67, 493.4], [69, 493.5], [70, 493.1], [71, 493.4], [73, 493.2], [74, 493.6],
+    [75, 493.8], [76, 493.9], [78, 493.8], [79, 493.7], [81, 494.2], [82, 494.3], [83, 495], [84, 495.5], [85, 495.4], [86, 777.2], [87, 1699.7],
+    [88, 1728.8], [89, 1727.9], [90, 1726.7], [91, 1725.3], [92, 816.4], [93, 509.5], [94, 498.2], [95, 495.2], [96, 495.1], [97, 495], [98, 495.7],
+    [100, 495.8], [102, 278.1], [103, 10.2], [104, 8.3], [106, 8.2], [107, 8.3],
+  ];
+  assert.deepEqual(draws(coffeePhases.bezug, readings).map(({ from, until }) => ({ from, until })), [{ from: 8, until: 33 }], 'a coffee of 25 s, not of 95');
+});
+
 test('by difference: the pump alone a moment, then the heater on beside it, a band\'s size above what the heater draws alone', () => {
   // As the plug read it on 7.11.2026 from 07:02:40: the heater alone at
   // 1215 W, then the pump alone for 1.9 s, too short for the time above to
