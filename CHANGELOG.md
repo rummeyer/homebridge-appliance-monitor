@@ -6,6 +6,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Recognise phases: By rules, a learned model watching.** A model of the
+  appliance, its parts adding up to what the plug reads, learned from the
+  recording once a day without anyone telling it what was right, follows the
+  phases beside the rules and says in the log where it saw one differently.
+  The rules still decide.
+
 ### Changed
 
 - **Settings saved under names that match the settings page.** Idle's

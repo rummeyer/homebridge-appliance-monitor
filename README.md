@@ -424,6 +424,36 @@ other, never both and never neither. Choose it for both, and for a phase a
 shot timer follows. Not for heating: its thermostat drops below the range while
 it lasts, which is not the end of it.
 
+### A learned model watching
+
+The rules above are told where to look; each new case a machine shows them
+is one more rule. **Recognise phases: By rules, a learned model watching**
+tries the other way round, for an appliance whose parts add up — a coffee
+machine's heater, pump, frother and grinder. Each range is a part, a phase
+with no upper end a part at a level of its own, and the plug reads their sum.
+The model keeps the likeliest ways each reading came about, and settles on
+what they agree on, usually a few seconds later.
+
+Nobody tells it what was right. It starts from the phases as set, explains
+the recorded days with them, measures from that explanation what each part
+draws, how long it usually runs, how often it starts beside the others and
+how far the voltage sags, and explains them again — a few rounds, once a
+day, in a thread of its own. The readings have to add up, which is what
+keeps it honest.
+
+For now it only watches: the rules decide, and the log says where the model
+saw a phase differently:
+
+```
+Kaffeemaschine: model watching, learned from 29 sessions: Aufheizen about 1212 W; Bezug 56 ± 2.5 W, runs 11 s / 20 s; Milch 494 ± 4.6 W, runs 55 s / 67 s; Mühle 297 ± 4.7 W, runs 7 s / 9 s
+Kaffeemaschine: model watching, Bezug 08:28:53: rules 23 s, model 25 s
+Kaffeemaschine: model watching, Spülen 08:28:36: rules none, model 4 s
+```
+
+It needs the readings recorded, and learns from the days kept. Phases
+counted only coming down are left out. Changing a range starts it over from
+the settings.
+
 ## In the Home app
 
 Each appliance is one accessory, "Washing machine Monitor" say, to tell it
@@ -928,6 +958,7 @@ config it writes looks like this:
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
 | `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `onAfterSeconds` (*On after*: in the range, added up, before it is on; 5), `offAfterSeconds` (*Off after*: out of it before it is off; 30), `shorterThanSeconds` (*Shorter than*: only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `counts` (*Counts*: `always`; `comingDown`, only when the draw falls into the range, not when it rises into it; or `byDifference`, also while something bigger runs on top, started or stopped by a step of its size beside it, over when its difference is gone, see [By difference](#by-difference-something-running-under-something-bigger)) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].recognise` | `rules` | `watch`: a model learned from the recording follows the phases beside the rules and logs where it saw one differently. See [A learned model watching](#a-learned-model-watching). |
 | `devices[].messages` | none | MQTT messages of your own: `phase`, `when` (`start` or `end`), `topic` and `payload`, with `{appliance}`, `{phase}`, `{duration}` and `{seconds}` filled in. See [Messages of your own](#messages-of-your-own). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
@@ -972,6 +1003,8 @@ All files are kept in the Homebridge storage folder, under `appliance-monitor/`:
   forgetting), there only until it has been done.
 - `power/`: one file per day, `time,device,endpoint,watts`, one line per
   reading. Older than `recordDays` is deleted.
+- `model/`: what the model watching beside the rules learned, one file per
+  appliance, learned again once a day. Deleting it has it learn afresh.
 
 ## The log
 

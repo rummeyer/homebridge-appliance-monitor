@@ -108,6 +108,12 @@ export interface DeviceConfig {
   /** What the appliance is doing inside a cycle, by power band. See phases.ts. */
   phases?: PhaseConfig[];
   /**
+   * How the phases are told: by the rules, or by them with a model learned
+   * from the recording watching beside them, saying in the log where it saw
+   * a phase differently. See model.ts.
+   */
+  recognise?: Recognise;
+  /**
    * Ask the plug for its power this often, in seconds, as well as listening
    * for what it reports. For plugs that report too seldom to see something
    * short; each ask is a message over the network, so only where needed.
@@ -116,6 +122,8 @@ export interface DeviceConfig {
 }
 
 export const MIN_POLL_SECONDS = 2;
+
+export type Recognise = 'rules' | 'watch';
 
 export type RunningAs = 'switch' | 'occupancy' | 'outlet';
 export const RUNNING_AS: readonly RunningAs[] = ['switch', 'occupancy', 'outlet'];

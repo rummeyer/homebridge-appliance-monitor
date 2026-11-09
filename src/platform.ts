@@ -42,19 +42,21 @@ import type { AttributeReport } from './matter.ts';
 import type { PairedNode } from '@project-chip/matter.js/device';
 import { FINISHED, phaseKey } from './counts.ts';
 import { dataDir } from './data-dir.ts';
+import { modelPhases } from './model.ts';
 import { AFTER_MS, BEFORE_MS, DeviceMonitor } from './monitor.ts';
 import { PhaseTracker, RECALL_MS } from './phases.ts';
 import { notePrice } from './prices.ts';
 import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, OFF_WATTS } from './power.ts';
 import { fillMessage, MqttPublisher, parseOnline, parseReading, phaseTopic, stateTopics } from './mqtt.ts';
-import { PowerRecorder, readSamples } from './recorder.ts';
+import { DEFAULT_RECORD_DAYS, PowerRecorder, readSamples } from './recorder.ts';
 import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
 import { clearResets, pendingResets } from './resets.ts';
 import { NodeRegistry } from './registry.ts';
 import { runsOf, usualSeconds, withRun } from './typical.ts';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.ts';
+import { ModelShadow } from './shadow.ts';
 import { DeviceStore } from './store.ts';
 
 /** How the states are called in the log, matching the sensors' default names. */
@@ -72,6 +74,8 @@ interface Appliance {
   accessory: ApplianceAccessory | undefined;
   energy: EnergyMeter;
   phases: PhaseTracker[];
+  /** The learned model watching beside the rules, if the device asks for it. */
+  shadow?: ModelShadow;
   /** The last reading taken in, to drop the same one arriving twice. */
   last?: { endpointId: number; value: unknown; at: number };
   /**
@@ -145,6 +149,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         clearInterval(poller);
       }
       clearInterval(this.#energySaver);
+      for (const appliance of this.#appliances.values()) {
+        appliance.shadow?.stop();
+      }
       this.#dashboard?.close();
       void this.#mqtt?.close();
       this.#saveEnergy();
@@ -231,6 +238,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
           for (const tracker of appliance.phases) {
             this.#onPhase(appliance, tracker, tracker.tick(now));
           }
+          appliance.shadow?.tick(now);
           this.#publish(appliance);
         });
       }
@@ -753,6 +761,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       accessory: handle,
       energy,
       phases: this.#phaseTrackers(device),
+      shadow: this.#shadow(device),
       // Nothing yet for one that chose a device, until the node says where it is.
       accept: device.deviceId || device.endpoint !== undefined ? new Set<number>() : 'all' as const,
       timed: {},
@@ -778,6 +787,18 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
     }
     return trackers;
+  }
+
+  /** The model watching beside the rules: it learns from the recording, so only with one. */
+  #shadow(device: DeviceConfig): ModelShadow | undefined {
+    if (device.recognise !== 'watch' || !this.#recorder || modelPhases(device.phases ?? []).length === 0) {
+      if (device.recognise === 'watch') {
+        this.log.warn(`${device.name}: the model learns from the recorded readings and phases; it needs both to watch`);
+      }
+      return undefined;
+    }
+    const days = Number.isInteger(this.config.recordDays) && this.config.recordDays! > 0 ? this.config.recordDays! : DEFAULT_RECORD_DAYS;
+    return new ModelShadow(device.name, device.phases ?? [], this.#dataPath, this.#recorder.dir, days, this.log);
   }
 
   #onAttribute(appliance: Appliance, report: AttributeReport): void {
@@ -909,6 +930,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     } else {
       for (const tracker of appliance.phases) {
         this.#onPhase(appliance, tracker, tracker.reading(now, watts));
+      }
+      if (watts !== undefined) {
+        appliance.shadow?.reading(now, watts);
       }
     }
     this.#passOn(appliance, now);
@@ -1063,6 +1087,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
     }
     this.#sendMessages(device, tracker.name, change);
+    appliance.shadow?.rule(tracker.name, change);
     if (change.short) {
       appliance.accessory?.phaseHappened(tracker.name);
       this.#mqtt?.pulse(phaseTopic(this.#mqttPrefix, device.name, tracker.name));

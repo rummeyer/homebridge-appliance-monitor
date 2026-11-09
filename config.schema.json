@@ -331,6 +331,16 @@
                   }
                 }
               }
+            },
+            "recognise": {
+              "title": "Recognise phases",
+              "type": "string",
+              "default": "rules",
+              "oneOf": [
+                { "title": "By rules", "enum": ["rules"] },
+                { "title": "By rules, a learned model watching", "enum": ["watch"] }
+              ],
+              "description": "Watching: a model of the appliance, learned from the recorded readings, follows the phases beside the rules and says in the log where it saw one differently. The rules still decide. It learns once a day from the days of recordings kept, and needs the readings recorded. For appliances whose parts add up, as a coffee machine's pump, heater and frother; phases counted only coming down are left out."
             }
           }
         }
