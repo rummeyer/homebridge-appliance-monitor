@@ -24,6 +24,18 @@
 
 ---
 
+> **This is the `model-watching` branch, a trial, not a release.** It adds
+> [a learned model watching](#a-learned-model-watching) beside the rules:
+> **Recognise phases** at the end of a device's phases on the settings page.
+> It only says in the log where the model saw a phase differently; the rules
+> still decide. It goes into a release only if the log shows it getting
+> right what the rules get wrong — a coffee whose pump the heater hid, say —
+> often enough to be worth explaining. Until then `main` and npm go without
+> it, and this branch is kept on top of `main`.
+>
+> To try it: `npm pack` here, and in the Homebridge folder
+> `npm install ./homebridge-appliance-monitor-<version>.tgz`.
+
 Watches the power draw of **smart plugs and power meters** and tells
 HomeKit while an appliance is **Running** and when it is done, and what
 it is doing in between: heating, spinning, a coffee being drawn. It reads
