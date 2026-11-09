@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { Sample } from '../src/learn.ts';
-import { Comparison, fits, initialParams, learnModel, ModelWatcher } from '../src/model.ts';
+import { aboutTheSame, Comparison, fits, initialParams, learnModel, ModelWatcher } from '../src/model.ts';
 import type { ModelRun } from '../src/model.ts';
 import type { PhaseConfig } from '../src/phases.ts';
 
@@ -131,10 +131,70 @@ test('the rules and the model side by side, each pair once both have told it', (
   comparison.rule({ phase: 'Milk', from: 130 * S, until: 160 * S });
   comparison.model({ phase: 'Milk', from: 131 * S, until: 160 * S });
   assert.deepEqual(comparison.settle(150 * S), [], 'too soon for either');
-  assert.deepEqual(comparison.settle(300 * S), [
+  const told = (compared: ReturnType<Comparison['settle']>) => compared.map(({ runs: _runs, ...rest }) => rest);
+  const settled = comparison.settle(300 * S);
+  assert.deepEqual(told(settled), [
     { phase: 'Rinse', at: 80 * S, rules: undefined, model: 6, agree: false },
     { phase: 'Coffee', at: 100 * S, rules: 23, model: 27, agree: false },
     { phase: 'Milk', at: 130 * S, rules: 30, model: 29, agree: true },
   ]);
-  assert.deepEqual(comparison.settle(500 * S), [{ phase: 'Rinse', at: 300 * S, rules: 5, model: undefined, agree: false }]);
+  assert.deepEqual(settled[1]!.runs, { rules: { phase: 'Coffee', from: 100 * S, until: 123 * S }, model: { phase: 'Coffee', from: 101 * S, until: 128 * S } });
+  assert.deepEqual(told(comparison.settle(500 * S)), [{ phase: 'Rinse', at: 300 * S, rules: 5, model: undefined, agree: false }]);
+});
+
+/** A watcher that has seen some mornings, with the model as ready as asked. */
+function seen(ready: Partial<typeof params>, days = 4): { watcher: ModelWatcher; day: Session } {
+  const watcher = new ModelWatcher(PHASES, { ...params, ...ready });
+  let day = morning(20 * DAY, 30);
+  for (let index = 0; index < days; index++) {
+    day = morning((20 + index) * DAY, 30 + index);
+    watch(day.samples, watcher);
+  }
+  return { watcher, day };
+}
+
+test('it would correct the rules where its account adds up and theirs does not: a coffee lost under the heater', () => {
+  const { watcher, day } = seen({ sessions: 12, steady: 1 });
+  const lost = { phase: 'Coffee', from: day.coffee.from, until: day.coffee.from + 12 * S };
+  const verdict = watcher.judge('Coffee', lost, { phase: 'Coffee', from: day.coffee.from, until: day.coffee.until });
+  assert.ok(verdict.corrects, verdict.reason);
+  assert.match(verdict.reason, /^the rules' account off by (5\d|6\d) W over 1\d readings, the model's by \d W$/);
+  const longer = watcher.judge('Coffee', { ...lost, until: day.coffee.until + 10 * S }, { phase: 'Coffee', from: day.coffee.from, until: day.coffee.until });
+  assert.ok(longer.corrects, 'and a coffee the rules had go on too long');
+});
+
+test('it would leave the rules be where they saw the draw in its band and only let it pass, or rested between switchings on', () => {
+  const { watcher, day } = seen({ sessions: 12, steady: 1 });
+  // The heater, on for 9 s of every 12 while heating up: the rules' heating, its rests and all.
+  const heating = { phase: 'Heating', from: day.samples[0]!.at, until: day.samples[0]!.at + 200 * S };
+  assert.equal(watcher.judge('Heating', heating, { ...heating, until: heating.until - 3 * S }).corrects, false);
+  // Rules without a heating there: they saw it in its band, too short for them.
+  assert.equal(watcher.judge('Heating', undefined, { phase: 'Heating', from: day.samples[0]!.at + 250 * S, until: day.samples[0]!.at + 265 * S }).corrects, false);
+});
+
+test('the rules and the model side by side: a long phase the rules tell only once over, and runs overlapping that started apart', () => {
+  const comparison = new Comparison();
+  comparison.opened('Heating', 0);
+  comparison.model({ phase: 'Heating', from: 0, until: 500 * S });
+  assert.deepEqual(comparison.settle(700 * S), [], 'the rules still have it on');
+  comparison.rule({ phase: 'Heating', from: 0, until: 1200 * S });
+  comparison.rule({ phase: 'Coffee', from: 1309 * S, until: 1327 * S });
+  comparison.model({ phase: 'Coffee', from: 1300 * S, until: 1325 * S });
+  assert.deepEqual(comparison.settle(2000 * S).map(({ phase, rules, model }) => [phase, rules, model]), [['Heating', 1200, 500], ['Coffee', 18, 25]]);
+});
+
+test('it would leave the rules be while it is not ready', () => {
+  const run = { phase: 'Coffee', from: 0, until: 10 * S };
+  assert.deepEqual(seen({ sessions: 6 }, 1).watcher.judge('Coffee', run, undefined),
+    { corrects: false, reason: 'learned from 6 sessions only, needs 10' });
+  assert.deepEqual(seen({ sessions: 12, steady: 0 }, 1).watcher.judge('Coffee', run, undefined),
+    { corrects: false, reason: 'not yet learned about the same twice running' });
+  assert.match(seen({ sessions: 12, steady: 1 }, 1).watcher.judge('Coffee', run, undefined).reason, /^seen \d+ readings with something on only, needs 600$/);
+});
+
+test('learned about the same as before, or not', () => {
+  assert.ok(aboutTheSame(params, learnModel(PHASES, recording.slice(400))));
+  const milk = params.parts[2]!;
+  assert.ok(!aboutTheSame(params, { ...params, parts: params.parts.map((part) => (part === milk ? { ...part, mean: part.mean + 30 } : part)) }));
+  assert.ok(!aboutTheSame(params, { ...params, level: params.level + 80 }));
 });

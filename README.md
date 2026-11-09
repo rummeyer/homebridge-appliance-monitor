@@ -458,9 +458,26 @@ saw a phase differently:
 
 ```
 Kaffeemaschine: model watching, learned from 29 sessions: Aufheizen about 1212 W; Bezug 56 ± 2.5 W, runs 11 s / 20 s; Milch 494 ± 4.6 W, runs 55 s / 67 s; Mühle 297 ± 4.7 W, runs 7 s / 9 s
-Kaffeemaschine: model watching, Bezug 08:28:53: rules 23 s, model 25 s
-Kaffeemaschine: model watching, Spülen 08:28:36: rules none, model 4 s
+Kaffeemaschine: model watching, Bezug 13:30:34: rules 18 s, model 25 s — would correct: the rules' account off by 129 W over 11 readings, the model's by 95 W
+Kaffeemaschine: model watching, Milch 08:29:30: rules 64 s, model 78 s — would correct: the rules' account off by 506 W over 14 readings, the model's by 22 W
+Kaffeemaschine: model watching, Mühle 11:04:33: rules 4 s, model 7 s — would leave it: the rules' account off by 408 W over 3 readings, the model's by 118 W
 ```
+
+Each difference says whether the model **would correct** the rules, were
+it to decide, and why. Nobody can tell it which was right, but the readings
+have to add up: where the two differ, it puts the parts on as it has them,
+and as the rules have them, and sees whose sum the plug read. It would
+correct the rules only where its own account adds up for most of those
+readings and theirs for hardly any — a pump the heater hid, a frother whose
+draw left its band as the heater came on beside it. A draw the rules saw in
+its band and let pass, as too short or too long, is theirs to judge; so are
+the rests of a heater between two switchings on.
+
+Nor would it correct anything before it is ready: learned from 10 sessions
+at least, about the same twice running, and its accounts adding up for 90 %
+of the readings with something on. Until then the line says what is missing.
+Should it prove right, it takes over by itself where it is, with nothing to
+choose.
 
 It needs the readings recorded, and learns from the days kept. Phases
 counted only coming down are left out. Changing a range starts it over from

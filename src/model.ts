@@ -61,6 +61,25 @@ export const MAX_LAG_MS = 30_000;
 const QUIET_MS = 3000;
 /** How many times the readings are explained and the model measured again. */
 export const LEARN_ROUNDS = 3;
+/**
+ * Before the model would correct the rules: learned from this many sessions
+ * at least, about the same as the time before at least this many times
+ * running, and its accounts of the readings with something on adding up for
+ * this share of them at least, once it has seen as many.
+ */
+const READY_SESSIONS = 10;
+const READY_STEADY = 1;
+const READY_FIT = 0.9;
+const READY_READINGS = 600;
+/**
+ * Where the rules and the model saw a phase differently, the model would
+ * correct the rules if its account adds up for this share of the readings in
+ * dispute at least, and theirs for this share at most.
+ */
+const CORRECT_FIT = 0.8;
+const RULES_FIT = 0.2;
+/** How long the settled readings are kept to judge by. */
+const HISTORY_MS = 3_600_000;
 
 export interface PartParams {
   name: string;
@@ -89,6 +108,8 @@ export interface ModelParams {
   levelSeen: boolean;
   /** How many sessions it was learned from. */
   sessions: number;
+  /** How many times running it was learned about the same as the time before. */
+  steady?: number;
 }
 
 interface Part extends PartParams {
@@ -233,8 +254,8 @@ function othersOn(ages: number[], part: number): number {
   return mask;
 }
 
-/** How likely a reading is with these parts on, and the level known after it. */
-function emit(model: Model, ages: number[], mu: number, v: number, watts: number): { log: number; mu: number; v: number; fits: boolean } {
+/** What the plug should read with these parts on: its mean and variance. */
+function expected(model: Model, ages: number[], mu: number, v: number): { mean: number; variance: number } {
   const { params, parts, levelPart } = model;
   let mean = params.base.mean;
   let variance = params.base.sd ** 2;
@@ -253,6 +274,13 @@ function emit(model: Model, ages: number[], mu: number, v: number, watts: number
       mean -= params.sag * on[a]! * on[b]!;
     }
   }
+  return { mean, variance };
+}
+
+/** How likely a reading is with these parts on, and the level known after it. */
+function emit(model: Model, ages: number[], mu: number, v: number, watts: number): { log: number; mu: number; v: number; fits: boolean } {
+  const { params, levelPart } = model;
+  const { mean, variance } = expected(model, ages, mu, v);
   const gauss = Math.exp(-0.5 * (watts - mean) ** 2 / variance) / Math.sqrt(2 * Math.PI * variance);
   const log = Math.log((1 - OUTLIER) * gauss + OUTLIER / params.outRange);
   // The level learns from a reading that fits, not from one on the way.
@@ -666,18 +694,21 @@ export function phaseRuns(phases: PhaseConfig[], params: ModelParams, runs: Part
     // A thermostat switching the heater on and off is one heating, as with
     // the rules; by difference the phase ends as the draw falls below its band.
     const holdMs = phase.byDifference ? 0 : (phase.holdSeconds ?? 30) * 1000;
-    const merged: PartRun[] = [];
+    // How long it was on counts added up, as with the rules: a heater on now
+    // and then beside a coffee is no heating up.
+    const merged: (PartRun & { onMs: number })[] = [];
     for (const run of runs.filter((each) => each.part === part).sort((a, b) => a.from - b.from)) {
       const last = merged[merged.length - 1];
       if (last && run.from - last.until < holdMs) {
+        last.onMs += run.until - Math.max(run.from, last.until);
         last.until = Math.max(last.until, run.until);
       } else {
-        merged.push({ ...run });
+        merged.push({ ...run, onMs: run.until - run.from });
       }
     }
     for (const run of merged) {
       const lasted = run.until - run.from;
-      if (lasted >= (phase.minSeconds ?? 5) * 1000 && (phase.maxSeconds === undefined || lasted < phase.maxSeconds * 1000)) {
+      if (run.onMs >= (phase.minSeconds ?? 5) * 1000 && (phase.maxSeconds === undefined || lasted < phase.maxSeconds * 1000)) {
         found.push({ phase: phase.name, from: run.from, until: run.until });
       }
     }
@@ -702,6 +733,12 @@ export class ModelWatcher {
   /** Runs over, waiting for the hold: a heater's next switching on may still belong to them. */
   #done: PartRun[] = [];
   #lastAt: number | undefined;
+  /** The readings not settled yet, and those settled lately with what the model made of them. */
+  #unsettled = new Map<number, number>();
+  #history: Settled[] = [];
+  /** Of the settled readings with something on, how many its account adds up for. */
+  #busy = 0;
+  #addsUp = 0;
 
   constructor(phases: PhaseConfig[], params: ModelParams) {
     this.#phases = phases;
@@ -719,6 +756,7 @@ export class ModelWatcher {
   reading(at: number, watts: number): ModelRun[] {
     const told = this.#lastAt !== undefined && at - this.#lastAt > SESSION_GAP_MS ? this.#endSession() : [];
     this.#lastAt = at;
+    this.#unsettled.set(at, watts);
     if (this.#beam) {
       this.#beam.reading(at, watts);
     } else {
@@ -726,13 +764,13 @@ export class ModelWatcher {
     }
     this.#session.push(watts);
     this.#settle(Math.max(this.#beam.agreedAt(this.#settledAt), at - MAX_LAG_MS));
-    return [...told, ...this.#tell(at)];
+    return [...told, ...this.#tell(this.#settledAt)];
   }
 
   /** Time passing: once no reading has come for the lag, the last one is settled, and once for long, the session is over. */
   tick(at: number): ModelRun[] {
     if (this.#lastAt === undefined) {
-      return this.#tell(at);
+      return this.#tell(-Infinity);
     }
     if (at - this.#lastAt > SESSION_GAP_MS) {
       return this.#endSession();
@@ -740,7 +778,9 @@ export class ModelWatcher {
     if (at - this.#lastAt >= QUIET_MS) {
       this.#settle(this.#lastAt);
     }
-    return this.#tell(at);
+    // With all readings settled, nothing has changed since the last: a plug
+    // reports a change as it comes.
+    return this.#tell(this.#settledAt === this.#lastAt ? at : this.#settledAt);
   }
 
   #endSession(): ModelRun[] {
@@ -753,6 +793,7 @@ export class ModelWatcher {
       this.#levelSeen = true;
     }
     this.#beam = undefined;
+    this.#unsettled.clear();
     this.#session = [];
     this.#settledAt = -Infinity;
     return this.#tell(Infinity);
@@ -773,6 +814,19 @@ export class ModelWatcher {
     for (const node of fresh) {
       this.#done.push(...this.#edges.node(node));
       this.#settledAt = node.at;
+      const watts = this.#unsettled.get(node.at);
+      this.#unsettled.delete(node.at);
+      if (watts !== undefined) {
+        this.#history.push({ at: node.at, watts, ages: node.ages, mu: node.mu });
+        if (node.ages.some((age) => age > 0)) {
+          this.#busy++;
+          this.#addsUp += node.fits ? 1 : 0;
+        }
+      }
+    }
+    const kept = this.#settledAt - HISTORY_MS;
+    if (this.#history.length > 0 && this.#history[0]!.at < kept) {
+      this.#history = this.#history.filter(({ at }) => at >= kept);
     }
     // What is settled is not looked at again: let it go.
     for (const node of this.#beam.nodes) {
@@ -785,6 +839,79 @@ export class ModelWatcher {
     }
   }
 
+  /**
+   * Whether the model would correct the rules on a phase they saw
+   * differently, and why: whether its account of the readings in dispute
+   * adds up where theirs does not. Theirs is the model's with the phase's
+   * part on or off as the rules had the phase.
+   */
+  judge(phase: string, rules: ModelRun | undefined, model: ModelRun | undefined): Verdict {
+    const unready = this.#unready();
+    if (unready) {
+      return { corrects: false, reason: unready };
+    }
+    const config = modelPhases(this.#phases).find(({ name }) => name === phase);
+    const part = config ? this.#model.parts.findIndex((each) => each.minWatts === config.minWatts && each.maxWatts === config.maxWatts) : -1;
+    const within = (run: ModelRun | undefined, at: number) => run !== undefined && at >= run.from && at < run.until;
+    let disputed = 0;
+    const mine = { fit: 0, off: 0 };
+    const theirs = { fit: 0, off: 0 };
+    const add = (account: typeof mine, ages: number[], settled: Settled) => {
+      const { mean, variance } = expected(this.#model, ages, settled.mu, 0);
+      account.off += Math.abs(settled.watts - mean);
+      account.fit += Math.abs(settled.watts - mean) < 4 * Math.sqrt(variance) ? 1 : 0;
+    };
+    // Within the rules' phase the part may rest for a while, a heater between
+    // two switchings on: they say it was on from their start to where the
+    // model has it first on, and from where it has it last on to their end.
+    const onAt = this.#history.filter((settled) => within(rules, settled.at) && settled.ages[part]! > 0).map(({ at }) => at);
+    const claimed = (at: number) => within(rules, at) && (onAt.length === 0 || at < onAt[0]! || at > onAt[onAt.length - 1]!);
+    for (const settled of part < 0 ? [] : this.#history) {
+      if (!within(rules, settled.at) && !within(model, settled.at)) {
+        continue;
+      }
+      const modelOn = settled.ages[part]! > 0;
+      const rulesOn = within(rules, settled.at) ? claimed(settled.at) || modelOn : false;
+      // A reading in the band the rules saw, and let pass for being too short
+      // or too long: they do not say the part was off, only that it was no
+      // phase (7.11.2026: a heater on for 177 s of 180).
+      const inBand = settled.watts >= config!.minWatts && settled.watts < (config!.maxWatts ?? Infinity);
+      if (rulesOn === modelOn || (!rulesOn && inBand)) {
+        continue;
+      }
+      disputed++;
+      add(mine, settled.ages, settled);
+      add(theirs, settled.ages.map((age, index) => (index === part ? (rulesOn ? 1 : 0) : age)), settled);
+    }
+    if (disputed === 0) {
+      return { corrects: false, reason: 'the part on and off as the rules have it, the phase cut differently' };
+    }
+    const corrects = mine.fit >= CORRECT_FIT * disputed && theirs.fit <= RULES_FIT * disputed;
+    const watts = (account: typeof mine) => `${Math.round(account.off / disputed)} W`;
+    return {
+      corrects,
+      reason: `the rules' account off by ${watts(theirs)} over ${disputed} reading${disputed === 1 ? '' : 's'}, the model's by ${watts(mine)}`,
+    };
+  }
+
+  /** Why the model would not correct the rules at all yet, if it would not. */
+  #unready(): string | undefined {
+    const { sessions, steady = 0 } = this.#model.params;
+    if (sessions < READY_SESSIONS) {
+      return `learned from ${sessions} session${sessions === 1 ? '' : 's'} only, needs ${READY_SESSIONS}`;
+    }
+    if (steady < READY_STEADY) {
+      return 'not yet learned about the same twice running';
+    }
+    if (this.#busy < READY_READINGS) {
+      return `seen ${this.#busy} readings with something on only, needs ${READY_READINGS}`;
+    }
+    if (this.#addsUp < READY_FIT * this.#busy) {
+      return `its accounts add up for ${Math.round((100 * this.#addsUp) / this.#busy)} % of the readings only, needs ${100 * READY_FIT} %`;
+    }
+    return undefined;
+  }
+
   /** The longest hold of the phases of a part's band that have one: see phaseRuns. */
   #holdMs(part: number): number {
     const { minWatts, maxWatts } = this.#model.parts[part]!;
@@ -794,15 +921,65 @@ export class ModelWatcher {
     return Math.max(0, ...holds);
   }
 
-  /** The runs over whose hold is over too, as phases. */
+  /**
+   * The runs over whose hold is over too, as phases: over by what is settled,
+   * not by the clock, or a heater's next switching on in a few seconds, not
+   * settled yet, would be missed and the heating cut short (6.11.2026: 515 s
+   * of 1253).
+   */
   #tell(at: number): ModelRun[] {
-    const ready = this.#done.filter(({ part, until }) => until + this.#holdMs(part) <= at && !this.#edges.running(part));
+    // A part's runs within its hold of each other are one: told together once
+    // the last is over and its hold too, or a later run starts after it.
+    const ready: PartRun[] = [];
+    for (let part = 0; part < this.#model.parts.length; part++) {
+      const holdMs = this.#holdMs(part);
+      const runs = this.#done.filter((run) => run.part === part).sort((a, b) => a.from - b.from);
+      let chain: PartRun[] = [];
+      for (const [index, run] of runs.entries()) {
+        chain.push(run);
+        const next = runs[index + 1];
+        if (next ? next.from - run.until >= holdMs : run.until + holdMs <= at && !this.#edges.running(part)) {
+          ready.push(...chain);
+        }
+        if (!next || next.from - run.until >= holdMs) {
+          chain = [];
+        }
+      }
+    }
     if (ready.length === 0) {
       return [];
     }
     this.#done = this.#done.filter((run) => !ready.includes(run));
     return phaseRuns(this.#phases, this.#model.params, ready);
   }
+}
+
+/** A reading settled, and what the model made of it. */
+interface Settled {
+  at: number;
+  watts: number;
+  ages: number[];
+  mu: number;
+}
+
+/** Whether the model would correct the rules on a phase, and why. */
+export interface Verdict {
+  corrects: boolean;
+  reason: string;
+}
+
+/**
+ * Whether what was learned now is about what was learned before: each part
+ * drawing within twice its spread of before, and the level within 50 W.
+ */
+export function aboutTheSame(before: ModelParams, now: ModelParams): boolean {
+  return before.parts.length === now.parts.length &&
+    before.parts.every((part, index) => {
+      const other = now.parts[index]!;
+      return part.maxWatts === undefined
+        ? Math.abs(before.level - now.level) <= 50
+        : Math.abs(part.mean - other.mean) <= 2 * Math.max(part.sd, other.sd, 2);
+    });
 }
 
 /** A line for the log: what was learned. */
@@ -832,7 +1009,7 @@ function typicalRuns(runs: number[]): string {
 
 /** How long after a run ends both sides have told it: the longest hold, the lag, and some. */
 const COMPARE_AFTER_MS = 120_000;
-/** Two runs of a phase starting this close are the same one. */
+/** Two runs of a phase starting this close, or overlapping, are the same one. */
 const SAME_START_MS = 8000;
 /** Two runs of the same one agree when they last this nearly as long. */
 const SAME_LENGTH_MS = 2000;
@@ -844,6 +1021,8 @@ export interface Compared {
   rules: number | undefined;
   model: number | undefined;
   agree: boolean;
+  /** The runs themselves, to judge by. */
+  runs: { rules?: ModelRun; model?: ModelRun };
 }
 
 /**
@@ -854,8 +1033,16 @@ export interface Compared {
 export class Comparison {
   #rules: ModelRun[] = [];
   #model: ModelRun[] = [];
+  /** The phases the rules have on, since when: they tell a run only once it is over. */
+  #open = new Map<string, number>();
+
+  /** A phase the rules have just turned on, from when. */
+  opened(phase: string, from: number): void {
+    this.#open.set(phase, from);
+  }
 
   rule(run: ModelRun): void {
+    this.#open.delete(run.phase);
     this.#rules.push(run);
   }
 
@@ -865,22 +1052,26 @@ export class Comparison {
 
   settle(at: number): Compared[] {
     const ready = (run: ModelRun) => run.until + COMPARE_AFTER_MS <= at;
+    const same = (a: ModelRun, b: ModelRun) => a.phase === b.phase &&
+      (Math.abs(a.from - b.from) <= SAME_START_MS || (a.from < b.until && b.from < a.until));
     const told: Compared[] = [];
     const seconds = (run: ModelRun) => Math.round((run.until - run.from) / 1000);
     for (const rule of this.#rules.filter(ready)) {
-      const match = this.#model.find((run) => run.phase === rule.phase && Math.abs(run.from - rule.from) <= SAME_START_MS);
+      const match = this.#model.find((run) => same(run, rule));
       if (match && !ready(match)) {
         continue;
       }
       this.#rules = this.#rules.filter((run) => run !== rule);
       this.#model = this.#model.filter((run) => run !== match);
       const agree = match !== undefined && Math.abs(match.until - match.from - (rule.until - rule.from)) <= SAME_LENGTH_MS;
-      told.push({ phase: rule.phase, at: rule.from, rules: seconds(rule), model: match && seconds(match), agree });
+      told.push({ phase: rule.phase, at: rule.from, rules: seconds(rule), model: match && seconds(match), agree, runs: { rules: rule, ...(match ? { model: match } : {}) } });
     }
     for (const run of this.#model.filter(ready)) {
-      if (!this.#rules.some((rule) => rule.phase === run.phase && Math.abs(run.from - rule.from) <= SAME_START_MS)) {
+      const open = this.#open.get(run.phase);
+      const waiting = open !== undefined && (Math.abs(run.from - open) <= SAME_START_MS || open < run.until);
+      if (!waiting && !this.#rules.some((rule) => same(rule, run))) {
         this.#model = this.#model.filter((each) => each !== run);
-        told.push({ phase: run.phase, at: run.from, rules: undefined, model: seconds(run), agree: false });
+        told.push({ phase: run.phase, at: run.from, rules: undefined, model: seconds(run), agree: false, runs: { model: run } });
       }
     }
     return told.sort((a, b) => a.at - b.at);

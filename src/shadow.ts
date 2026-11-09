@@ -11,8 +11,8 @@ import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 
 import { readJson, writeJson } from './json-file.ts';
-import { Comparison, describeParams, fits, initialParams, modelPhases, ModelWatcher } from './model.ts';
-import type { Compared, ModelParams, ModelRun } from './model.ts';
+import { aboutTheSame, Comparison, describeParams, fits, initialParams, modelPhases, ModelWatcher } from './model.ts';
+import type { Compared, ModelParams, ModelRun, Verdict } from './model.ts';
 import type { LearnRequest } from './model-worker.ts';
 import type { PhaseChange, PhaseConfig } from './phases.ts';
 
@@ -64,23 +64,28 @@ export class ModelShadow {
 
   /** A phase as the rules saw it. */
   rule(phase: string, change: PhaseChange): void {
-    if (!this.#phases.some(({ name }) => name === phase) || (change.active && !change.short)) {
+    if (!this.#phases.some(({ name }) => name === phase)) {
       return;
     }
     const from = change.from ?? change.since;
-    if (from !== undefined) {
-      this.#comparison.rule({ phase, from, until: change.until ?? change.at });
+    if (change.active && !change.short) {
+      this.#comparison.opened(phase, from ?? change.at);
+      return;
+    }
+    const until = change.until ?? change.at;
+    if (from !== undefined && until >= from) {
+      this.#comparison.rule({ phase, from, until });
     }
   }
 
   tick(at: number): void {
     this.#told(this.#watcher.tick(at));
     for (const compared of this.#comparison.settle(at)) {
-      const line = `${this.#device}: model watching, ${describe(compared)}`;
       if (compared.agree) {
-        this.#log.debug(line);
+        this.#log.debug(`${this.#device}: model watching, ${describe(compared)}`);
       } else {
-        this.#log.info(line);
+        const verdict = this.#watcher.judge(compared.phase, compared.runs.rules, compared.runs.model);
+        this.#log.info(`${this.#device}: model watching, ${describe(compared, verdict)}`);
       }
     }
     if (at >= this.#learnAt && !this.#worker) {
@@ -110,6 +115,8 @@ export class ModelShadow {
         this.#log.debug(`${this.#device}: model watching, nothing recorded to learn from yet`);
         return;
       }
+      const before = this.#watcher.params;
+      params.steady = before.sessions > 0 && aboutTheSame(before, params) ? (before.steady ?? 0) + 1 : 0;
       try {
         writeJson(this.#path, params);
       } catch (error) {
@@ -146,7 +153,12 @@ function savedAt(path: string): number {
 const clock = (at: number): string => new Date(at).toTimeString().slice(0, 8);
 const lasted = (seconds: number | undefined): string => (seconds === undefined ? 'none' : `${seconds} s`);
 
-/** "Bezug 08:28:53: rules 23 s, model 27 s". */
-export function describe({ phase, at, rules, model }: Compared): string {
-  return `${phase} ${clock(at)}: rules ${lasted(rules)}, model ${lasted(model)}`;
+/**
+ * "Bezug 08:28:53: rules 23 s, model 27 s", and where they differ whether the
+ * model would have corrected the rules: "— would correct: the rules' account
+ * off by 54 W over 4 readings, the model's by 2 W".
+ */
+export function describe({ phase, at, rules, model }: Compared, verdict?: Verdict): string {
+  const line = `${phase} ${clock(at)}: rules ${lasted(rules)}, model ${lasted(model)}`;
+  return verdict ? `${line} — ${verdict.corrects ? 'would correct' : 'would leave it'}: ${verdict.reason}` : line;
 }
