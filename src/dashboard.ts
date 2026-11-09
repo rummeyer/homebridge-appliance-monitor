@@ -42,11 +42,11 @@ export interface LiveAppliance {
   typicalSeconds?: number;
   /** Running for longer than its overtimeMinutes. */
   overtime?: boolean;
-  /** Not running for longer than its idleOnMinutes. */
+  /** Not running for longer than its idleMinutes. */
   idleOn?: boolean;
   /** When Overtime turns on, or did, in ms: while it runs, if overtimeMinutes is set. */
   overtimeAt?: number;
-  /** When Idle turns on, or did, in ms: while it counts, if idleOnMinutes is set. */
+  /** When Idle turns on, or did, in ms: while it counts, if idleMinutes is set. */
   idleOnAt?: number;
   /** The appliance whose plug measures this one too, so the total leaves it out. */
   partOf?: string;

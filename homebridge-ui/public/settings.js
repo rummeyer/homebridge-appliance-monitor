@@ -26,8 +26,8 @@
     (seconds !== undefined && seconds < MIN_POLL_SECONDS ? `At least ${MIN_POLL_SECONDS} s; shorter asks every ${MIN_POLL_SECONDS} s.` : '');
   /** As usableMinutes in config.ts. */
   /** What Idle counts: from the end of a phase, or from when it stops running. */
-  const idleOnHelp = (device) => (device.idleOnFrom
-    ? `This long after the end of ${device.idleOnFrom}, or of another phase after it.`
+  const idleOnHelp = (device) => (device.idleFrom
+    ? `This long after the end of ${device.idleFrom}, or of another phase after it.`
     : 'On this long without running.');
   const minutesError = (minutes) => (minutes !== undefined && !(minutes > 0) ? 'More than 0 minutes, or empty for none.' : '');
   /** As DEFAULT_DASHBOARD_PORT and usableDashboardPort in config.ts. */
@@ -209,6 +209,11 @@
     let configs = await loadConfigs(homebridge);
     const config = configs[0];
     config.devices = Array.isArray(config.devices) ? config.devices.filter((d) => d && typeof d === 'object') : [];
+    // Settings under the names earlier versions gave them, renamed to today's
+    // and handed to Homebridge at once: the next Save writes them so.
+    if (config.devices.map((device) => root.ApplianceMigrate.currentDevice(device)).some(Boolean)) {
+      void homebridge.updatePluginConfig(configs);
+    }
     const pairedNames = new Set(paired);
     /** Paired itself, or sharing the pairing of one that is. */
     const isPairedDevice = (device) => pairedNames.has(device.name) || Boolean(device.pairedWith && pairedNames.has(device.pairedWith));
@@ -228,20 +233,6 @@
 
     /** Hands the config to Homebridge, a moment after the last change. */
     function changed() {
-      // Settings of earlier versions that are no longer used: the Finished
-      // switch (Running going off says the same), when Finished ended, and
-      // the off level.
-      for (const device of config.devices) {
-        for (const key of ['finishedSwitch', 'finishedSensor', 'finishedReset', 'finishedResetMinutes']) {
-          delete device[key];
-        }
-        if (device.thresholds) {
-          delete device.thresholds.offWatts;
-          if (!Object.keys(device.thresholds).length) {
-            delete device.thresholds;
-          }
-        }
-      }
       clearTimeout(pending);
       pending = setTimeout(() => {
         pending = undefined;
@@ -308,17 +299,17 @@
     /**
      * What a phase counts, as one choice: every draw in its range, only one
      * coming down into it, or — by difference — also one hidden under something
-     * bigger. Read from the names each had before.
+     * bigger. Saved as `counts`; what came before, see migrate.js.
      */
     const COUNTS = [
       ['always', 'Always'],
-      ['down', 'Coming down'],
-      ['difference', 'By difference'],
+      ['comingDown', 'Coming down'],
+      ['byDifference', 'By difference'],
     ];
     const COUNTS_HELP = {
       always: 'Every draw in the range',
-      down: 'Only when the draw comes down into the range, as a washing machine done after its run; not when it rises into it',
-      difference: 'Also while something bigger runs on top, as a pump under a heater: seen as the difference, and over when that is gone',
+      comingDown: 'Only when the draw comes down into the range, as a washing machine done after its run; not when it rises into it',
+      byDifference: 'Also while something bigger runs on top, as a pump under a heater: seen as the difference, and over when that is gone',
     };
     /** A plug that reports too seldom for By difference, as an Eve Energy: see reportSeconds. */
     function slowReports(device) {
@@ -328,7 +319,7 @@
     const SLOW_WARNING = 'This plug reports too seldom for "By difference", which looks for steps a second long. Choose "Always".';
     /** Under the phases, while one counts by difference on a plug that reports too seldom for it. */
     function slowWarningLine(device) {
-      const show = slowReports(device) && (device.phases ?? []).some((phase) => countsOf(phase) === 'difference');
+      const show = slowReports(device) && (device.phases ?? []).some((phase) => countsOf(phase) === 'byDifference');
       return el('div', { class: 'om-set-help om-set-slow', hidden: !show }, ...(show ? [el('span', { class: 'text-danger' }, SLOW_SIGN), ` ${SLOW_WARNING}`] : []));
     }
     function drawSlowWarning(device) {
@@ -337,7 +328,7 @@
 
     /** The choices for Counts, By difference marked for a plug that reports too seldom for it. */
     function countsChoices(device) {
-      return slowReports(device) ? COUNTS.map(([key, label]) => [key, key === 'difference' ? `${SLOW_SIGN} ${label}` : label]) : COUNTS;
+      return slowReports(device) ? COUNTS.map(([key, label]) => [key, key === 'byDifference' ? `${SLOW_SIGN} ${label}` : label]) : COUNTS;
     }
     /**
      * The Counts list red while it says By difference on a plug that reports
@@ -349,27 +340,24 @@
         return;
       }
       for (const option of select.options) {
-        option.style.color = option.value === 'difference' ? 'var(--bs-danger, #dc3545)' : 'var(--bs-body-color)';
+        option.style.color = option.value === 'byDifference' ? 'var(--bs-danger, #dc3545)' : 'var(--bs-body-color)';
       }
-      select.classList.toggle('text-danger', select.value === 'difference');
+      select.classList.toggle('text-danger', select.value === 'byDifference');
     }
     function countsCell(device, phase) {
       const counts = countsOf(phase);
       const label = Object.fromEntries(COUNTS)[counts];
-      return counts === 'difference' && slowReports(device)
+      return counts === 'byDifference' && slowReports(device)
         ? [el('span', { class: 'text-danger' }, SLOW_SIGN), ` ${label}`]
         : [label];
     }
 
     function countsHelp(device, counts) {
-      return counts === 'difference' && slowReports(device) ? `${COUNTS_HELP.difference}. ${SLOW_WARNING}` : COUNTS_HELP[counts];
+      return counts === 'byDifference' && slowReports(device) ? `${COUNTS_HELP.byDifference}. ${SLOW_WARNING}` : COUNTS_HELP[counts];
     }
 
     function countsOf(phase) {
-      if ((phase.byDifference ?? phase.offOnDrop ?? phase.offBelow) === true) {
-        return 'difference';
-      }
-      return (phase.onDown ?? phase.rampDown ?? phase.fromAbove) === true ? 'down' : 'always';
+      return COUNTS.some(([key]) => key === phase.counts) ? phase.counts : 'always';
     }
 
     function choice(value, options, onChange) {
@@ -576,11 +564,11 @@
       const iconField = field('Icon', el('div', { class: 'om-set-icon' }, iconPreview, iconList), 'On its dashboard tile, in the Home look.');
 
       // What Idle counts, under its field; changes with what it counts from.
-      const idleOnField = field('Idle after (min)', number(device.idleOnMinutes, 'off', (value, input) => {
-        setOrDrop(device, 'idleOnMinutes', numberOrUndefined(value));
-        showError(input, minutesError(device.idleOnMinutes));
+      const idleOnField = field('Idle after (min)', number(device.idleMinutes, 'off', (value, input) => {
+        setOrDrop(device, 'idleMinutes', numberOrUndefined(value));
+        showError(input, minutesError(device.idleMinutes));
         changed();
-      }, 1), idleOnHelp(device), minutesError(device.idleOnMinutes));
+      }, 1), idleOnHelp(device), minutesError(device.idleMinutes));
 
       return el('div', {},
         el('div', { class: 'om-set-section' },
@@ -613,23 +601,21 @@
                   changed();
                 }),
               'Changing it replaces it in HomeKit, with its automations.'),
-            // 1.7.0 called Overtime leftOnMinutes; changing it moves it over.
-            field('Overtime after (min)', number(device.overtimeMinutes ?? device.leftOnMinutes, 'off', (value, input) => {
-              delete device.leftOnMinutes;
+            field('Overtime after (min)', number(device.overtimeMinutes, 'off', (value, input) => {
               setOrDrop(device, 'overtimeMinutes', numberOrUndefined(value));
               showError(input, minutesError(device.overtimeMinutes));
               changed();
             }, 1), 'Running this long in one go.',
-            minutesError(device.overtimeMinutes ?? device.leftOnMinutes))),
+            minutesError(device.overtimeMinutes))),
           // Idle's two fields on a line of their own: they belong together.
           el('div', { class: 'om-set-grid om-set-rows' },
             idleOnField,
             // Only for an appliance with phases: Idle may count from the end of one.
             phaseNames(device).length > 0 && field('Idle counted from',
-              choice(phaseNames(device).includes(device.idleOnFrom) ? device.idleOnFrom : '',
+              choice(phaseNames(device).includes(device.idleFrom) ? device.idleFrom : '',
                 [['', 'Not running'], ...phaseNames(device).map((name) => [name, `End of ${name}`])],
                 (value) => {
-                  setOrDrop(device, 'idleOnFrom', value || undefined);
+                  setOrDrop(device, 'idleFrom', value || undefined);
                   idleOnField.querySelector('.om-set-help').textContent = idleOnHelp(device);
                   changed();
                 }),
@@ -729,9 +715,9 @@
           el('td', {}, phase.name || '(no name)'),
           el('td', {}, phase.minWatts ?? '–'),
           el('td', {}, phase.maxWatts ?? 'none'),
-          el('td', {}, phase.minSeconds ?? 5),
-          el('td', {}, phase.holdSeconds ?? 30),
-          el('td', {}, phase.maxSeconds ?? 'any'),
+          el('td', {}, phase.onAfterSeconds ?? 5),
+          el('td', {}, phase.offAfterSeconds ?? 30),
+          el('td', {}, phase.shorterThanSeconds ?? 'any'),
           el('td', { title: countsHelp(device, countsOf(phase)), style: 'white-space: nowrap' }, ...countsCell(device, phase)),
           el('td', {}, phase.sensor !== false ? 'yes' : 'no'),
           el('td', {}, phase.count === true ? 'yes' : 'no')))));
@@ -787,20 +773,14 @@
           }), 'Name'),
           labelled(number(phase.minWatts, '', (value) => update((p) => setOrDrop(p, 'minWatts', numberOrUndefined(value)))), 'From (W)'),
           labelled(number(phase.maxWatts, 'none', (value) => update((p) => setOrDrop(p, 'maxWatts', numberOrUndefined(value)))), 'To (W)'),
-          labelled(number(phase.minSeconds, '5', (value) => update((p) => setOrDrop(p, 'minSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
-          labelled(number(phase.holdSeconds, '30', (value) => update((p) => setOrDrop(p, 'holdSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
-          labelled(number(phase.maxSeconds, 'any', (value) => update((p) => setOrDrop(p, 'maxSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
+          labelled(number(phase.onAfterSeconds, '5', (value) => update((p) => setOrDrop(p, 'onAfterSeconds', numberOrUndefined(value), 5))), 'On after (s)'),
+          labelled(number(phase.offAfterSeconds, '30', (value) => update((p) => setOrDrop(p, 'offAfterSeconds', numberOrUndefined(value), 30))), 'Off after (s)'),
+          labelled(number(phase.shorterThanSeconds, 'any', (value) => update((p) => setOrDrop(p, 'shorterThanSeconds', numberOrUndefined(value)))), 'Shorter than (s)'),
           el('div', { class: 'om-set-phase-switches' },
             (() => {
               const counts = countsOf(phase);
               const list = labelled(choice(counts, countsChoices(device), (value) => {
-                update((p) => {
-                  for (const key of ['fromAbove', 'rampDown', 'offBelow', 'offOnDrop']) {
-                    delete p[key];
-                  }
-                  setOrDrop(p, 'onDown', value === 'down', false);
-                  setOrDrop(p, 'byDifference', value === 'difference', false);
-                });
+                update((p) => setOrDrop(p, 'counts', value, 'always'));
                 list.title = countsHelp(device, value);
                 markSlow(list, device);
                 drawSlowWarning(device);

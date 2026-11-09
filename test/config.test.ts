@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
+  currentDevice,
   duplicateNames,
   isChildBridgeProcess,
   showsInHomeKit,
@@ -79,7 +81,7 @@ test('phases need a name, once each, and a range that goes up; a wrong one costs
     phases: [{ ...heating, minSeconds: undefined, holdSeconds: undefined, maxSeconds: undefined }],
     problems: [],
   });
-  assert.deepEqual(check([{ ...heating, name: ' Heating ', minSeconds: 3, holdSeconds: null }]).phases, [
+  assert.deepEqual(check([{ ...heating, name: ' Heating ', onAfterSeconds: 3, offAfterSeconds: null }]).phases, [
     { ...heating, minSeconds: 3, holdSeconds: undefined, maxSeconds: undefined },
   ]);
 
@@ -95,7 +97,7 @@ test('phases need a name, once each, and a range that goes up; a wrong one costs
   assert.match(mixed.problems[0]!, /phase 2 has no name/);
   assert.match(mixed.problems[1]!, /"Heating" is there twice/);
   assert.match(mixed.problems[2]!, /"Brewing" needs its "to" to be more than its "from"/);
-  assert.match(mixed.problems[3]!, /holdSeconds/);
+  assert.match(mixed.problems[3]!, /offAfterSeconds/);
   assert.match(check('Heating').problems[0]!, /not a list/);
 });
 
@@ -148,30 +150,30 @@ test('Overtime and Idle need a number of minutes; anything else costs only the s
   assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 240 }, 'overtime'), { minutes: 240 });
   assert.deepEqual(usableMinutes({ name: 'TV', leftOnMinutes: 240 }, 'overtime'), { minutes: 240 }, "1.7.0's name");
   assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 300, leftOnMinutes: 240 }, 'overtime'), { minutes: 300 });
-  assert.deepEqual(usableMinutes({ name: 'TV', idleOnMinutes: 30 }, 'idleOn'), { minutes: 30 });
+  assert.deepEqual(usableMinutes({ name: 'TV', idleMinutes: 30 }, 'idleOn'), { minutes: 30 });
   assert.deepEqual(usableMinutes({ name: 'TV', overtimeMinutes: 240 }, 'idleOn'), { minutes: undefined });
   assert.deepEqual(usableMinutes({ name: 'TV' }, 'overtime'), { minutes: undefined });
-  assert.deepEqual(usableMinutes({ name: 'TV', idleOnMinutes: null as unknown as number }, 'idleOn'), { minutes: undefined });
+  assert.deepEqual(usableMinutes({ name: 'TV', idleMinutes: null as unknown as number }, 'idleOn'), { minutes: undefined });
   for (const wrong of [0, -5, 'long']) {
     const overtime = usableMinutes({ name: 'TV', overtimeMinutes: wrong as number }, 'overtime');
     assert.equal(overtime.minutes, undefined);
     assert.match(overtime.problem!, /no Overtime sensor/);
-    const idleOn = usableMinutes({ name: 'TV', idleOnMinutes: wrong as number }, 'idleOn');
+    const idleOn = usableMinutes({ name: 'TV', idleMinutes: wrong as number }, 'idleOn');
     assert.equal(idleOn.minutes, undefined);
-    assert.match(idleOn.problem!, /idleOnMinutes .* no Idle sensor/);
+    assert.match(idleOn.problem!, /idleMinutes .* no Idle sensor/);
   }
   assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, overtimeMinutes: 240 }), 'a sensor is something to show');
-  assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, idleOnMinutes: 30 }));
+  assert.ok(showsInHomeKit({ name: 'TV', runningSwitch: false, idleMinutes: 30 }));
 });
 
 test('Idle counts from the end of one of its phases, or else from when it stops running', () => {
   const phases = [{ name: 'Bezug', minWatts: 30 }, { name: 'Milchschaum', minWatts: 450 }];
-  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: 'Bezug' }, phases), { from: 'Bezug' });
-  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: ' Bezug ' }, phases), { from: 'Bezug' });
+  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleFrom: 'Bezug' }, phases), { from: 'Bezug' });
+  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleFrom: ' Bezug ' }, phases), { from: 'Bezug' });
   assert.deepEqual(usableIdleOnFrom({ name: 'Coffee' }, phases), { from: undefined });
-  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleOnFrom: '' }, phases), { from: undefined });
+  assert.deepEqual(usableIdleOnFrom({ name: 'Coffee', idleFrom: '' }, phases), { from: undefined });
   for (const wrong of ['Espresso', 42]) {
-    const { from, problem } = usableIdleOnFrom({ name: 'Coffee', idleOnFrom: wrong as string }, phases);
+    const { from, problem } = usableIdleOnFrom({ name: 'Coffee', idleFrom: wrong as string }, phases);
     assert.equal(from, undefined);
     assert.match(problem!, /none of its phases; Idle counts from when it stops running/);
   }
@@ -195,28 +197,74 @@ test('a phase marked to be counted keeps the mark; a mark that is not on or off 
   assert.match(check({ name: 'Bezug', minWatts: 30, maxWatts: 100, count: 'yes' }).problems[0]!, /count/);
 });
 
-test('a phase may be on down only (rampDown in 1.1.1, fromAbove in 1.1.0); a mark that is not on or off is refused', () => {
+test('what a phase counts: always, coming down, or by difference; read from the switches of earlier versions too', () => {
   const check = (phase: object) => usablePhases({ name: 'Waschmaschine', phases: [phase as PhaseConfig] });
-  assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, onDown: true }).phases[0]!.onDown, true);
-  assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, byDifference: true }).phases[0]!.byDifference, true);
+  assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, counts: 'comingDown' }).phases[0]!.onDown, true);
+  assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, counts: 'byDifference' }).phases[0]!.byDifference, true);
+  const always = check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, counts: 'always' }).phases[0]!;
+  assert.deepEqual([always.onDown, always.byDifference], [undefined, undefined]);
+  assert.match(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, counts: 'sideways' }).problems[0]!, /counts that is none of always, comingDown, byDifference/);
+  assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, onDown: true }).phases[0]!.onDown, true, 'as up to 1.22 called it');
+  assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, byDifference: true }).phases[0]!.byDifference, true, 'as up to 1.22 called it');
   assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, offOnDrop: true }).phases[0]!.byDifference, true, 'as 1.20 called it');
   assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, offBelow: true }).phases[0]!.byDifference, true, 'as 1.18 and 1.19 called it');
-  assert.match(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, byDifference: 'yes' }).problems[0]!, /byDifference/);
-  const both = check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, onDown: true, byDifference: true });
-  assert.match(both.problems[0]!, /coming down and by difference/);
-  assert.deepEqual([both.phases[0]!.onDown, both.phases[0]!.byDifference], [false, true], 'by difference, as one of the two');
-  assert.match(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, onDown: 'yes' }).problems[0]!, /onDown/);
   assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, fromAbove: true }).phases[0]!.onDown, true, 'as 1.1.0 called it');
   assert.equal(check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, rampDown: true }).phases[0]!.onDown, true, 'as 1.1.1 called it');
+  const both = check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, onDown: true, byDifference: true }).phases[0]!;
+  assert.deepEqual([both.onDown, both.byDifference], [undefined, true], 'by difference, as one of the two');
+  assert.equal(check({ name: 'Pumpe', minWatts: 45, maxWatts: 100, counts: 'always', byDifference: true }).phases[0]!.byDifference, undefined,
+    "today's name wins");
   assert.equal('fromAbove' in check({ name: 'Gewaschen', minWatts: 2, maxWatts: 4.5, fromAbove: true }).phases[0]!, false);
 });
 
 test('a phase may be only the short draws, if it can still come on before its limit', () => {
   const check = (phase: object) => usablePhases({ name: 'Coffee', phases: [phase as PhaseConfig] });
-  assert.equal(check({ name: 'Spülen', minWatts: 30, minSeconds: 2, maxSeconds: 10 }).phases[0]!.maxSeconds, 10);
-  assert.equal(check({ name: 'Spülen', minWatts: 30, maxSeconds: null }).phases[0]!.maxSeconds, undefined);
-  assert.match(check({ name: 'Spülen', minWatts: 30, maxSeconds: 0 }).problems[0]!, /maxSeconds/);
-  assert.match(check({ name: 'Spülen', minWatts: 30, maxSeconds: 5 }).problems[0]!, /shorter than/);
+  assert.equal(check({ name: 'Spülen', minWatts: 30, onAfterSeconds: 2, shorterThanSeconds: 10 }).phases[0]!.maxSeconds, 10);
+  assert.equal(check({ name: 'Spülen', minWatts: 30, minSeconds: 2, maxSeconds: 10 }).phases[0]!.maxSeconds, 10, 'as up to 1.22 called it');
+  assert.equal(check({ name: 'Spülen', minWatts: 30, shorterThanSeconds: null }).phases[0]!.maxSeconds, undefined);
+  assert.match(check({ name: 'Spülen', minWatts: 30, shorterThanSeconds: 0 }).problems[0]!, /shorterThanSeconds/);
+  assert.match(check({ name: 'Spülen', minWatts: 30, shorterThanSeconds: 5 }).problems[0]!, /shorter than/);
+});
+
+test("settings saved by any version, under today's names; the settings page renames them alike", () => {
+  const saved = {
+    name: 'Kaffeemaschine',
+    leftOnMinutes: 240,
+    idleOnMinutes: 30,
+    idleOnFrom: 'Bezug',
+    runningSensor: false,
+    finishedSwitch: true,
+    finishedReset: 'timeout',
+    thresholds: { offWatts: 1 },
+    phases: [
+      { name: 'Bezug', minWatts: 45, maxWatts: 100, minSeconds: 15, holdSeconds: 15, byDifference: true, count: true },
+      { name: 'Spülen', minWatts: 45, maxWatts: 100, maxSeconds: 15, offOnDrop: true, onDown: false },
+      { name: 'Gewaschen', minWatts: 2, maxWatts: 5, rampDown: true },
+      { name: 'Aufheizen', minWatts: 1000, onAfterSeconds: 180, minSeconds: 60 },
+    ],
+  };
+  const today = {
+    name: 'Kaffeemaschine',
+    overtimeMinutes: 240,
+    idleMinutes: 30,
+    idleFrom: 'Bezug',
+    runningSwitch: false,
+    phases: [
+      { name: 'Bezug', minWatts: 45, maxWatts: 100, onAfterSeconds: 15, offAfterSeconds: 15, counts: 'byDifference', count: true },
+      { name: 'Spülen', minWatts: 45, maxWatts: 100, shorterThanSeconds: 15, counts: 'byDifference' },
+      { name: 'Gewaschen', minWatts: 2, maxWatts: 5, counts: 'comingDown' },
+      { name: 'Aufheizen', minWatts: 1000, onAfterSeconds: 180 },
+    ],
+  };
+  assert.deepEqual(currentDevice(saved), today);
+  assert.deepEqual(currentDevice(today), today, 'as it is, once renamed');
+
+  const scope: { ApplianceMigrate?: { currentDevice(device: object): boolean } } = {};
+  new Function('window', readFileSync(new URL('../homebridge-ui/public/migrate.js', import.meta.url), 'utf8'))(scope);
+  const onPage = structuredClone(saved);
+  assert.equal(scope.ApplianceMigrate!.currentDevice(onPage), true, 'changed, for the next Save');
+  assert.deepEqual(onPage, today);
+  assert.equal(scope.ApplianceMigrate!.currentDevice(onPage), false, 'and nothing more to change');
 });
 
 test('Running is a switch or an occupancy sensor, nothing else', () => {

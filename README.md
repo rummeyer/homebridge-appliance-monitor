@@ -446,13 +446,13 @@ tell, to hang automations on:
   appliance has been running for a given time in one go — a TV on all
   night, more than ten hours at a desk — and off when it finishes. Set
   **Overtime after** under **In HomeKit** in the settings
-  (`overtimeMinutes`; 1.7.0's `leftOnMinutes` still works, and its Left On
-  sensor becomes Overtime with its automations).
+  (`overtimeMinutes`; 1.7.0's Left On sensor becomes Overtime with its
+  automations).
 - **Idle**, if set: an occupancy sensor that turns on once the
   appliance has not run for a given time, whatever it draws — a PC
   asleep, a TV in standby, at 1 W or at 0 W — and off when it runs again
   or the plug's relay is switched off. Set **Idle after**
-  (`idleOnMinutes`; until 1.12 the sensor was called Idle On, and one
+  (`idleMinutes`; until 1.12 the sensor was called Idle On, and one
   still so called is renamed, with its automations). On a plug without
   a relay it stays on until the appliance runs again. A part counts as running while what it is part of runs, so a
   desk lamp is not idle while the desk is in use.
@@ -460,7 +460,7 @@ tell, to hang automations on:
   An appliance that keeps itself warm, as a coffee machine does, never
   stops running while it is on. For one with phases, Idle can count
   from the end of a phase instead: **Idle counted from** **End of
-  Bezug** (`idleOnFrom`) turns it on 10 minutes, say, after the last
+  Bezug** (`idleFrom`) turns it on 10 minutes, say, after the last
   coffee drawn, whether the machine still keeps warm or has switched
   itself off — and off with the next coffee, or once the plug is switched
   off. While another of its phases is on, such as heating up or frothing
@@ -921,13 +921,13 @@ config it writes looks like this:
 | `devices[].icon` | `outlet` | The icon of its tile in the dashboard's Home look: `tv`, `washer`, `dryer`, `coffee`, `desk-lamp`, `computer` and others — the settings page lists them all. Not shown in HomeKit. |
 | `devices[].partOf` | | Another appliance whose plug also measures this one. It keeps its own figures but stays out of the totals, and draws nothing while that one is off. See [Statistics](#statistics). |
 | `devices[].runningAs` | `switch` | `switch`, `outlet` for the outlet's icon, or `occupancy` for an occupancy sensor (a desk, taken or free). Changing it replaces it in HomeKit, with any automation on it. |
-| `devices[].overtimeMinutes` | none | An Overtime occupancy sensor, on once the appliance has been running this many minutes in one go. Read from `leftOnMinutes` too. See [In the Home app](#in-the-home-app). |
-| `devices[].idleOnMinutes` | none | An Idle occupancy sensor, on once the appliance has not run for this many minutes, whatever it draws; off when it runs again or the plug's relay is switched off. See [In the Home app](#in-the-home-app). |
-| `devices[].idleOnFrom` | none | A phase's name: Idle counts from the end of the last time that phase ran instead, held while another phase is on and counted again from its end. For an appliance that keeps itself warm. |
+| `devices[].overtimeMinutes` | none | An Overtime occupancy sensor, on once the appliance has been running this many minutes in one go. See [In the Home app](#in-the-home-app). |
+| `devices[].idleMinutes` | none | An Idle occupancy sensor, on once the appliance has not run for this many minutes, whatever it draws; off when it runs again or the plug's relay is switched off. See [In the Home app](#in-the-home-app). |
+| `devices[].idleFrom` | none | A phase's name: Idle counts from the end of the last time that phase ran instead, held while another phase is on and counted again from its end. For an appliance that keeps itself warm. |
 | `devices[].thresholds.runWatts` | learned | Running above this, in W. |
 | `devices[].thresholds.startSeconds` | `60` | Seconds above the running level, added up, before it counts as running. |
 | `devices[].thresholds.finishSeconds` | learned | Seconds of quiet before it counts as finished. |
-| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `minSeconds` (in the range, added up, before it is on; 5), `holdSeconds` (out of it before it is off; 30), `maxSeconds` (only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `onDown` (*Counts: Coming down* — only when the draw falls into the range, not when it rises into it; `false`), `byDifference` (*Counts: By difference* — also while something bigger runs on top, started or stopped by a step of its size beside it, over when its difference is gone; see [By difference](#by-difference-something-running-under-something-bigger); `false`, read from `offOnDrop` and `offBelow` as 1.18 to 1.20 called it; not together with `onDown`) and `sensor` (its switch in HomeKit; `true`). |
+| `devices[].phases` | none | Phases: `name`, `minWatts`, and optionally `count` (show it as the appliance's count on the Statistics tab), `maxWatts` (none for no upper end, as for heating), `onAfterSeconds` (*On after*: in the range, added up, before it is on; 5), `offAfterSeconds` (*Off after*: out of it before it is off; 30), `shorterThanSeconds` (*Shorter than*: only draws shorter than this, from entering the range to falling below it; any; see [Phases](#phases)), `counts` (*Counts*: `always`; `comingDown`, only when the draw falls into the range, not when it rises into it; or `byDifference`, also while something bigger runs on top, started or stopped by a step of its size beside it, over when its difference is gone, see [By difference](#by-difference-something-running-under-something-bigger)) and `sensor` (its switch in HomeKit; `true`). |
 | `devices[].messages` | none | MQTT messages of your own: `phase`, `when` (`start` or `end`), `topic` and `payload`, with `{appliance}`, `{phase}`, `{duration}` and `{seconds}` filled in. See [Messages of your own](#messages-of-your-own). |
 | `devices[].pollSeconds` | none | Ask the plug for its power this often, as well as listening for what it reports; at least 2 (less is taken as 2). See [Plugs that report seldom](#plugs-that-report-seldom). |
 | `recordPower` | `true` | Write each reading to a file per day under `appliance-monitor/power/`. The Power tab needs it. |
@@ -942,6 +942,13 @@ config it writes looks like this:
 | `centsPerKwh` | none | What a kWh costs, in cents: the statistics show what each value cost. See [Statistics](#statistics). |
 | `baseFeePerMonth` | none | The fixed fee per month: its share of each period under the total, and the total cost with it. |
 | `currency` | `EUR` | Written after each amount. |
+
+Earlier versions saved some of these under other names: `idleOnMinutes`
+and `idleOnFrom`, a phase's `minSeconds`, `holdSeconds` and `maxSeconds`,
+and what it counts as the switches `onDown` and `byDifference` (before
+them `fromAbove`, `rampDown`, `offBelow` and `offOnDrop`), and
+`leftOnMinutes` and `runningSensor`. They are still read. The settings page
+renames them as it opens, and the next **Save** writes today's names.
 
 ## Files
 

@@ -13,7 +13,7 @@ const coffee: DeviceConfig = {
     { name: 'Bezug', minWatts: 30, maxWatts: 100 },
   ],
   overtimeMinutes: 60,
-  idleOnMinutes: 15,
+  idleMinutes: 15,
 };
 
 const live = (values: Partial<LiveAppliance>): LiveAppliance => ({ name: 'Kaffeemaschine', paired: true, phases: [], ...values });

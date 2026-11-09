@@ -177,14 +177,14 @@
               "placeholder": "off",
               "description": "Sensor on after running this long in one go. Empty: none."
             },
-            "idleOnMinutes": {
+            "idleMinutes": {
               "title": "Idle after (minutes)",
               "type": "number",
               "exclusiveMinimum": 0,
               "placeholder": "off",
               "description": "Sensor on after not running this long, whatever the plug draws, or this long after the end of the phase below. Empty: none."
             },
-            "idleOnFrom": {
+            "idleFrom": {
               "title": "Idle counted from (phase)",
               "type": "string",
               "placeholder": "not running",
@@ -289,34 +289,34 @@
                     "placeholder": "no upper end",
                     "description": "Leave empty for \"from and up\", as for heating."
                   },
-                  "minSeconds": {
+                  "onAfterSeconds": {
                     "title": "On after (seconds in the range, added up)",
                     "type": "integer",
                     "minimum": 0,
                     "placeholder": "5"
                   },
-                  "holdSeconds": {
+                  "offAfterSeconds": {
                     "title": "Off after (seconds out of the range)",
                     "type": "integer",
                     "minimum": 0,
                     "placeholder": "30"
                   },
-                  "maxSeconds": {
+                  "shorterThanSeconds": {
                     "title": "Only if shorter than (seconds in the range)",
                     "type": "integer",
                     "minimum": 1,
                     "placeholder": "any",
                     "description": "Only draws shorter than this are the phase. Since that is known only once the draw is over, the switch then goes on for a moment, like Finished. A rinse beside a coffee: the same range, the coffee on after 10 s, the rinse shorter than 10 s."
                   },
-                  "onDown": {
-                    "title": "Counts: coming down",
-                    "type": "boolean",
-                    "description": "Only when the draw falls into the range from above, not when it rises into it. A washing machine that has finished rests at the same few watts as one just switched on to be loaded. Not together with \"by difference\"."
-                  },
-                  "byDifference": {
-                    "title": "Counts: by difference",
-                    "type": "boolean",
-                    "description": "Also while something bigger runs on top, as a coffee machine's pump under its heater: above the range it is still running, and that time counts towards \"On after\". It is over when its difference is gone: below the range for 3 s, or, above it, a fall by about the range's lower end. Not for heating, whose thermostat drops below the range while it lasts."
+                  "counts": {
+                    "title": "Counts",
+                    "type": "string",
+                    "oneOf": [
+                      { "title": "Always", "enum": ["always"] },
+                      { "title": "Coming down", "enum": ["comingDown"] },
+                      { "title": "By difference", "enum": ["byDifference"] }
+                    ],
+                    "description": "Coming down: only when the draw falls into the range from above, not when it rises into it; a washing machine that has finished rests at the same few watts as one just switched on to be loaded. By difference: also while something bigger runs on top, as a coffee machine's pump under its heater: above the range it is still running, and that time counts towards \"On after\". It is over when its difference is gone: below the range for 3 s, or, above it, a fall by about the range's lower end. Not for heating, whose thermostat drops below the range while it lasts."
                   },
                   "sensor": {
                     "title": "Switch in HomeKit",

@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Settings saved under names that match the settings page.** Idle's
+  `idleOnMinutes` and `idleOnFrom` are `idleMinutes` and `idleFrom`; a
+  phase's `minSeconds`, `holdSeconds` and `maxSeconds` are
+  `onAfterSeconds`, `offAfterSeconds` and `shorterThanSeconds`, and its
+  `onDown` and `byDifference` switches one choice, `counts`: `always`,
+  `comingDown` or `byDifference`. The earlier names, and those before them,
+  are still read; the settings page renames them as it opens, so the next
+  Save writes the new ones.
+
 ## [1.22.4] — 2026-11-08
 
 ### Changed

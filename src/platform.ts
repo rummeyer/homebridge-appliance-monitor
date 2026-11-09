@@ -6,6 +6,7 @@ import { accessoryName, ApplianceAccessory } from './accessory.ts';
 import { chosenEndpoints, describeDevice, meteredDevices } from './bridged.ts';
 import type { MeteredDevice } from './bridged.ts';
 import {
+  currentDevice,
   duplicateNames,
   isChildBridgeProcess,
   showsInHomeKit,
@@ -265,7 +266,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   #validDevices(): DeviceConfig[] {
     const valid: DeviceConfig[] = [];
     const mqttOn = usableMqtt(this.config).url !== undefined;
-    for (const [index, device] of (this.config.devices ?? []).entries()) {
+    for (const [index, saved] of (this.config.devices ?? []).entries()) {
+      // Under today's names, whatever version saved them; see currentDevice.
+      const device = currentDevice(saved);
       const problems = validateDeviceConfig(device, index);
       if (problems.length === 0 && readingsTopic(device) && !mqttOn) {
         problems.push(`"${device.name.trim()}" takes its readings over MQTT, which is not switched on`);
@@ -284,13 +287,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
           this.log.warn(problem);
         }
         const { minutes: overtimeMinutes, problem: overtimeProblem } = usableMinutes(named, 'overtime');
-        const { minutes: idleOnMinutes, problem: idleOnProblem } = usableMinutes(named, 'idleOn');
-        const { from: idleOnFrom, problem: fromProblem } = usableIdleOnFrom(named, phases);
+        const { minutes: idleMinutes, problem: idleOnProblem } = usableMinutes(named, 'idleOn');
+        const { from: idleFrom, problem: fromProblem } = usableIdleOnFrom(named, phases);
         const { messages, problems: messageProblems } = usableMessages(named, phases, mqttOn);
         for (const problem of [overtimeProblem, idleOnProblem, fromProblem, ...messageProblems].filter(Boolean)) {
           this.log.warn(problem!);
         }
-        valid.push({ ...named, phases, pollSeconds, overtimeMinutes, idleOnMinutes, idleOnFrom, messages, leftOnMinutes: undefined });
+        valid.push({ ...named, phases, pollSeconds, overtimeMinutes, idleMinutes, idleFrom, messages });
       }
     }
     for (const name of duplicateNames(valid)) {
@@ -648,8 +651,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       ...(appliance.timed.idleOn ? { idleOn: true } : {}),
       // As #checkTimed counts them.
       ...(device.overtimeMinutes !== undefined && cycle ? { overtimeAt: cycle.startedAt + device.overtimeMinutes * 60_000 } : {}),
-      ...(device.idleOnMinutes !== undefined && appliance.idleSince !== undefined && !(device.idleOnFrom !== undefined && this.#idleHeld(appliance))
-        ? { idleOnAt: appliance.idleSince + device.idleOnMinutes * 60_000 }
+      ...(device.idleMinutes !== undefined && appliance.idleSince !== undefined && !(device.idleFrom !== undefined && this.#idleHeld(appliance))
+        ? { idleOnAt: appliance.idleSince + device.idleMinutes * 60_000 }
         : {}),
     };
   }
@@ -975,21 +978,21 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   /**
    * Overtime: on once the appliance has been running for its overtimeMinutes
    * in one go, off when it finishes. Idle: on once it has not run for its
-   * idleOnMinutes, off when it runs again or its relay is switched off.
+   * idleMinutes, off when it runs again or its relay is switched off.
    * Looked at on every tick, as nothing else happens while a TV runs on all
    * night.
    */
   #checkTimed(appliance: Appliance, now: number): void {
     this.#setTimed(appliance, 'overtime', now, appliance.monitor.progress(now)?.startedAt, 'running');
-    if (appliance.device.idleOnMinutes !== undefined) {
-      const { idleOnFrom } = appliance.device;
-      const doing = idleOnFrom === undefined ? 'not running' : `on, no ${idleOnFrom}`;
+    if (appliance.device.idleMinutes !== undefined) {
+      const { idleFrom } = appliance.device;
+      const doing = idleFrom === undefined ? 'not running' : `on, no ${idleFrom}`;
       this.#setTimed(appliance, 'idleOn', now, this.#idleSince(appliance, now), doing);
     }
   }
 
   /**
-   * Since when the appliance has not run — or, with idleOnFrom, since that
+   * Since when the appliance has not run — or, with idleFrom, since that
    * phase last ended — kept over a restart. Whatever it draws: a TV in a
    * standby that reads 0 W has not run either. A part does not count while
    * its whole runs: what it draws then is in that one's running. Over once
@@ -1005,7 +1008,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     if (watts === undefined || reachable === false) {
       return appliance.idleSince;
     }
-    if (device.idleOnFrom !== undefined) {
+    if (device.idleFrom !== undefined) {
       // Started by the phase ending, and over when it starts again, in #onPhase;
       // held while another phase is on, as heating up after the pump ran at switch-on.
       return this.#idleHeld(appliance) ? undefined : appliance.idleSince;
@@ -1017,8 +1020,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
 
   /** Another phase than the one Idle counts from is on: it is in use, whatever ran before. */
   #idleHeld(appliance: Appliance): boolean {
-    const { idleOnFrom } = appliance.device;
-    return appliance.phases.some((tracker) => tracker.active && tracker.name.trim() !== idleOnFrom);
+    const { idleFrom } = appliance.device;
+    return appliance.phases.some((tracker) => tracker.active && tracker.name.trim() !== idleFrom);
   }
 
   #setIdleSince(appliance: Appliance, since: number | undefined): void {
@@ -1051,8 +1054,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
     const { device } = appliance;
     // Idle counting from this phase: from when it ends, not while it lasts.
-    if (device.idleOnMinutes !== undefined && device.idleOnFrom !== undefined && !appliance.relayOff) {
-      if (device.idleOnFrom === tracker.name.trim()) {
+    if (device.idleMinutes !== undefined && device.idleFrom !== undefined && !appliance.relayOff) {
+      if (device.idleFrom === tracker.name.trim()) {
         this.#setIdleSince(appliance, change.active && !change.short ? undefined : change.at);
       } else if (appliance.idleSince !== undefined && (!change.active || change.short)) {
         // Another phase over: the count starts again from its end.

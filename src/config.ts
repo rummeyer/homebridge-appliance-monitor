@@ -81,42 +81,25 @@ export interface DeviceConfig {
    * day at a desk — and off when it finishes. None if not set.
    */
   overtimeMinutes?: number;
-  /** What overtimeMinutes was called in 1.7.0, as Left On. */
-  leftOnMinutes?: number;
   /**
    * An Idle sensor in HomeKit, which turns on once the appliance has not
    * run for this many minutes, whatever it draws — a PC asleep, a TV in
    * standby, a desk left on overnight — and off when it runs again or the
    * plug's relay is switched off. None if not set.
    */
-  idleOnMinutes?: number;
+  idleMinutes?: number;
   /**
    * What Idle counts from instead: the end of the last time this phase
    * ran — 10 minutes after the last coffee drawn, say, for a coffee machine
    * keeping itself warm, which never stops running. Off again when the
    * phase runs again or the plug's relay is switched off.
    */
-  idleOnFrom?: string;
+  idleFrom?: string;
   /**
    * MQTT messages sent when one of its phases starts or ends, to any topic:
    * a command to a display, say. Needs MQTT switched on.
    */
   messages?: PhaseMessage[];
-  /** What runningSwitch was called while it was a sensor. */
-  runningSensor?: boolean;
-  /**
-   * The Finished switch of earlier versions, and the sensor before it. No
-   * longer used: Running going off is the appliance finishing.
-   */
-  finishedSwitch?: boolean;
-  finishedSensor?: boolean;
-  /**
-   * When Finished went back to Off, once a setting (`off-level`, `timeout`,
-   * `next-start`). No longer used: with nothing in HomeKit telling the two
-   * apart, it only decided when the log said Off.
-   */
-  finishedReset?: string;
-  finishedResetMinutes?: number;
   /**
    * Fixed values instead of learned ones, each on its own. Anything left out
    * is learned from the appliance's cycles.
@@ -138,7 +121,97 @@ export type RunningAs = 'switch' | 'occupancy' | 'outlet';
 export const RUNNING_AS: readonly RunningAs[] = ['switch', 'occupancy', 'outlet'];
 
 /** Whether the appliance has a Running switch; the earlier sensor setting counts too. */
-export const showsRunning = (device: DeviceConfig): boolean => (device.runningSwitch ?? device.runningSensor) !== false;
+export const showsRunning = (device: DeviceConfig): boolean => currentDevice(device).runningSwitch !== false;
+
+/**
+ * Today's name of a device's setting, and what earlier versions called it.
+ * The settings page renames them as it opens (migrate.js, which this
+ * matches), so the next Save writes today's; until then both are read.
+ */
+const DEVICE_KEYS: [string, string[]][] = [
+  ['overtimeMinutes', ['leftOnMinutes']], // Left On, 1.7.0
+  ['idleMinutes', ['idleOnMinutes']], // Idle On, until 1.12
+  ['idleFrom', ['idleOnFrom']],
+  ['runningSwitch', ['runningSensor']], // when Running was a sensor
+];
+const PHASE_KEYS: [string, string[]][] = [
+  ['onAfterSeconds', ['minSeconds']],
+  ['offAfterSeconds', ['holdSeconds']],
+  ['shorterThanSeconds', ['maxSeconds']],
+];
+/**
+ * No longer used: the Finished switch and the sensor before it — Running
+ * going off is the appliance finishing — and when Finished went back to Off.
+ */
+const GONE_DEVICE_KEYS = ['finishedSwitch', 'finishedSensor', 'finishedReset', 'finishedResetMinutes'];
+/** Counts as switches, each with what it was called before: by difference over coming down. */
+const COUNTS_SWITCHES: [Counts, string[]][] = [
+  ['byDifference', ['byDifference', 'offOnDrop', 'offBelow']], // offOnDrop in 1.20, offBelow in 1.18 and 1.19
+  ['comingDown', ['onDown', 'rampDown', 'fromAbove']], // rampDown in 1.1.1, fromAbove in 1.1.0
+];
+
+/** What a phase counts, as the settings page offers it; see PhaseConfig.onDown and byDifference. */
+export type Counts = 'always' | 'comingDown' | 'byDifference';
+export const COUNTS: readonly Counts[] = ['always', 'comingDown', 'byDifference'];
+
+type Settings = Record<string, unknown>;
+
+function renamed(settings: Settings, keys: [string, string[]][]): Settings {
+  const result = { ...settings };
+  for (const [now, before] of keys) {
+    for (const old of before) {
+      if (old in result) {
+        if (result[now] === undefined) {
+          result[now] = result[old];
+        }
+        delete result[old];
+      }
+    }
+  }
+  return result;
+}
+
+/** A phase as saved, under today's names. */
+export function currentPhase(phase: Settings): Settings {
+  const result = renamed(phase, PHASE_KEYS);
+  const switches = COUNTS_SWITCHES.flatMap(([, keys]) => keys).filter((key) => key in result);
+  if (switches.length > 0) {
+    if (result.counts === undefined) {
+      const on = COUNTS_SWITCHES.find(([, keys]) => keys.some((key) => result[key] === true));
+      if (on) {
+        result.counts = on[0];
+      }
+    }
+    for (const key of switches) {
+      delete result[key];
+    }
+  }
+  return result;
+}
+
+/** A device's settings under today's names, whatever version saved them; those no longer used left out. */
+export function currentDevice<T extends object>(device: T): T {
+  if (device === null || typeof device !== 'object') {
+    return device;
+  }
+  const result = renamed(device as Settings, DEVICE_KEYS);
+  for (const key of GONE_DEVICE_KEYS) {
+    delete result[key];
+  }
+  const thresholds = result.thresholds;
+  if (thresholds && typeof thresholds === 'object' && 'offWatts' in thresholds) {
+    const { offWatts: _gone, ...rest } = thresholds as Settings;
+    if (Object.keys(rest).length > 0) {
+      result.thresholds = rest;
+    } else {
+      delete result.thresholds;
+    }
+  }
+  if (Array.isArray(result.phases)) {
+    result.phases = result.phases.map((phase: unknown) => (phase && typeof phase === 'object' ? currentPhase(phase as Settings) : phase));
+  }
+  return result as T;
+}
 
 /** Whether a device shows anything in HomeKit; one with nothing is only counted. */
 export function showsInHomeKit(device: DeviceConfig): boolean {
@@ -386,13 +459,13 @@ export function usablePollSeconds(device: DeviceConfig): { pollSeconds: number |
  * appliance's phases, and why not if it was set but is not.
  */
 export function usableIdleOnFrom(device: DeviceConfig, phases: PhaseConfig[]): { from: string | undefined; problem?: string } {
-  const { name, idleOnFrom } = device;
-  if (idleOnFrom === undefined || idleOnFrom === null || idleOnFrom === '') {
+  const { name, idleFrom } = currentDevice(device);
+  if (idleFrom === undefined || idleFrom === null || idleFrom === '') {
     return { from: undefined };
   }
-  const from = typeof idleOnFrom === 'string' ? idleOnFrom.trim() : '';
+  const from = typeof idleFrom === 'string' ? idleFrom.trim() : '';
   if (!phases.some((phase) => phase.name.trim() === from)) {
-    return { from: undefined, problem: `"${name}" has an idleOnFrom that is none of its phases; Idle counts from when it stops running` };
+    return { from: undefined, problem: `"${name}" has an idleFrom that is none of its phases; Idle counts from when it stops running` };
   }
   return { from };
 }
@@ -460,19 +533,19 @@ export function usableMessages(device: DeviceConfig, phases: PhaseConfig[], mqtt
 /** The sensors that turn on after a time: running too long, or not running for long. */
 export type TimedSensor = 'overtime' | 'idleOn';
 
-export const TIMED_SENSORS: Record<TimedSensor, { key: 'overtimeMinutes' | 'idleOnMinutes'; label: string }> = {
+export const TIMED_SENSORS: Record<TimedSensor, { key: 'overtimeMinutes' | 'idleMinutes'; label: string }> = {
   overtime: { key: 'overtimeMinutes', label: 'Overtime' },
-  idleOn: { key: 'idleOnMinutes', label: 'Idle' },
+  idleOn: { key: 'idleMinutes', label: 'Idle' },
 };
 
 /**
  * After how many minutes the sensor turns on, if it is wanted, and why not
  * if it was set but is no number of minutes. Wrong costs only the sensor,
- * not the plug. Overtime is read from 1.7.0's leftOnMinutes too.
+ * not the plug.
  */
 export function usableMinutes(device: DeviceConfig, sensor: TimedSensor): { minutes: number | undefined; problem?: string } {
   const { key, label } = TIMED_SENSORS[sensor];
-  const minutes = sensor === 'overtime' ? device.overtimeMinutes ?? device.leftOnMinutes : device[key];
+  const minutes = currentDevice(device)[key];
   if (minutes === undefined || minutes === null) {
     return { minutes: undefined };
   }
@@ -502,19 +575,16 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
   }
   const seen = new Set<string>();
   for (const [index, entry] of list.entries()) {
-    const { fromAbove, rampDown, offBelow, offOnDrop, ...rest } = (entry ?? {}) as Partial<PhaseConfig> & {
-      fromAbove?: unknown;
-      rampDown?: unknown;
-      offBelow?: unknown;
-      offOnDrop?: unknown;
-    };
-    // What 1.1.1 called rampDown, and 1.1.0 fromAbove; what 1.20 called offOnDrop, and 1.18 and 1.19 offBelow.
-    const earlier = rampDown ?? fromAbove;
-    const earlierDifference = offOnDrop ?? offBelow;
+    // As saved, under today's names, and as the phase trackers have them.
+    const { onAfterSeconds, offAfterSeconds, shorterThanSeconds, counts, ...rest } =
+      currentPhase(entry && typeof entry === 'object' ? (entry as Settings) : {}) as Partial<PhaseConfig> & Settings;
     const phase: Partial<PhaseConfig> = {
       ...rest,
-      ...(rest.onDown === undefined && earlier !== undefined ? { onDown: earlier as boolean } : {}),
-      ...(rest.byDifference === undefined && earlierDifference !== undefined ? { byDifference: earlierDifference as boolean } : {}),
+      minSeconds: onAfterSeconds as number | undefined,
+      holdSeconds: offAfterSeconds as number | undefined,
+      maxSeconds: shorterThanSeconds as number | undefined,
+      ...(counts === 'comingDown' ? { onDown: true } : {}),
+      ...(counts === 'byDifference' ? { byDifference: true } : {}),
     };
     const name = typeof phase.name === 'string' ? phase.name.trim() : '';
     const { minWatts, maxWatts } = phase;
@@ -535,30 +605,26 @@ export function usablePhases(device: DeviceConfig): { phases: PhaseConfig[]; pro
     } else if (!open && !(typeof maxWatts === 'number' && maxWatts > minWatts)) {
       wrong.push('needs its "to" to be more than its "from", or empty for no upper end');
     }
-    for (const key of ['minSeconds', 'holdSeconds'] as const) {
+    for (const [key, saved] of [['minSeconds', 'onAfterSeconds'], ['holdSeconds', 'offAfterSeconds']] as const) {
       const value = phase[key];
       if (value !== undefined && value !== null && (typeof value !== 'number' || !(value >= 0))) {
-        wrong.push(`has a ${key} that is not a number of 0 or more`);
+        wrong.push(`has an ${saved} that is not a number of 0 or more`);
       }
     }
     const { maxSeconds } = phase;
     if (maxSeconds !== undefined && maxSeconds !== null) {
       if (typeof maxSeconds !== 'number' || !(maxSeconds > 0)) {
-        wrong.push('has a maxSeconds that is not a number above 0');
+        wrong.push('has a shorterThanSeconds that is not a number above 0');
       } else if (maxSeconds <= (typeof phase.minSeconds === 'number' ? phase.minSeconds : DEFAULT_MIN_SECONDS)) {
         wrong.push('needs its "shorter than" to be more than its "on after", or it never happens');
       }
     }
-    for (const key of ['count', 'onDown', 'byDifference'] as const) {
-      const value = phase[key];
-      if (value !== undefined && value !== null && typeof value !== 'boolean') {
-        wrong.push(`has a ${key} that is not on or off`);
-      }
+    const { count } = phase;
+    if (count !== undefined && count !== null && typeof count !== 'boolean') {
+      wrong.push('has a count that is not on or off');
     }
-    // Counts is one of the two, as the settings page offers it: by difference, if both are on.
-    if (phase.onDown === true && phase.byDifference === true) {
-      problems.push(`${what} counts both coming down and by difference, which do not go together; by difference is used`);
-      phase.onDown = false;
+    if (counts !== undefined && counts !== null && !COUNTS.includes(counts as Counts)) {
+      wrong.push(`has a counts that is none of ${COUNTS.join(', ')}`);
     }
     if (wrong.length > 0) {
       problems.push(`${what} ${wrong.join(', and ')}`);

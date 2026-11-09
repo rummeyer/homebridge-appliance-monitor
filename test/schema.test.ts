@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { DEFAULT_DASHBOARD_PORT, MATTER_LOG_LEVELS, MIN_POLL_SECONDS, parsePairingCode } from '../src/config.ts';
+import { COUNTS, DEFAULT_DASHBOARD_PORT, MATTER_LOG_LEVELS, MIN_POLL_SECONDS, parsePairingCode } from '../src/config.ts';
 import { LEARNING_DEFAULTS } from '../src/monitor.ts';
 import { DEFAULT_HOLD_SECONDS, DEFAULT_MIN_SECONDS } from '../src/phases.ts';
 import { DEFAULT_RECORD_DAYS } from '../src/recorder.ts';
@@ -70,11 +70,13 @@ test('a phase on the settings page shows the defaults the plugin falls back to',
   const phase = device.phases.items.properties;
   // Placeholders, not defaults: a default would fill the empty phase the page
   // offers under every plug, and it would no longer be empty.
-  assert.equal(Number(phase.minSeconds.placeholder), DEFAULT_MIN_SECONDS);
-  assert.equal(Number(phase.holdSeconds.placeholder), DEFAULT_HOLD_SECONDS);
-  assert.equal(phase.minSeconds.default, undefined);
-  assert.equal(phase.holdSeconds.default, undefined);
+  assert.equal(Number(phase.onAfterSeconds.placeholder), DEFAULT_MIN_SECONDS);
+  assert.equal(Number(phase.offAfterSeconds.placeholder), DEFAULT_HOLD_SECONDS);
+  assert.equal(phase.onAfterSeconds.default, undefined);
+  assert.equal(phase.offAfterSeconds.default, undefined);
   assert.equal(phase.sensor.default, true);
+  assert.deepEqual(phase.counts.oneOf.map((option: { enum: string[] }) => option.enum[0]), [...COUNTS], 'what a phase counts, as the plugin reads it');
+  assert.equal(phase.counts.default, undefined);
   assert.equal(schema.schema.properties.recordDays.default, DEFAULT_RECORD_DAYS);
 });
 
@@ -98,7 +100,7 @@ test('the shortest poll the settings page allows is the one the plugin accepts',
 
 test("the settings page's scripts are where the page loads them from", () => {
   const page = readFileSync(new URL('../homebridge-ui/public/index.html', import.meta.url), 'utf8');
-  for (const script of ['chart.js', 'shared.js', 'settings.js']) {
+  for (const script of ['chart.js', 'shared.js', 'migrate.js', 'settings.js']) {
     assert.ok(page.includes(`<script src="${script}"></script>`), `the page loads ${script}`);
     assert.ok(readFileSync(new URL(`../homebridge-ui/public/${script}`, import.meta.url), 'utf8').length > 0, `${script} is there`);
   }
