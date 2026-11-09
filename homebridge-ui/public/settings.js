@@ -813,7 +813,15 @@
             rows,
             slowWarningLine(device))
           : el('div', { class: 'om-set-help mb-2' }, 'None yet. A green marker on the chart is a good start.'),
-        el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'));
+        el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary mt-2', onclick: () => addPhase({}) }, '+ Add phase'),
+        rows.length
+          ? el('div', { class: 'mt-3' }, field('Recognise phases',
+            choice(device.recognise === 'watch' ? 'watch' : 'rules', [['rules', 'By rules'], ['watch', 'By rules, a learned model watching']], (value) => {
+              setOrDrop(device, 'recognise', value, 'rules');
+              changed();
+            }),
+            'Watching: a model learned from the recorded readings follows the phases beside the rules and says in the log where it saw one differently. The rules still decide. Needs Record power readings on.'))
+          : null);
     }
 
     /**
