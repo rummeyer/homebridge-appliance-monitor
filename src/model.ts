@@ -846,7 +846,7 @@ export class ModelWatcher {
    * part on or off as the rules had the phase.
    */
   judge(phase: string, rules: ModelRun | undefined, model: ModelRun | undefined): Verdict {
-    const unready = this.#unready();
+    const unready = this.unready();
     if (unready) {
       return { corrects: false, reason: unready };
     }
@@ -895,7 +895,7 @@ export class ModelWatcher {
   }
 
   /** Why the model would not correct the rules at all yet, if it would not. */
-  #unready(): string | undefined {
+  unready(): string | undefined {
     const { sessions, steady = 0 } = this.#model.params;
     if (sessions < READY_SESSIONS) {
       return `learned from ${sessions} session${sessions === 1 ? '' : 's'} only, needs ${READY_SESSIONS}`;
@@ -1030,6 +1030,11 @@ export interface Compared {
  * watches: each pair once both have told it, or one alone once the other has
  * had time to.
  */
+/** Two runs of a phase that are the same one: starting close together, or overlapping. */
+export function sameRun(a: ModelRun, b: ModelRun): boolean {
+  return a.phase === b.phase && (Math.abs(a.from - b.from) <= SAME_START_MS || (a.from < b.until && b.from < a.until));
+}
+
 export class Comparison {
   #rules: ModelRun[] = [];
   #model: ModelRun[] = [];
@@ -1052,12 +1057,10 @@ export class Comparison {
 
   settle(at: number): Compared[] {
     const ready = (run: ModelRun) => run.until + COMPARE_AFTER_MS <= at;
-    const same = (a: ModelRun, b: ModelRun) => a.phase === b.phase &&
-      (Math.abs(a.from - b.from) <= SAME_START_MS || (a.from < b.until && b.from < a.until));
     const told: Compared[] = [];
     const seconds = (run: ModelRun) => Math.round((run.until - run.from) / 1000);
     for (const rule of this.#rules.filter(ready)) {
-      const match = this.#model.find((run) => same(run, rule));
+      const match = this.#model.find((run) => sameRun(run, rule));
       if (match && !ready(match)) {
         continue;
       }
@@ -1069,7 +1072,7 @@ export class Comparison {
     for (const run of this.#model.filter(ready)) {
       const open = this.#open.get(run.phase);
       const waiting = open !== undefined && (Math.abs(run.from - open) <= SAME_START_MS || open < run.until);
-      if (!waiting && !this.#rules.some((rule) => same(rule, run))) {
+      if (!waiting && !this.#rules.some((rule) => sameRun(rule, run))) {
         this.#model = this.#model.filter((each) => each !== run);
         told.push({ phase: run.phase, at: run.from, rules: undefined, model: seconds(run), agree: false, runs: { model: run } });
       }

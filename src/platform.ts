@@ -798,7 +798,9 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return undefined;
     }
     const days = Number.isInteger(this.config.recordDays) && this.config.recordDays! > 0 ? this.config.recordDays! : DEFAULT_RECORD_DAYS;
-    return new ModelShadow(device.name, device.phases ?? [], this.#dataPath, this.#recorder.dir, days, this.log);
+    // Where the model would correct the rules, the phase's end messages go out again with its length.
+    const correct = (phase: string, seconds: number) => this.#sendMessage(device, phase, 'end', seconds);
+    return new ModelShadow(device.name, device.phases ?? [], this.#dataPath, this.#recorder.dir, days, this.log, Date.now(), correct);
   }
 
   #onAttribute(appliance: Appliance, report: AttributeReport): void {
@@ -1120,8 +1122,14 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       ? [['start', ended - from], ['end', ended - from]]
       : [[change.active ? 'start' : 'end', (change.active ? change.at : ended) - from]];
     for (const [when, ms] of moments) {
-      for (const message of device.messages.filter((m) => m.phase === name && m.when === when)) {
-        this.#mqtt.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: name, seconds: ms / 1000 }));
+      this.#sendMessage(device, name, when, ms / 1000);
+    }
+  }
+
+  #sendMessage(device: DeviceConfig, phase: string, when: 'start' | 'end', seconds: number): void {
+    for (const message of (this.#mqtt && device.messages) || []) {
+      if (message.phase === phase.trim() && message.when === when) {
+        this.#mqtt!.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: phase.trim(), seconds }));
       }
     }
   }

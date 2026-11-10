@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 
 import { readJson, writeJson } from './json-file.ts';
-import { aboutTheSame, Comparison, describeParams, fits, initialParams, modelPhases, ModelWatcher } from './model.ts';
+import { aboutTheSame, Comparison, describeParams, fits, initialParams, modelPhases, ModelWatcher, sameRun } from './model.ts';
 import type { Compared, ModelParams, ModelRun, Verdict } from './model.ts';
 import type { LearnRequest } from './model-worker.ts';
 import type { PhaseChange, PhaseConfig } from './phases.ts';
@@ -20,12 +20,17 @@ import type { PhaseChange, PhaseConfig } from './phases.ts';
 const LEARN_EVERY_MS = 24 * 3_600_000;
 /** How long after starting it first learns, with nothing saved: Homebridge has enough to do then. */
 const FIRST_LEARN_MS = 2 * 60_000;
+/** How long a run is kept to correct the other side's by, once over. */
+const CORRECT_WITHIN_MS = 60_000;
 
 export interface ShadowLog {
   info(message: string): void;
   debug(message: string): void;
   warn(message: string): void;
 }
+
+/** The model's length of a phase the rules had differently, in seconds, where it would correct them. */
+export type Correct = (phase: string, seconds: number, rules: number) => void;
 
 export class ModelShadow {
   readonly #device: string;
@@ -38,8 +43,12 @@ export class ModelShadow {
   #watcher: ModelWatcher;
   #learnAt: number;
   #worker: Worker | undefined;
+  readonly #correct: Correct | undefined;
+  /** The runs over lately, each side's, not yet set against the other's. */
+  #lately: { rules: ModelRun[]; model: ModelRun[] } = { rules: [], model: [] };
 
-  constructor(device: string, phases: PhaseConfig[], dataPath: string, recordings: string, keepDays: number, log: ShadowLog, now = Date.now()) {
+  constructor(device: string, phases: PhaseConfig[], dataPath: string, recordings: string, keepDays: number, log: ShadowLog, now = Date.now(), correct?: Correct) {
+    this.#correct = correct;
     this.#device = device;
     this.#phases = modelPhases(phases);
     this.#path = join(dataPath, 'model', `${encodeURIComponent(device)}.json`);
@@ -75,6 +84,8 @@ export class ModelShadow {
     const until = change.until ?? change.at;
     if (from !== undefined && until >= from) {
       this.#comparison.rule({ phase, from, until });
+      this.#lately.rules.push({ phase, from, until });
+      this.#setAgainst();
     }
   }
 
@@ -100,7 +111,36 @@ export class ModelShadow {
   #told(runs: ModelRun[]): void {
     for (const run of runs) {
       this.#comparison.model(run);
+      this.#lately.model.push(run);
     }
+    if (runs.length > 0) {
+      this.#setAgainst();
+    }
+  }
+
+  /**
+   * Each run both sides have told, set against each other at once: where the
+   * model would correct the rules, its length goes out after theirs, as a
+   * coffee's that the heater hid the start of (10.11.2026: 21 s by the rules,
+   * 25 by the model).
+   */
+  #setAgainst(): void {
+    const seconds = (run: ModelRun) => Math.round((run.until - run.from) / 1000);
+    for (const rule of [...this.#lately.rules]) {
+      const run = this.#lately.model.find((each) => sameRun(each, rule));
+      if (!run) {
+        continue;
+      }
+      this.#lately.rules = this.#lately.rules.filter((each) => each !== rule);
+      this.#lately.model = this.#lately.model.filter((each) => each !== run);
+      if (this.#correct && seconds(run) !== seconds(rule) && this.#watcher.judge(rule.phase, rule, run).corrects) {
+        this.#log.info(`${this.#device}: model correcting ${rule.phase}: ${seconds(run)} s, rules ${seconds(rule)} s`);
+        this.#correct(rule.phase, (run.until - run.from) / 1000, (rule.until - rule.from) / 1000);
+      }
+    }
+    const latest = Math.max(...this.#lately.rules.map(({ until }) => until), ...this.#lately.model.map(({ until }) => until));
+    const kept = (run: ModelRun) => run.until >= latest - CORRECT_WITHIN_MS;
+    this.#lately = { rules: this.#lately.rules.filter(kept), model: this.#lately.model.filter(kept) };
   }
 
   #learn(now: number): void {

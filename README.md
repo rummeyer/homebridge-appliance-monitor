@@ -479,6 +479,16 @@ of the readings with something on. Until then the line says what is missing.
 Should it prove right, it takes over by itself where it is, with nothing to
 choose.
 
+One thing it does already, once ready: where it would correct the rules on
+how long a phase lasted, [the phase's end messages](#messages-of-your-own)
+go out a second time, a few seconds after the rules' own, with its
+`{seconds}`. A shot timer showing the result of a coffee whose start the
+heater hid shows the right one:
+
+```
+Kaffeemaschine: model correcting Pumpe: 25 s, rules 21 s
+```
+
 It needs the readings recorded, and learns from the days kept. Phases
 counted only coming down are left out. Changing a range starts it over from
 the settings.

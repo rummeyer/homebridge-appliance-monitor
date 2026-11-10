@@ -4,12 +4,16 @@
  * a frother at 494 W, each reading the sum, a little noisy, once a second.
  */
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import type { Sample } from '../src/learn.ts';
 import { aboutTheSame, Comparison, fits, initialParams, learnModel, ModelWatcher } from '../src/model.ts';
 import type { ModelRun } from '../src/model.ts';
 import type { PhaseConfig } from '../src/phases.ts';
+import { ModelShadow } from '../src/shadow.ts';
 
 const S = 1000;
 
@@ -197,4 +201,35 @@ test('learned about the same as before, or not', () => {
   const milk = params.parts[2]!;
   assert.ok(!aboutTheSame(params, { ...params, parts: params.parts.map((part) => (part === milk ? { ...part, mean: part.mean + 30 } : part)) }));
   assert.ok(!aboutTheSame(params, { ...params, level: params.level + 80 }));
+});
+
+test('where the model would correct the rules, its length goes out after theirs, once', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'model-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'model'));
+  writeFileSync(join(dir, 'model', 'Coffee%20machine.json'), JSON.stringify({ ...params, sessions: 12, steady: 1 }));
+  const quiet = { info: () => {}, debug: () => {}, warn: () => {} };
+  const corrected: [string, number, number][] = [];
+  const shadow = new ModelShadow('Coffee machine', PHASES, dir, dir, 14, quiet, 0, (phase, seconds, rules) => corrected.push([phase, seconds, rules]));
+  for (let index = 0; index < 4; index++) {
+    const day = morning((20 + index) * DAY, 30 + index);
+    for (const sample of day.samples) {
+      shadow.reading(sample.at, sample.watts);
+      shadow.tick(sample.at);
+      if (sample.at === day.coffee.until + 2 * S) {
+        // The rules lost the coffee's last 9 s under the heater and the frother, or not.
+        const until = day.coffee.until - (index === 3 ? 9 * S : 0);
+        shadow.rule('Coffee', { active: false, at: sample.at, since: day.coffee.from, from: day.coffee.from, until });
+      }
+    }
+    for (let at = day.samples[day.samples.length - 1]!.at; at < day.samples[0]!.at + 1000 * S; at += S) {
+      shadow.tick(at);
+    }
+  }
+  shadow.stop();
+  assert.equal(corrected.length, 1, JSON.stringify(corrected));
+  const [phase, seconds, rules] = corrected[0]!;
+  assert.equal(phase, 'Coffee');
+  assert.equal(rules, 15);
+  assert.ok(Math.abs(seconds - 24) <= 2, `the coffee's 24 s, corrected to ${seconds}`);
 });
