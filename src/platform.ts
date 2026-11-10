@@ -1133,9 +1133,10 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
   }
 
   #sendMessage(device: DeviceConfig, phase: string, when: 'start' | 'end', seconds: number): void {
-    for (const message of (this.#mqtt && device.messages) || []) {
-      if (message.phase === phase.trim() && message.when === when) {
-        this.#mqtt!.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: phase.trim(), seconds }));
+    const name = phase.trim();
+    for (const message of device.messages ?? []) {
+      if (message.phase === name && message.when === when) {
+        this.#mqtt?.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: name, seconds }));
       }
     }
   }

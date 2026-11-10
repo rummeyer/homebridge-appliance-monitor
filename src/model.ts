@@ -57,10 +57,10 @@ const SESSION_GAP_MS = 300_000;
  * after, and once no reading has come for QUIET_MS, the best one is.
  */
 const AGREE_MARGIN = 5;
-export const MAX_LAG_MS = 30_000;
+const MAX_LAG_MS = 30_000;
 const QUIET_MS = 3000;
 /** How many times the readings are explained and the model measured again. */
-export const LEARN_ROUNDS = 3;
+const LEARN_ROUNDS = 3;
 /**
  * Before the model would correct the rules: learned from this many sessions
  * at least, about the same as the time before at least this many times
@@ -81,7 +81,7 @@ const RULES_FIT = 0.2;
 /** How long the settled readings are kept to judge by. */
 const HISTORY_MS = 3_600_000;
 
-export interface PartParams {
+interface PartParams {
   name: string;
   minWatts: number;
   /** Left out for a level part. */
@@ -141,7 +141,7 @@ interface Node {
 }
 
 /** A part on from one moment to another, in ms. */
-export interface PartRun {
+interface PartRun {
   part: number;
   from: number;
   until: number;
@@ -152,6 +152,11 @@ export interface ModelRun {
   phase: string;
   from: number;
   until: number;
+}
+
+/** The part a phase is of, by its band; -1 for none. */
+export function partOf(params: ModelParams, phase: { minWatts: number; maxWatts?: number }): number {
+  return params.parts.findIndex((part) => part.minWatts === phase.minWatts && part.maxWatts === phase.maxWatts);
 }
 
 /** The phases the model follows: all but those counting only from above. */
@@ -545,7 +550,7 @@ function steadyLevel(params: ModelParams, watts: number[]): number | undefined {
 }
 
 /** Readings split where they stop for a while, and only those where something was on. */
-export function sessionsOf(samples: Sample[], phases: PhaseConfig[]): Sample[][] {
+function sessionsOf(samples: Sample[], phases: PhaseConfig[]): Sample[][] {
   const lowest = Math.min(...modelPhases(phases).map(({ minWatts }) => minWatts));
   const found: Sample[][] = [];
   let current: Sample[] = [];
@@ -703,10 +708,10 @@ export function learnModel(phases: PhaseConfig[], samples: Sample[], rounds = LE
 }
 
 /** The phases in when the parts were on: by their bands, how long they lasted, and their hold. */
-export function phaseRuns(phases: PhaseConfig[], params: ModelParams, runs: PartRun[]): ModelRun[] {
+function phaseRuns(phases: PhaseConfig[], params: ModelParams, runs: PartRun[]): ModelRun[] {
   const found: ModelRun[] = [];
   for (const phase of modelPhases(phases)) {
-    const part = params.parts.findIndex((each) => each.minWatts === phase.minWatts && each.maxWatts === phase.maxWatts);
+    const part = partOf(params, phase);
     // A thermostat switching the heater on and off is one heating, as with
     // the rules; by difference the phase ends as the draw falls below its band.
     const holdMs = phase.byDifference ? 0 : (phase.holdSeconds ?? 30) * 1000;
@@ -887,7 +892,7 @@ export class ModelWatcher {
       return { corrects: false, reason: unready };
     }
     const config = modelPhases(this.#phases).find(({ name }) => name === phase);
-    const part = config ? this.#model.parts.findIndex((each) => each.minWatts === config.minWatts && each.maxWatts === config.maxWatts) : -1;
+    const part = config ? partOf(this.#model.params, config) : -1;
     const within = (run: ModelRun | undefined, at: number) => run !== undefined && at >= run.from && at < run.until;
     let disputed = 0;
     const mine = { fit: 0, off: 0 };
@@ -950,9 +955,8 @@ export class ModelWatcher {
 
   /** The longest hold of the phases of a part's band that have one: see phaseRuns. */
   #holdMs(part: number): number {
-    const { minWatts, maxWatts } = this.#model.parts[part]!;
     const holds = modelPhases(this.#phases)
-      .filter((phase) => phase.minWatts === minWatts && phase.maxWatts === maxWatts && !phase.byDifference)
+      .filter((phase) => partOf(this.#model.params, phase) === part && !phase.byDifference)
       .map(({ holdSeconds }) => (holdSeconds ?? 30) * 1000);
     return Math.max(0, ...holds);
   }
@@ -1082,13 +1086,17 @@ export class Comparison {
     this.#open.set(phase, from);
   }
 
-  rule(run: ModelRun): void {
+  /** A run of the rules; the model's of the same, if told already. */
+  rule(run: ModelRun): ModelRun | undefined {
     this.#open.delete(run.phase);
     this.#rules.push(run);
+    return this.#model.find((each) => sameRun(each, run));
   }
 
-  model(run: ModelRun): void {
+  /** A run of the model's; the rules' of the same, if told already. */
+  model(run: ModelRun): ModelRun | undefined {
     this.#model.push(run);
+    return this.#rules.find((each) => sameRun(each, run));
   }
 
   settle(at: number): Compared[] {
