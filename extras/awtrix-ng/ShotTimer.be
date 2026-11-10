@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.9
+# @version 5.10
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -378,10 +378,16 @@ class ShotTimer
     if self.shot == "idle"
       return
     end
+    # A second end while the result shows: the plugin's model correcting the rules' count, as of
+    # a coffee whose start the heater hid (10.11.2026: 14 s, a rinse, then 25). Shot or rinse
+    # by its length now, whatever the rules took it for.
+    var again = self.shot == "done"
     self.final_s = int(seconds + 0.5)
     # Shorter than Rinse under, a rinse, as the plugin's own rinse phase has it; too short for
     # that phase's on after, a rinse all the same.
-    if self.final_s < self.rinse_s
+    if again
+      self.rinsed = self.final_s < self.rinse_s
+    elif self.final_s < self.rinse_s
       self.rinsed = true
     end
     self.shot = "done"
