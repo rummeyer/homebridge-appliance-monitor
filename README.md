@@ -24,7 +24,7 @@
 
 ---
 
-> **This is the `model-watching` branch, a trial, not a release.** It adds
+> **This is the `phase-recognition` branch, a trial, not a release.** It adds
 > [a learned model watching](#a-learned-model-watching) beside the rules:
 > **Recognise phases** at the end of a device's phases on the settings page.
 > It only says in the log where the model saw a phase differently; the rules
