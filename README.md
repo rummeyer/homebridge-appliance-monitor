@@ -475,7 +475,7 @@ the rests of a heater between two switchings on.
 
 Nor would it correct anything before it is ready: learned from 10 sessions
 at least, about the same twice running, and its accounts adding up for 90 %
-of the readings with something on. Until then the line says what is missing.
+of the readings with something on it learned from. Until then the line says what is missing.
 Should it prove right, it takes over by itself where it is, with nothing to
 choose.
 

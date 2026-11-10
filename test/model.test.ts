@@ -77,6 +77,7 @@ test('the parts are learned from the readings alone: what each draws', () => {
   assert.ok(Math.abs(milk!.mean - 494) < 6, `frother about 494 W, learned ${milk!.mean}`);
   assert.ok(Math.abs(params.base.mean - 9) < 3, `standby about 9 W, learned ${params.base.mean}`);
   assert.equal(params.parts.length, 3, 'one part per band; the standby only counted coming down is left out');
+  assert.ok(params.busy! > 1000 && params.addsUp! > 0.95, `its accounts add up: ${params.addsUp} of ${params.busy}`);
 });
 
 test('learned with the phases as they are, and not once a band has changed', () => {
@@ -193,7 +194,10 @@ test('it would leave the rules be while it is not ready', () => {
     { corrects: false, reason: 'learned from 6 sessions only, needs 10' });
   assert.deepEqual(seen({ sessions: 12, steady: 0 }, 1).watcher.judge('Coffee', run, undefined),
     { corrects: false, reason: 'not yet learned about the same twice running' });
-  assert.match(seen({ sessions: 12, steady: 1 }, 1).watcher.judge('Coffee', run, undefined).reason, /^seen \d+ readings with something on only, needs 600$/);
+  assert.deepEqual(seen({ sessions: 12, steady: 1, busy: 300 }, 1).watcher.judge('Coffee', run, undefined),
+    { corrects: false, reason: 'learned from 300 readings with something on only, needs 600' });
+  assert.deepEqual(seen({ sessions: 12, steady: 1, addsUp: 0.85 }, 1).watcher.judge('Coffee', run, undefined),
+    { corrects: false, reason: 'its accounts add up for 85 % of the readings only, needs 90 %' });
 });
 
 test('learned about the same as before, or not', () => {

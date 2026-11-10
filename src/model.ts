@@ -64,8 +64,8 @@ export const LEARN_ROUNDS = 3;
 /**
  * Before the model would correct the rules: learned from this many sessions
  * at least, about the same as the time before at least this many times
- * running, and its accounts of the readings with something on adding up for
- * this share of them at least, once it has seen as many.
+ * running, and its accounts of the readings with something on it learned
+ * from adding up for this share of them at least, of as many at least.
  */
 const READY_SESSIONS = 10;
 const READY_STEADY = 1;
@@ -110,6 +110,9 @@ export interface ModelParams {
   sessions: number;
   /** How many times running it was learned about the same as the time before. */
   steady?: number;
+  /** Of the readings with something on it learned from, how many, and the share its account adds up for. */
+  busy?: number;
+  addsUp?: number;
 }
 
 interface Part extends PartParams {
@@ -592,8 +595,14 @@ function measure(params: ModelParams, explained: Explained[]): ModelParams {
   let sxy = 0;
   let sxx = 0;
   const same = (a: Node, b: Node) => a.ages.every((age, index) => (age > 0) === (b.ages[index]! > 0));
+  let busy = 0;
+  let addsUp = 0;
   for (const { watts, path } of explained) {
     for (const [index, node] of path.entries()) {
+      if (node.ages.some((age) => age > 0)) {
+        busy++;
+        addsUp += node.fits ? 1 : 0;
+      }
       const on = [...node.ages].flatMap((age, part) => (age > 0 ? [part] : []));
       const reading = watts[index]!;
       // Only readings the same parts were on before and after: not one on the way.
@@ -664,6 +673,8 @@ function measure(params: ModelParams, explained: Explained[]): ModelParams {
     sag: sxx > 0 ? Math.max(sxy / sxx, 0) : params.sag,
     ...(levels.length > 0 ? { level: levels[levels.length - 1]!, levelSeen: true } : {}),
     sessions: explained.length,
+    busy,
+    addsUp: busy > 0 ? addsUp / busy : 0,
   };
 }
 
@@ -736,9 +747,6 @@ export class ModelWatcher {
   /** The readings not settled yet, and those settled lately with what the model made of them. */
   #unsettled = new Map<number, number>();
   #history: Settled[] = [];
-  /** Of the settled readings with something on, how many its account adds up for. */
-  #busy = 0;
-  #addsUp = 0;
 
   constructor(phases: PhaseConfig[], params: ModelParams) {
     this.#phases = phases;
@@ -818,10 +826,6 @@ export class ModelWatcher {
       this.#unsettled.delete(node.at);
       if (watts !== undefined) {
         this.#history.push({ at: node.at, watts, ages: node.ages, mu: node.mu });
-        if (node.ages.some((age) => age > 0)) {
-          this.#busy++;
-          this.#addsUp += node.fits ? 1 : 0;
-        }
       }
     }
     const kept = this.#settledAt - HISTORY_MS;
@@ -896,18 +900,18 @@ export class ModelWatcher {
 
   /** Why the model would not correct the rules at all yet, if it would not. */
   unready(): string | undefined {
-    const { sessions, steady = 0 } = this.#model.params;
+    const { sessions, steady = 0, busy = 0, addsUp = 0 } = this.#model.params;
     if (sessions < READY_SESSIONS) {
       return `learned from ${sessions} session${sessions === 1 ? '' : 's'} only, needs ${READY_SESSIONS}`;
     }
     if (steady < READY_STEADY) {
       return 'not yet learned about the same twice running';
     }
-    if (this.#busy < READY_READINGS) {
-      return `seen ${this.#busy} readings with something on only, needs ${READY_READINGS}`;
+    if (busy < READY_READINGS) {
+      return `learned from ${busy} readings with something on only, needs ${READY_READINGS}`;
     }
-    if (this.#addsUp < READY_FIT * this.#busy) {
-      return `its accounts add up for ${Math.round((100 * this.#addsUp) / this.#busy)} % of the readings only, needs ${100 * READY_FIT} %`;
+    if (addsUp < READY_FIT) {
+      return `its accounts add up for ${Math.round(100 * addsUp)} % of the readings only, needs ${100 * READY_FIT} %`;
     }
     return undefined;
   }
