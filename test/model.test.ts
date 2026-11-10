@@ -213,8 +213,8 @@ test('where the model would correct the rules, its length goes out after theirs,
   mkdirSync(join(dir, 'model'));
   writeFileSync(join(dir, 'model', 'Coffee%20machine.json'), JSON.stringify({ ...params, sessions: 12, steady: 1 }));
   const quiet = { info: () => {}, debug: () => {}, warn: () => {} };
-  const corrected: [string, number, number][] = [];
-  const shadow = new ModelShadow('Coffee machine', PHASES, dir, dir, 14, quiet, 0, (phase, seconds, rules) => corrected.push([phase, seconds, rules]));
+  const corrected: [string, string, number][] = [];
+  const shadow = new ModelShadow('Coffee machine', PHASES, dir, dir, 14, quiet, 0, (phase, when, seconds) => corrected.push([phase, when, seconds]));
   for (let index = 0; index < 4; index++) {
     const day = morning((20 + index) * DAY, 30 + index);
     for (const sample of day.samples) {
@@ -232,8 +232,46 @@ test('where the model would correct the rules, its length goes out after theirs,
   }
   shadow.stop();
   assert.equal(corrected.length, 1, JSON.stringify(corrected));
-  const [phase, seconds, rules] = corrected[0]!;
+  const [phase, when, seconds] = corrected[0]!;
   assert.equal(phase, 'Coffee');
-  assert.equal(rules, 15);
+  assert.equal(when, 'end');
   assert.ok(Math.abs(seconds - 24) <= 2, `the coffee's 24 s, corrected to ${seconds}`);
+});
+
+test('a phase with start messages told live, from where it started, ahead of the rules seeing it late', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'model-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'model'));
+  writeFileSync(join(dir, 'model', 'Coffee%20machine.json'), JSON.stringify({ ...params, sessions: 12, steady: 1 }));
+  const quiet = { info: () => {}, debug: () => {}, warn: () => {} };
+  const sent: [string, string, number, number][] = [];
+  let now = 0;
+  // On after 3 s, as a pump phase a shot timer starts from has it.
+  const phases = PHASES.map((phase) => (phase.name === 'Coffee' ? { ...phase, minSeconds: 3 } : phase));
+  const shadow = new ModelShadow('Coffee machine', phases, dir, dir, 14, quiet, 0, (phase, when, seconds) => sent.push([phase, when, seconds, now]), ['Coffee']);
+  const day = morning(30 * DAY, 77);
+  let held: boolean | undefined;
+  for (const sample of day.samples) {
+    now = sample.at;
+    shadow.reading(sample.at, sample.watts);
+    shadow.tick(sample.at);
+    // The rules see the coffee 6 s late, and hold back their start if it is told already.
+    if (sample.at === day.coffee.from + 9 * S) {
+      held = shadow.holdsStart('Coffee', day.coffee.from + 6 * S);
+      shadow.rule('Coffee', { active: true, at: sample.at, from: day.coffee.from + 6 * S });
+    }
+    if (sample.at === day.coffee.until + 2 * S) {
+      shadow.rule('Coffee', { active: false, at: sample.at, since: day.coffee.from + 9 * S, from: day.coffee.from + 6 * S, until: day.coffee.until });
+    }
+  }
+  shadow.stop();
+  // The rinse before it, the pump too, the rules never saw: started and ended by the model.
+  assert.deepEqual(sent.filter(([, , , at]) => at < day.coffee.from).map(([phase, when]) => [phase, when]), [['Coffee', 'start'], ['Coffee', 'end']]);
+  const starts = sent.filter(([phase, when, , at]) => phase === 'Coffee' && when === 'start' && at >= day.coffee.from);
+  assert.equal(starts.length, 1, JSON.stringify(sent));
+  const [, , seconds, at] = starts[0]!;
+  assert.ok(at - day.coffee.from <= 5 * S, `told ${(at - day.coffee.from) / S} s in`);
+  assert.ok(Math.abs(at - seconds * S - day.coffee.from) <= 1 * S, 'from where it started');
+  assert.equal(held, true, "the rules' later start held back");
+  assert.ok(!sent.some(([phase]) => phase === 'Rinse' || phase === 'Milk'), 'only phases with start messages');
 });

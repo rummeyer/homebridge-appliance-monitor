@@ -464,6 +464,11 @@ class Edges {
     return this.#since[part] !== undefined;
   }
 
+  /** Since when a part settled on has been, if it is. */
+  since(part: number): number | undefined {
+    return this.#since[part];
+  }
+
   /** The next node along the way; the runs it ends. */
   node(node: Node): PartRun[] {
     const ended: PartRun[] = [];
@@ -773,6 +778,33 @@ export class ModelWatcher {
     this.#session.push(watts);
     this.#settle(Math.max(this.#beam.agreedAt(this.#settledAt), at - MAX_LAG_MS));
     return [...told, ...this.#tell(this.#settledAt)];
+  }
+
+  /**
+   * The parts on as the likeliest way has it now, not settled, and since
+   * when each has been on: what the readings so far say, at once, and
+   * may yet take back.
+   */
+  likeliest(): { part: number; since: number }[] {
+    const best = this.#beam?.best;
+    if (!best) {
+      return [];
+    }
+    return best.ages.flatMap((age, part) => {
+      if (age === 0) {
+        return [];
+      }
+      let since = best.at;
+      let node: Node | undefined = best;
+      for (; node?.parent && node.parent.ages[part]! > 0; node = node.parent) {
+        since = node.parent.at;
+      }
+      // Back to what is settled, and on before it: since when it settled on.
+      if (node && !node.parent) {
+        since = this.#edges.since(part) ?? since;
+      }
+      return [{ part, since }];
+    });
   }
 
   /** Time passing: once no reading has come for the lag, the last one is settled, and once for long, the session is over. */

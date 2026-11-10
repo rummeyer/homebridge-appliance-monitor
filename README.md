@@ -489,6 +489,22 @@ heater hid shows the right one:
 Kaffeemaschine: model correcting Pumpe: 25 s, rules 21 s
 ```
 
+And a phase with [start messages](#messages-of-your-own) it tells live:
+the moment its likeliest account of the readings has the phase's part on
+for the phase's *On after*, the start messages go out with `{seconds}` from
+where it started. Under the heater or beside the frother the rules see a
+pump seconds late, and a shot timer counting from them is behind just when
+it matters; the model sees it there as soon as alone. The rules' own start
+is then held back, so that the count never goes back; where they saw it
+first, the model's goes out only if it started earlier. A start is never
+taken from before the model last had the part off as it went: what it
+takes for on all along afterwards, a pump under the heater after a rinse,
+may not have been.
+
+```
+Kaffeemaschine: model started Pumpe 3 s ago, before the rules
+```
+
 It needs the readings recorded, and learns from the days kept. Phases
 counted only coming down are left out. Changing a range starts it over from
 the settings.

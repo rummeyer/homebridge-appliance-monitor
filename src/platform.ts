@@ -798,9 +798,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       return undefined;
     }
     const days = Number.isInteger(this.config.recordDays) && this.config.recordDays! > 0 ? this.config.recordDays! : DEFAULT_RECORD_DAYS;
-    // Where the model would correct the rules, the phase's end messages go out again with its length.
-    const correct = (phase: string, seconds: number) => this.#sendMessage(device, phase, 'end', seconds);
-    return new ModelShadow(device.name, device.phases ?? [], this.#dataPath, this.#recorder.dir, days, this.log, Date.now(), correct);
+    // The model's own starts of phases with start messages, ahead of the rules
+    // where they see them late, and its length where it would correct theirs.
+    const send = (phase: string, when: 'start' | 'end', seconds: number) => this.#sendMessage(device, phase, when, seconds);
+    const live = (device.messages ?? []).filter(({ when }) => when === 'start').map(({ phase }) => phase);
+    return new ModelShadow(device.name, device.phases ?? [], this.#dataPath, this.#recorder.dir, days, this.log, Date.now(), send, live);
   }
 
   #onAttribute(appliance: Appliance, report: AttributeReport): void {
@@ -1088,7 +1090,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.#setIdleSince(appliance, Math.max(appliance.idleSince, change.at));
       }
     }
-    this.#sendMessages(device, tracker.name, change);
+    this.#sendMessages(device, tracker.name, change, appliance.shadow);
     appliance.shadow?.rule(tracker.name, change);
     if (change.short) {
       appliance.accessory?.phaseHappened(tracker.name);
@@ -1111,12 +1113,16 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
    * The appliance's own MQTT messages for this phase starting or ending. A
    * short phase, known only once it is over, starts and ends at once.
    */
-  #sendMessages(device: DeviceConfig, phase: string, change: PhaseChange): void {
+  #sendMessages(device: DeviceConfig, phase: string, change: PhaseChange, shadow?: ModelShadow): void {
     if (!this.#mqtt || !device.messages?.length) {
       return;
     }
     const name = phase.trim();
     const from = change.from ?? change.since ?? change.at;
+    // Started live by the model already, from as early: a shot timer would count back.
+    if (change.active && !change.short && shadow?.holdsStart(name, from)) {
+      return;
+    }
     const ended = change.until ?? change.at;
     const moments: ['start' | 'end', number][] = change.short
       ? [['start', ended - from], ['end', ended - from]]

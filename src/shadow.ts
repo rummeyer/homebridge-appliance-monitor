@@ -22,6 +22,10 @@ const LEARN_EVERY_MS = 24 * 3_600_000;
 const FIRST_LEARN_MS = 2 * 60_000;
 /** How long a run is kept to correct the other side's by, once over. */
 const CORRECT_WITHIN_MS = 60_000;
+/** A part the model started a phase for live, off this long by its likeliest way and the rules never on: over. */
+const LIVE_OFF_MS = 3000;
+/** A start of the rules this close after the model's, or later, is the same run's, and held back. */
+const SAME_START_MS = 1000;
 
 export interface ShadowLog {
   info(message: string): void;
@@ -29,8 +33,18 @@ export interface ShadowLog {
   warn(message: string): void;
 }
 
-/** The model's length of a phase the rules had differently, in seconds, where it would correct them. */
-export type Correct = (phase: string, seconds: number, rules: number) => void;
+/**
+ * A phase's start or end messages sent by the model: at its start, how long
+ * it has been on already; at its end, how long it lasted.
+ */
+export type Send = (phase: string, when: 'start' | 'end', seconds: number) => void;
+
+/** A phase the model started live, ahead of the rules or earlier than they had it. */
+interface Live {
+  since: number;
+  /** When the part was last on by the likeliest way. */
+  onAt: number;
+}
 
 export class ModelShadow {
   readonly #device: string;
@@ -43,12 +57,23 @@ export class ModelShadow {
   #watcher: ModelWatcher;
   #learnAt: number;
   #worker: Worker | undefined;
-  readonly #correct: Correct | undefined;
+  readonly #send: Send | undefined;
+  /** The phases whose start is told live, as a shot timer counts from it. */
+  readonly #live: Set<string>;
   /** The runs over lately, each side's, not yet set against the other's. */
   #lately: { rules: ModelRun[]; model: ModelRun[] } = { rules: [], model: [] };
+  /** Live: by phase, since when the rules have it on, when the part was last off by the likeliest way, and the run the model started. */
+  #rulesOn = new Map<string, number>();
+  #offAt = new Map<string, number>();
+  #started = new Map<string, Live>();
+  /** By phase, from when the run the rules ended last was: not to be started again. */
+  #ended = new Map<string, number>();
+  /** By phase, from when the latest run started, by either: a correction of one before it comes too late. */
+  #latest = new Map<string, number>();
 
-  constructor(device: string, phases: PhaseConfig[], dataPath: string, recordings: string, keepDays: number, log: ShadowLog, now = Date.now(), correct?: Correct) {
-    this.#correct = correct;
+  constructor(device: string, phases: PhaseConfig[], dataPath: string, recordings: string, keepDays: number, log: ShadowLog, now = Date.now(), send?: Send, live: string[] = []) {
+    this.#send = send;
+    this.#live = new Set(live);
     this.#device = device;
     this.#phases = modelPhases(phases);
     this.#path = join(dataPath, 'model', `${encodeURIComponent(device)}.json`);
@@ -69,6 +94,70 @@ export class ModelShadow {
 
   reading(at: number, watts: number): void {
     this.#told(this.#watcher.reading(at, watts));
+    this.#startLive(at);
+  }
+
+  /**
+   * Whether the rules' start of a phase is to be held back: the model started
+   * it live already, as early or earlier, and a shot timer counting from that
+   * is not to count back.
+   */
+  holdsStart(phase: string, from: number): boolean {
+    const started = this.#started.get(phase);
+    return started !== undefined && started.since <= from + SAME_START_MS;
+  }
+
+  /**
+   * Phases told live: the moment the likeliest way has a phase's part on for
+   * its on after, from where it started — under the heater, where the rules
+   * see it late (10.11.2026: 11 s), as alone. Never from before the part was
+   * last off by it as it went: what it later takes for on all along, a pump
+   * under the heater after a rinse, may not have been (9.11.2026: 17 s early).
+   */
+  #startLive(at: number): void {
+    if (!this.#send || this.#live.size === 0 || this.#watcher.unready()) {
+      return;
+    }
+    const likeliest = this.#watcher.likeliest();
+    for (const phase of this.#phases) {
+      if (!this.#live.has(phase.name) || phase.maxSeconds !== undefined) {
+        continue;
+      }
+      const part = this.#watcher.params.parts.findIndex((each) => each.minWatts === phase.minWatts && each.maxWatts === phase.maxWatts);
+      const on = likeliest.find((each) => each.part === part);
+      const started = this.#started.get(phase.name);
+      if (!on) {
+        this.#offAt.set(phase.name, at);
+        // Over without the rules ever having it: its end, or a shot timer counts on.
+        if (started && at - started.onAt >= LIVE_OFF_MS && !this.#rulesOn.has(phase.name)) {
+          this.#started.delete(phase.name);
+          this.#log.info(`${this.#device}: model ended ${phase.name} the rules did not see`);
+          this.#send(phase.name, 'end', (started.onAt - started.since) / 1000);
+        }
+        continue;
+      }
+      const since = Math.max(on.since, this.#offAt.get(phase.name) ?? -Infinity);
+      if (started && started.since <= since + SAME_START_MS) {
+        started.onAt = at;
+        continue;
+      }
+      const ended = this.#ended.get(phase.name);
+      if (ended !== undefined && since <= ended + SAME_START_MS) {
+        continue;
+      }
+      if (at - since < (phase.minSeconds ?? 5) * 1000) {
+        continue;
+      }
+      const rules = this.#rulesOn.get(phase.name);
+      if (rules !== undefined && rules <= since + SAME_START_MS) {
+        continue;
+      }
+      this.#started.set(phase.name, { since, onAt: at });
+      this.#latest.set(phase.name, Math.max(this.#latest.get(phase.name) ?? -Infinity, since));
+      const ahead = rules === undefined ? 'before the rules' : `${Math.round((rules - since) / 1000)} s before the rules had it`;
+      this.#log.info(`${this.#device}: model started ${phase.name} ${Math.round((at - since) / 1000)} s ago, ${ahead}`);
+      this.#send(phase.name, 'start', (at - since) / 1000);
+    }
   }
 
   /** A phase as the rules saw it. */
@@ -79,8 +168,16 @@ export class ModelShadow {
     const from = change.from ?? change.since;
     if (change.active && !change.short) {
       this.#comparison.opened(phase, from ?? change.at);
+      this.#rulesOn.set(phase, from ?? change.at);
+      this.#latest.set(phase, Math.max(this.#latest.get(phase) ?? -Infinity, from ?? change.at));
       return;
     }
+    if (from !== undefined) {
+      this.#latest.set(phase, Math.max(this.#latest.get(phase) ?? -Infinity, from));
+    }
+    this.#rulesOn.delete(phase);
+    this.#ended.set(phase, Math.max(this.#started.get(phase)?.since ?? -Infinity, from ?? change.at));
+    this.#started.delete(phase);
     const until = change.until ?? change.at;
     if (from !== undefined && until >= from) {
       this.#comparison.rule({ phase, from, until });
@@ -133,9 +230,11 @@ export class ModelShadow {
       }
       this.#lately.rules = this.#lately.rules.filter((each) => each !== rule);
       this.#lately.model = this.#lately.model.filter((each) => each !== run);
-      if (this.#correct && seconds(run) !== seconds(rule) && this.#watcher.judge(rule.phase, rule, run).corrects) {
+      // Not once another has started: it would be taken for that one's.
+      const newer = (this.#latest.get(rule.phase) ?? -Infinity) > Math.max(rule.until, run.until);
+      if (this.#send && !newer && seconds(run) !== seconds(rule) && this.#watcher.judge(rule.phase, rule, run).corrects) {
         this.#log.info(`${this.#device}: model correcting ${rule.phase}: ${seconds(run)} s, rules ${seconds(rule)} s`);
-        this.#correct(rule.phase, (run.until - run.from) / 1000, (rule.until - rule.from) / 1000);
+        this.#send(rule.phase, 'end', (run.until - run.from) / 1000);
       }
     }
     const latest = Math.max(...this.#lately.rules.map(({ until }) => until), ...this.#lately.model.map(({ until }) => until));
