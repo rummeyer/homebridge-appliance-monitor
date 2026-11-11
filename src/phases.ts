@@ -411,9 +411,10 @@ export class PhaseTracker {
 
   /**
    * A new level, from the reading before this one, at what it settled to:
-   * the first may have been a moment on the way.
+   * the first may have been a moment on the way. Not *held* when only no
+   * reading came for SETTLED_MS: it may be a moment on the way too.
    */
-  #settle(at: number, watts: number, firstAt: number): void {
+  #settle(at: number, watts: number, firstAt: number, held = true): void {
     this.#holding = true;
     const movedAt = this.#movedAt ?? firstAt;
     this.#levelFrom = movedAt;
@@ -478,9 +479,11 @@ export class PhaseTracker {
       if (pumping) {
         // The pump stopping beneath what runs on.
         this.#stoppedBeneath(movedAt, -step);
-      } else if (left.from !== undefined && movedAt - left.from <= UNSEEN_MAX_MS) {
+      } else if (left.from !== undefined && movedAt - left.from <= UNSEEN_MAX_MS && (held || this.#atAlone(watts, at))) {
         // It stopped having started unseen, as something else did: since the move into the level it left.
-        // That level had the pump in it, and was not quiet.
+        // That level had the pump in it, and was not quiet. Only at a level held, or one known: a
+        // reading lost in the heater's fall leaves a moment on the way that looks like one (11.11.2026:
+        // 1258 W, 890 W, a reading missing, 15 W — the heater off, taken for the grinder).
         this.#quiet = this.#quiet.filter((level) => Math.abs(level.watts - left.watts) >= minWatts / 2);
         this.#firstIn = left.from;
         this.#inMs += movedAt - left.from;
@@ -612,7 +615,7 @@ export class PhaseTracker {
     this.#advance(at);
     const last = this.#last;
     if (this.#phase.byDifference && last !== undefined && !this.#holding && at - last.at >= SETTLED_MS) {
-      this.#settle(at, last.watts, last.at);
+      this.#settle(at, last.watts, last.at, false);
     }
     return this.#check(at);
   }
