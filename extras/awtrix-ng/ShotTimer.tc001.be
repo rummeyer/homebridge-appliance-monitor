@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.10
+# @version 5.11
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -421,12 +421,6 @@ if heating
 if self.thermo() && self.temp0 != nil && self.ready > self.temp0
 var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
 pct = pct < 0 ? 0 : (pct > 100 ? 100 : pct)
-if self.as_bar
-self.bar = pct
-self.line2 = []
-else
-self.line2 = [[str(pct) + "%", self.white]]
-end
 var from_v = self.temp0
 var from_s = self.temp0_s
 for r : self.hist
@@ -442,6 +436,16 @@ var by_rate = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s
 if at <= unix || by_rate < at
 at = by_rate
 end
+end
+if at > unix && self.since_s > 0 && at > self.since_s
+var by_time = (unix - self.since_s) * 100 / (at - self.since_s)
+pct = by_time > pct ? (by_time > 99 ? 99 : by_time) : pct
+end
+if self.as_bar
+self.bar = pct
+self.line2 = []
+else
+self.line2 = [[str(pct) + "%", self.white]]
 end
 if at > unix && (unix / 3) % 2 == 1
 self.bar = nil
