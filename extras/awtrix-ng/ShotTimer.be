@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.9
+# @version 5.10
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -534,12 +534,6 @@ class ShotTimer
       if self.thermo() && self.temp0 != nil && self.ready > self.temp0
         var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
         pct = pct < 0 ? 0 : (pct > 100 ? 100 : pct)
-        if self.as_bar
-          self.bar = pct
-          self.line2 = []
-        else
-          self.line2 = [[str(pct) + "%", self.white]]
-        end
         # At the rate of the last five minutes: a heat exchanger's group hardly rises at first.
         var from_v = self.temp0
         var from_s = self.temp0_s
@@ -558,6 +552,19 @@ class ShotTimer
           if at <= unix || by_rate < at
             at = by_rate
           end
+        end
+        # How far by the time left too, where that is further: a heat exchanger's group hardly
+        # rises at first, and the temperature alone stands still for minutes (11.11.2026: 2 % after
+        # 6 min of Cold preheat's 30).
+        if at > unix && self.since_s > 0 && at > self.since_s
+          var by_time = (unix - self.since_s) * 100 / (at - self.since_s)
+          pct = by_time > pct ? (by_time > 99 ? 99 : by_time) : pct
+        end
+        if self.as_bar
+          self.bar = pct
+          self.line2 = []
+        else
+          self.line2 = [[str(pct) + "%", self.white]]
         end
         # Not a 0:00 that stands still when it rises slower than so far: the percentage then.
         if at > unix && (unix / 3) % 2 == 1
