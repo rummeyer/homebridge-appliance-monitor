@@ -25,6 +25,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   are still read; the settings page renames them as it opens, so the next
   Save writes the new ones.
 
+### Fixed
+
+- **Coffee machine: a heater burst is not the grinder.** A reading lost in
+  the heater's fall left a moment on the way, 890 W say, that was taken for
+  a level, and the step down to it for the grinder stopping unseen beneath
+  the heater. Such a level now has to be seen held, or be one the heater is
+  known to draw alone. In the recordings since 29.10.2026, three grinds
+  fewer, all heater bursts; nothing else changes.
+
 ## [1.22.4] — 2026-11-08
 
 ### Changed

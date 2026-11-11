@@ -663,3 +663,17 @@ test('by difference: a step down by the band\'s size eight minutes into heating 
     assert.deepEqual(draws(phase, heating, 520), [], phase.name);
   }
 });
+
+test('by difference: a heater burst whose fall lost a reading is not the grinder', () => {
+  // As the plug read it on 11.11.2026 from 14:11:36: two bursts of the heater
+  // keeping warm, the second's fall read at 890 W, then no reading for 2 s.
+  // That moment was taken for a level, the step down to it for the grinder
+  // stopping beneath the heater, unseen: Mühle counted, no coffee ground.
+  const grinder = { name: 'Mühle', minWatts: 250, maxWatts: 400, minSeconds: 4, holdSeconds: 5, byDifference: true };
+  const bursts: [number, number][] = [
+    [0, 2], [1, 1.9], [4, 91.2], [5, 1199.8], [6, 1264.4], [8, 1262.3], [9, 1260.9], [10, 1259.9], [11, 870.3], [12, 14],
+    [13, 1.9], [21, 2], [22, 1.9], [23, 2], [24, 1.9], [25, 2], [26, 1.9], [33, 2], [34, 76.1], [35, 1266.6], [36, 1264.9],
+    [37, 1262.7], [38, 1259.6], [39, 1258.4], [40, 890.5], [43, 15.4], [44, 2], [45, 1.9],
+  ];
+  assert.deepEqual(draws(grinder, bursts), [], 'no grinder');
+});
