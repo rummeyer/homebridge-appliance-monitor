@@ -505,6 +505,17 @@ may not have been.
 Kaffeemaschine: model started Pumpe 3 s ago, before the rules
 ```
 
+A run it started it also ends: while its account has the part on still, the
+rules' end and their `until` topic are held back, as where a pump goes on
+beside the heater coming back and the rules take it for over. Once the part
+has been off for 3 s, the end messages go out with how long it ran. Where
+its settled account then has another length than the clock shows, the
+better one's goes out as above.
+
+```
+Kaffeemaschine: model ended Pumpe after 24 s
+```
+
 It needs the readings recorded, and learns from the days kept. Phases
 counted only coming down are left out. Changing a range starts it over from
 the settings.

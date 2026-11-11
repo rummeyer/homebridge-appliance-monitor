@@ -45,12 +45,14 @@ interface Live {
   rules?: number;
   /** When its part was last off by the likeliest way. */
   offAt: number;
-  /** The run the model started: since when, and when its part was last on. */
-  started?: { since: number; onAt: number };
+  /** The run the model started: since when, when its part was last on, and first off after. */
+  started?: { since: number; onAt: number; offAt?: number };
   /** From when the run the rules ended last was: not to be started again. */
   ended: number;
   /** From when the latest run started, by either: a correction of one before it comes too late. */
   latest: number;
+  /** How long the run the model ended itself lasted, in seconds: not to be corrected to the same. */
+  sent?: number;
 }
 
 export class ModelShadow {
@@ -114,6 +116,22 @@ export class ModelShadow {
   }
 
   /**
+   * Whether the rules' end of a phase is to be held back, and their until with
+   * it: the model started the run live and has its part on still. The rules
+   * lose a pump whose heater comes back on beside it (11.11.2026: a 24 s shot
+   * ended as a 7 s rinse 5 s before the pump stopped); the model ends it.
+   */
+  holdsEnd(phase: string, at: number): boolean {
+    const started = this.#live.get(phase)?.started;
+    return started !== undefined && at - started.onAt < LIVE_OFF_MS;
+  }
+
+  /** Where the run the model holds went off by the likeliest way, while it is. */
+  until(phase: string): number | undefined {
+    return this.#live.get(phase)?.started?.offAt;
+  }
+
+  /**
    * A phase told live: the moment the likeliest way has its part on for its
    * on after, from where it started — under the heater, where the rules see
    * it late (10.11.2026: 11 s), as alone. Never from before the part was last
@@ -126,17 +144,23 @@ export class ModelShadow {
     const { started } = live;
     if (on === undefined) {
       live.offAt = at;
-      // Over without the rules ever having it: its end, or a shot timer counts on.
+      if (started) {
+        started.offAt ??= at;
+      }
+      // Over, the rules not having it (any more): its end, or a shot timer counts on.
       if (started && at - started.onAt >= LIVE_OFF_MS && live.rules === undefined) {
+        const seconds = (started.offAt! - started.since) / 1000;
         live.started = undefined;
-        this.#log.info(`${this.#device}: model ended ${phase.name} the rules did not see`);
-        this.#send!(phase.name, 'end', (started.onAt - started.since) / 1000);
+        live.sent = Math.round(seconds);
+        this.#log.info(`${this.#device}: model ended ${phase.name} after ${live.sent} s`);
+        this.#send!(phase.name, 'end', seconds);
       }
       return;
     }
     const since = Math.max(on, live.offAt);
     if (started && started.since <= since + SAME_START_MS) {
       started.onAt = at;
+      started.offAt = undefined;
       return;
     }
     // Not one ended already, nor before its on after, nor where the rules had it as early.
@@ -145,6 +169,7 @@ export class ModelShadow {
       return;
     }
     live.started = { since, onAt: at };
+    live.sent = undefined;
     live.latest = Math.max(live.latest, since);
     const ahead = live.rules === undefined ? 'before the rules' : `${Math.round((live.rules - since) / 1000)} s before the rules had it`;
     this.#log.info(`${this.#device}: model started ${phase.name} ${Math.round((at - since) / 1000)} s ago, ${ahead}`);
@@ -162,11 +187,16 @@ export class ModelShadow {
     if (change.active && !change.short) {
       this.#comparison.opened(phase, from);
       live.rules = from;
+      if (!live.started) {
+        live.sent = undefined;
+      }
       return;
     }
     live.ended = Math.max(live.started?.since ?? -Infinity, from);
     live.rules = undefined;
-    live.started = undefined;
+    if (!this.holdsEnd(phase, change.at)) {
+      live.started = undefined;
+    }
     const until = change.until ?? change.at;
     if (until >= from) {
       const rule = { phase, from, until };
@@ -203,19 +233,29 @@ export class ModelShadow {
   }
 
   /**
-   * A run both sides have told, as soon as the second has: where the model
-   * would correct the rules, its length goes out after theirs, as a coffee's
-   * the heater hid the start of (10.11.2026: 21 s by the rules, 25 by the
-   * model). Not once another has started: it would be taken for that one's.
+   * A run both sides have told, as soon as the second has: the length the
+   * clock shows goes out again where it is not the better one's. That is the
+   * model's where it would correct the rules, as a coffee's the heater hid the
+   * start of (10.11.2026: 21 s by the rules, 25 by the model), else the rules',
+   * as where the model ended it live a guess too long (9.11.2026: 28 s, settled
+   * 23 as the rules had it). Not while the model holds it, nor once another
+   * has started: it would be taken for that one's.
    */
   #correct(rule: ModelRun, run: ModelRun | undefined): void {
     const seconds = (each: ModelRun) => Math.round((each.until - each.from) / 1000);
-    const newer = this.#live.get(rule.phase)!.latest > Math.max(rule.until, run?.until ?? -Infinity);
-    if (!this.#send || !run || newer || seconds(run) === seconds(rule) || !this.#watcher.judge(rule.phase, rule, run).corrects) {
+    const live = this.#live.get(rule.phase)!;
+    const newer = live.latest > Math.max(rule.until, run?.until ?? -Infinity);
+    if (!this.#send || !run || newer || live.started) {
       return;
     }
-    this.#log.info(`${this.#device}: model correcting ${rule.phase}: ${seconds(run)} s, rules ${seconds(rule)} s`);
-    this.#send(rule.phase, 'end', (run.until - run.from) / 1000);
+    const shown = live.sent ?? seconds(rule);
+    const better = seconds(run) === seconds(rule) || this.#watcher.judge(rule.phase, rule, run).corrects ? run : rule;
+    if (seconds(better) === shown) {
+      return;
+    }
+    const by = better === run ? 'model' : 'rules';
+    this.#log.info(`${this.#device}: model correcting ${rule.phase}: ${seconds(better)} s by the ${by}, was ${shown} s`);
+    this.#send(rule.phase, 'end', (better.until - better.from) / 1000);
   }
 
   #learn(now: number): void {

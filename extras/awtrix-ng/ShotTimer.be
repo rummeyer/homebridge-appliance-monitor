@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.11
+# @version 5.12
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -228,11 +228,16 @@ class ShotTimer
       # after the phase's off after, and running on if it comes back into it. The heater beside
       # the pump, above the range, counts on; the heater alone after it does not start it again.
       if self.shot == "run"
-        # Held where it is, never counted back: the plugin's own count at the end is the result.
-        if num(p, 0) <= 0
+        # Stopped where it says, less the plug's delay as the start is, not when it is told: that
+        # comes a reading or two later (11.11.2026: 15 s shown of a 10 s rinse). Never before the
+        # count's start, nor after now. The plugin's own count at the end is the result.
+        var until = num(p, 0)
+        if until <= 0
           self.stopped = nil
         elif self.stopped == nil
-          self.stopped = now_ms()
+          var now = now_ms()
+          var at = now - (epoch_ms() / 1000 - until) * 1000 - self.lead_ms
+          self.stopped = at > now ? now : (at < self.t0 ? self.t0 : at)
         end
       end
     elif t == self.relay_topic

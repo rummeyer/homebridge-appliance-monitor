@@ -275,3 +275,43 @@ test('a phase with start messages told live, from where it started, ahead of the
   assert.equal(held, true, "the rules' later start held back");
   assert.ok(!sent.some(([phase]) => phase === 'Rinse' || phase === 'Milk'), 'only phases with start messages');
 });
+
+test('a run the model started live it ends itself, where the rules end it early', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'model-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'model'));
+  writeFileSync(join(dir, 'model', 'Coffee%20machine.json'), JSON.stringify({ ...params, sessions: 12, steady: 1 }));
+  const quiet = { info: () => {}, debug: () => {}, warn: () => {} };
+  const sent: [string, string, number, number][] = [];
+  let now = 0;
+  const phases = PHASES.map((phase) => (phase.name === 'Coffee' ? { ...phase, minSeconds: 3 } : phase));
+  const shadow = new ModelShadow('Coffee machine', phases, dir, dir, 14, quiet, 0, (phase, when, seconds) => sent.push([phase, when, seconds, now]), ['Coffee']);
+  const day = morning(30 * DAY, 77);
+  let held: boolean | undefined;
+  let until: number | undefined;
+  for (const sample of day.samples) {
+    now = sample.at;
+    shadow.reading(sample.at, sample.watts);
+    shadow.tick(sample.at);
+    if (sample.at === day.coffee.from + 9 * S) {
+      shadow.rule('Coffee', { active: true, at: sample.at, from: day.coffee.from + 6 * S });
+    }
+    // The rules lose the coffee 9 s before it ends, as when the heater comes back on beside it.
+    if (sample.at === day.coffee.until - 7 * S) {
+      held = shadow.holdsEnd('Coffee', sample.at);
+      until = shadow.until('Coffee');
+      shadow.rule('Coffee', { active: false, at: sample.at, since: day.coffee.from + 9 * S, from: day.coffee.from + 6 * S, until: day.coffee.until - 9 * S });
+    }
+  }
+  for (let at = day.samples[day.samples.length - 1]!.at; at < day.samples[0]!.at + 1000 * S; at += S) {
+    shadow.tick(at);
+  }
+  shadow.stop();
+  assert.equal(held, true, "the rules' early end held back");
+  assert.equal(until, undefined, 'and their until: the pump is on still');
+  const ends = sent.filter(([phase, when, , at]) => phase === 'Coffee' && when === 'end' && at >= day.coffee.from);
+  assert.equal(ends.length, 1, JSON.stringify(sent));
+  const [, , seconds, at] = ends[0]!;
+  assert.ok(Math.abs(seconds - 24) <= 2, `the coffee's 24 s, ended at ${seconds}`);
+  assert.ok(at - day.coffee.until <= 5 * S, `told ${(at - day.coffee.until) / S} s after`);
+});

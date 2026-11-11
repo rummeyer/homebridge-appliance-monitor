@@ -652,7 +652,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       state: monitor.state,
       since: record.since,
       phases: appliance.phases.filter(({ active }) => active).map(({ name: phase }) => phase),
-      phasesUntil: Object.fromEntries(appliance.phases.flatMap(({ name: phase, until }) => (until === undefined ? [] : [[phase, until]]))),
+      phasesUntil: Object.fromEntries(appliance.phases.flatMap(({ name: phase, until: rules }) => {
+        // A run the model holds ends by it: the rules' until may cut it short.
+        const until = appliance.shadow?.holdsEnd(phase.trim(), now) ? appliance.shadow.until(phase.trim()) : rules;
+        return until === undefined ? [] : [[phase, until]];
+      })),
       cycle,
       ...(typical === undefined ? {} : { typicalSeconds: typical }),
       ...(appliance.timed.overtime ? { overtime: true } : {}),
@@ -1119,8 +1123,11 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
     const name = phase.trim();
     const from = change.from ?? change.since ?? change.at;
-    // Started live by the model already, from as early: a shot timer would count back.
-    if (change.active && !change.short && shadow?.holdsStart(name, from)) {
+    // Started live by the model already, from as early: a shot timer would count back. Nor
+    // ended while the model has it on still: it ends it.
+    const starts = change.active || change.short;
+    const ends = !change.active || change.short;
+    if (shadow && (!starts || shadow.holdsStart(name, from)) && (!ends || shadow.holdsEnd(name, change.at))) {
       return;
     }
     const ended = change.until ?? change.at;
