@@ -184,6 +184,12 @@
     th.om-sort { cursor: pointer; user-select: none; white-space: nowrap; }
     th.om-sort .om-arrow { display: inline-block; width: 1em; margin-left: .2em; font-size: .8em; }
     td .om-cost { opacity: .65; white-space: nowrap; }
+    /* With heat: the kWh from green, the least of a period, to red, the most, by its rank among the
+       appliances; the page sets --om-low and --om-high to suit its look. Its cost keeps the text's
+       colour. Nothing used is no rating. */
+    td.om-heat { color: color-mix(in oklch shorter hue, var(--om-high, #d93025) var(--om-p), var(--om-low, #1f9d55)); font-weight: 600; }
+    td.om-heat .om-cost { color: var(--text, inherit); font-weight: 400; }
+    td.om-none { opacity: .5; }
     tfoot tr.om-fee td { font-weight: normal; }`;
 
   /**
@@ -245,7 +251,7 @@
    * a column's header sorts by it — the biggest first, names from A — and
    * again the other way; an appliance's parts stay under it.
    */
-  function statisticsTable(table, { className = '', dates = false, decorate } = {}) {
+  function statisticsTable(table, { className = '', dates = false, decorate, heat = false } = {}) {
     if (!document.getElementById('om-table-style')) {
       const style = document.createElement('style');
       style.id = 'om-table-style';
@@ -254,8 +260,32 @@
     }
     // What each value cost, each day at the price that held then, worked out by the plugin.
     const price = table.price ?? null;
-    const withCost = (row, wattHours, cost) => {
+    // With heat, each value's place among the appliances' of its period, 0 for the least to 1 for
+    // the most: by rank, so that one big consumer does not leave the rest all green. Parts are
+    // in their appliance already, and not ranked; nor is what shows as nothing used.
+    const ranked = (index, column) => {
+      const value = table.rows[index].values[column];
+      if (!heat || table.rows[index].partOf || value === null) {
+        return undefined;
+      }
+      // Less than shows as 0.01 kWh: nothing, as far as the table says.
+      if (value < 5) {
+        return null;
+      }
+      const others = table.rows.filter((row) => !row.partOf && row.values[column] >= 5).map((row) => row.values[column]);
+      if (others.length < 2) {
+        return 0.5;
+      }
+      return others.filter((other) => other < value).length / (others.length - 1);
+    };
+    const withCost = (row, wattHours, cost, place) => {
       const element = cell(row, kwh(wattHours));
+      if (place === null) {
+        element.classList.add('om-none');
+      } else if (place !== undefined) {
+        element.classList.add('om-heat');
+        element.style.setProperty('--om-p', `${Math.round(place * 100)}%`);
+      }
       const text = wattHours !== null && cost !== null && cost !== undefined && price ? ` (${money(cost, price.currency)})` : '';
       if (text) {
         const small = document.createElement('span');
@@ -350,7 +380,8 @@
       lines.push(['Count', `${count} × ${label}`], ['Standby', standbyText(standby, price) ?? 'not counted yet']);
       addInfo(row, name, lines);
       const costs = shownOnly(price?.costs?.[index] ?? values.map(() => null));
-      shownOnly(values).forEach((value, column) => withCost(row, value, costs[column]));
+      const places = shownOnly(values.map((_, column) => ranked(index, column)));
+      shownOnly(values).forEach((value, column) => withCost(row, value, costs[column], places[column]));
       return row;
     };
     const rows = table.rows.map((_, index) => rowFor(index));

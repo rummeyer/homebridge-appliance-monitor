@@ -302,7 +302,7 @@
       $('stats').replaceChildren(el('p', 'muted', 'No plugs configured.'));
       return;
     }
-    $('stats').replaceChildren(statisticsTable(table, { dates: true }));
+    $('stats').replaceChildren(statisticsTable(table, { dates: true, heat: true }));
   }
 
   // ---- Refresh ---------------------------------------------------------------

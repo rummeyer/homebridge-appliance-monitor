@@ -8,6 +8,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Dashboard: the statistics in colour.** Each period's kWh from green, the
+  appliance that used least, to red, the one that used most, by its rank
+  among them, through yellow and orange; in each look its own shades — the
+  Home look's light ones over the wallpaper. What shows as 0.00 kWh stays
+  grey, parts and the total as they were.
 - **Settings saved under names that match the settings page.** Idle's
   `idleOnMinutes` and `idleOnFrom` are `idleMinutes` and `idleFrom`; a
   phase's `minSeconds`, `holdSeconds` and `maxSeconds` are
