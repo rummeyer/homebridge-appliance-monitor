@@ -16,6 +16,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   it is warm; kept across a restart of the clock.
 - ShotTimer 5.13: a shot's result is not a second or two below the count it
   showed; a later correction by the model still is.
+- **Dashboard: the statistics in colour.** Each period's kWh from green, the
+  appliance that used least, to red, the one that used most, by its rank
+  among them, through yellow and orange; in each look its own shades — the
+  Home look's light ones over the wallpaper. What shows as 0.00 kWh stays
+  grey, parts and the total as they were.
 
 ### Added
 
