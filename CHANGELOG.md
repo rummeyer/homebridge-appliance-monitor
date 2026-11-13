@@ -6,6 +6,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- ShotTimer 5.13: heating up, the countdown starts at **Cold preheat** and
+  only ever gets shorter: the rate counts once the thermometer has moved a
+  degree, as the boiler heats inside first and the thermometer outside
+  notices some fifteen minutes in. It jumped back up by minutes as it ran
+  out, the rate slowing near the end. Past it, the bar alone, at 99 %, until
+  it is warm; kept across a restart of the clock.
+- ShotTimer 5.13: a shot's result is not a second or two below the count it
+  showed; a later correction by the model still is.
+
 ### Added
 
 - **Recognise phases: By rules, a learned model watching.** A model of the

@@ -12,7 +12,7 @@ topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, or by the time until then where that is further (the group hardly warms at first), as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then: until **Cold preheat** is up from switching on, or sooner once the rate it rose over the last five minutes says so, and past it by that rate; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
+| Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, or by the time until then where that is further (the group hardly warms at first), as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then: from **Cold preheat** as switched on, made shorter by the rate it rose over the last five minutes once the thermometer has moved a degree — never longer, and past it the bar alone; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute; while the machine is in use, which holds Idle, its full time standing still |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
