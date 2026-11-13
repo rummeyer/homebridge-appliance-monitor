@@ -654,7 +654,7 @@ A web page with every appliance at a glance, for a tablet on the wall or a
 phone on the sofa, without logging in to Homebridge. It opens in the **Home**
 look, after Apple's Home app:
 
-<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home.png" alt="The dashboard in the Home look: square glass tiles on a warm wallpaper, each with its icon — a fan, a washing machine, a dryer, a desk, a computer, a coffee machine, a TV and more — Electricity with what all plugs draw together, the running Schreibtisch and Server as white tiles, two lamps marked as part of another appliance, the power chart of all plugs and the statistics" width="760">
+<img src="https://raw.githubusercontent.com/rummeyer/homebridge-appliance-monitor/main/docs/screenshots/dashboard-home.png" alt="The dashboard in the Home look: square glass tiles on a warm wallpaper, each with its icon — a fan, a washing machine, a dryer, a desk, a computer, a coffee machine, a TV and more — Electricity with what all plugs draw together, the running Schreibtisch and Server as white tiles, two lamps marked as part of another appliance, the power chart of all plugs and the statistics, each period from green for the least used to red for the most" width="760">
 
 - a tile per appliance with what it draws **now**, whether it is running and
   for how long, what the cycle has used so far, and the phases it is in;
@@ -675,7 +675,8 @@ look, after Apple's Home app:
   click its tile, or pick it from the list. It opens on all plugs and the
   last 6 hours; the plug and the time picked are kept for the next visit,
   in this browser;
-- the **statistics**, as on the Statistics tab.
+- the **statistics**, as on the Statistics tab, each period in colour: from
+  green for the appliance that used least to red for the one that used most.
 
 It updates itself every few seconds. On a phone, the tiles are two side by
 side:
