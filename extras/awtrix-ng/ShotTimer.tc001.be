@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.13
+# @version 5.14
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -19,12 +19,14 @@
 # @config done color "Result" default=#30D158
 # @config hot color "Heating" default=#FF8C00
 # @config red color "Heated" default=#FF3B30
+import math
 class ShotTimer
 var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
 var rinse_topic, rinsed, rinse_s
 var pump_topic, until_topic
 var by_phase, on_after
 var temp_topic, ready, temp
+var approach
 var temp0
 var temp0_s, temp_s
 var heat_done
@@ -78,6 +80,7 @@ self.rinse_s = store.get("rinsemax") == nil ? 15 : int(store.get("rinsemax"))
 self.rinsed = false
 self.temp_topic = store.get("temp")
 self.ready = store.get("ready")
+self.approach = 4.0
 self.temp = nil
 self.temp0 = nil
 self.temp0_s = 0
@@ -447,7 +450,10 @@ if at == nil && self.since_s > 0
 at = self.since_s + self.coldpre_s
 end
 if at != nil && self.temp - self.temp0 >= 1 && rise > 0 && self.temp_s > from_s
-var by_rate = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
+var top = self.ready + self.approach
+var mid = (self.temp + from_v) / 2.0
+var k = rise / (self.temp_s - from_s) / (top - mid)
+var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k)
 if by_rate < at
 at = by_rate
 end

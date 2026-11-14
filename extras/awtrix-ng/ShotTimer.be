@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.13
+# @version 5.14
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -20,12 +20,15 @@
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
+import math
+
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed, rinse_s   # rinse_s: Rinse under, in seconds
   var pump_topic, until_topic   # the pump phase, and where the plugin says its draw fell below its range
   var by_phase, on_after        # no shot messages: the pump phase starts and ends the shot; its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
+  var approach     # how far above Preheated from the group heads as it warms: its rate's end, in °C
   var temp0        # the temperature when it was switched on, the heating up's 0 %; nil while off
   var temp0_s, temp_s   # Unix seconds of temp0 and of the latest reading
   var heat_done    # the heating phase has ended since it was switched on: heated from warm, without a thermometer
@@ -80,6 +83,7 @@ class ShotTimer
     self.rinsed = false
     self.temp_topic = store.get("temp")
     self.ready = store.get("ready")
+    self.approach = 4.0
     self.temp = nil
     self.temp0 = nil
     self.temp0_s = 0
@@ -568,16 +572,25 @@ class ShotTimer
         end
         # Cold preheat from switching on: the boiler heats inside first, and the thermometer
         # outside notices only some fifteen minutes in. Once it moves, a degree up from where it
-        # started, the rate may make the countdown shorter, never longer: the rate slows as it
-        # nears the end, and a countdown jumping back up by minutes as it runs out is worse than
-        # one waiting at its end (13.11.2026). Past it, the bar alone, until it is warm.
+        # started, the rate may make the countdown shorter, never longer: a countdown jumping
+        # back up by minutes as it runs out is worse than one waiting at its end (13.11.2026).
+        # Past it, the bar alone, until it is warm.
         var rise = self.temp - from_v
         var at = self.eta
         if at == nil && self.since_s > 0
           at = self.since_s + self.coldpre_s
         end
         if at != nil && self.temp - self.temp0 >= 1 && rise > 0 && self.temp_s > from_s
-          var by_rate = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
+          # Not at the rate it rises now all the way: the group warms as anything towards a
+          # hotter one, the slower the nearer — 0.8 °C a minute at 30 °C, 0.4 at 36 (13.11.2026).
+          # As heading for Approach above Preheated from, the rate falling with the distance
+          # left to it. In a straight line the countdown ran out three minutes early as a rule,
+          # the bar's last tick standing still for them; so, a fifth of a minute (thirteen cold
+          # mornings, 29.10.–13.11.2026).
+          var top = self.ready + self.approach
+          var mid = (self.temp + from_v) / 2.0
+          var k = rise / (self.temp_s - from_s) / (top - mid)
+          var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k)
           if by_rate < at
             at = by_rate
           end

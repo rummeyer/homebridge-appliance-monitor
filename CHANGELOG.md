@@ -8,6 +8,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- ShotTimer 5.14: heating up, the countdown reckons with the group warming
+  slower the nearer it gets — as heading for 4 °C above **Preheated from**,
+  the rate falling with the distance left — rather than at the last five
+  minutes' rate all the way. In a straight line it ran out about three
+  minutes early, and the bar's last tick stood still for them; over the
+  cold mornings recorded since 29.10.2026, a fifth of a minute instead.
 - ShotTimer 5.13: heating up, the countdown starts at **Cold preheat** and
   only ever gets shorter: the rate counts once the thermometer has moved a
   degree, as the boiler heats inside first and the thermometer outside
