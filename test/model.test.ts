@@ -315,3 +315,41 @@ test('a run the model started live it ends itself, where the rules end it early'
   assert.ok(Math.abs(seconds - 24) <= 2, `the coffee's 24 s, ended at ${seconds}`);
   assert.ok(at - day.coffee.until <= 5 * S, `told ${(at - day.coffee.until) / S} s after`);
 });
+
+test('switched on hours later, a cold heater drawing more than the warm one last time is not taken for the pump beside it', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'model-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'model'));
+  writeFileSync(join(dir, 'model', 'Coffee%20machine.json'), JSON.stringify({ ...params, sessions: 12, steady: 1 }));
+  const quiet = { info: () => {}, debug: () => {}, warn: () => {} };
+  const sent: [string, string, number, number][] = [];
+  let now = 0;
+  const phases = PHASES.map((phase) => (phase.name === 'Coffee' ? { ...phase, minSeconds: 3 } : phase));
+  const shadow = new ModelShadow('Coffee machine', phases, dir, dir, 14, quiet, 0, (phase, when, seconds) => sent.push([phase, when, seconds, now]), ['Coffee']);
+  const feed = (samples: Sample[]) => {
+    for (const sample of samples) {
+      now = sample.at;
+      shadow.reading(sample.at, sample.watts);
+      shadow.tick(sample.at);
+    }
+  };
+  // The morning, warm by its end: its heater's level is the one known.
+  const day = morning(30 * DAY, 77);
+  feed(day.samples);
+  // Six hours later, switched on cold: the heater alone, 55 W above it, for a minute, as on
+  // 15.11.2026 (1205 W in the morning, 1255 W at noon); on the way up, a reading at what it
+  // drew last time, as if it were that and the pump came on beside it.
+  const random = noise(5);
+  const noon = day.samples[0]!.at + 6 * 3_600_000;
+  const cold: Sample[] = [];
+  for (let s = 0; s < 120; s++) {
+    const watts = s < 10 ? 9 : s === 10 ? 110 : s === 11 ? 9 + 1240 : s < 70 ? 9 + 1240 + 55 - (s - 10) * 0.2 : 9;
+    cold.push({ at: noon + s * S, watts: watts + random() });
+  }
+  feed(cold);
+  for (let at = noon + 120 * S; at < noon + 1000 * S; at += S) {
+    shadow.tick(at);
+  }
+  shadow.stop();
+  assert.deepEqual(sent.filter(([, , , at]) => at >= noon), [], 'no shot on the clock');
+});

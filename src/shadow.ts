@@ -98,9 +98,15 @@ export class ModelShadow {
     this.#told(this.#watcher.reading(at, watts));
     if (this.#send && !this.#watcher.unready()) {
       const likeliest = this.#watcher.likeliest();
+      // The level part on, what it draws not known yet: a part that came on with it or after is
+      // only what it draws more than last time, not seen (15.11.2026: a cold heater 50 W above
+      // the morning's warm one, taken for the pump beside it, a shot of 16 s on the clock).
+      const level = this.#watcher.levelUnknown() ? likeliest.find((each) => each.part === this.#watcher.levelPart) : undefined;
       for (const phase of this.#phases.filter(({ name }) => this.#live.get(name)!.told)) {
         const part = partOf(this.#watcher.params, phase);
-        this.#startLive(phase, likeliest.find((each) => each.part === part)?.since, at);
+        const since = likeliest.find((each) => each.part === part)?.since;
+        const unseen = level !== undefined && part !== level.part && since !== undefined && since >= level.since;
+        this.#startLive(phase, unseen ? undefined : since, at);
       }
     }
   }

@@ -40,6 +40,13 @@ const LEVEL_DRIFT = 0.5;
 /** What a session knows of the level beforehand, as a spread: nothing yet, or what it was lately. */
 const LEVEL_PRIOR_SD = 150;
 const LEVEL_SEEN_SD = 25;
+/**
+ * How long after a session the level it held is still known for the next: a
+ * machine switched on again soon after is warm. Later it has cooled, and a
+ * cold heater draws more than a warm one (15.11.2026: 1205 W in the morning,
+ * 1255 W switched on six hours later): see ModelWatcher.levelUnknown.
+ */
+const LEVEL_FRESH_MS = 30 * 60_000;
 /** Switched on, the level part may draw differently than before (31.10.2026: 1200 W, then 1255). */
 const LEVEL_JUMP = 0.1;
 const LEVEL_JUMP_SD = 40;
@@ -746,6 +753,10 @@ export class ModelWatcher {
   readonly #model: Model;
   #level: number;
   #levelSeen: boolean;
+  /** When the last session ended, here: its level known for LEVEL_FRESH_MS. */
+  #endedAt: number | undefined;
+  /** This session's level known: from the last, lately, or by a burst of the level part seen ending. */
+  #levelKnown = false;
   #beam: Beam | undefined;
   #session: number[] = [];
   /** How far the readings are settled, and which parts were on then, since when. */
@@ -779,10 +790,31 @@ export class ModelWatcher {
       this.#beam.reading(at, watts);
     } else {
       this.#beam = new Beam(this.#model, at, watts, this.#level, this.#levelSeen ? LEVEL_SEEN_SD : LEVEL_PRIOR_SD);
+      this.#levelKnown = this.#levelSeen && this.#endedAt !== undefined && at - this.#endedAt <= LEVEL_FRESH_MS;
+    }
+    const level = this.#model.parts[this.#model.levelPart];
+    const last = this.#session[this.#session.length - 1];
+    if (level && last !== undefined && last >= level.minWatts && watts < level.minWatts) {
+      // Off by a step the size of what it drew: its level, as of now.
+      this.#levelKnown = true;
     }
     this.#session.push(watts);
     this.#settle(Math.max(this.#beam.agreedAt(this.#settledAt), at - MAX_LAG_MS));
     return [...told, ...this.#tell(this.#settledAt)];
+  }
+
+  /**
+   * Whether what the level part draws is not known yet this session: the last
+   * one long ago, and no burst of it seen ending since. More than it drew
+   * last time may be it alone, or it with something beside it.
+   */
+  levelUnknown(): boolean {
+    return this.#model.levelPart >= 0 && !this.#levelKnown;
+  }
+
+  /** The level part's index, if there is one. */
+  get levelPart(): number {
+    return this.#model.levelPart;
   }
 
   /**
@@ -837,6 +869,7 @@ export class ModelWatcher {
       this.#level = level;
       this.#levelSeen = true;
     }
+    this.#endedAt = lastAt;
     this.#beam = undefined;
     this.#unsettled.clear();
     this.#session = [];

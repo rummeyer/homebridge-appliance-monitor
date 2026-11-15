@@ -52,6 +52,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Model watching: switched on cold, hours after the last session, the
+  heater drawing more than it did warm then is not taken for the pump
+  beside it, and no shot is started live on the clock: until a burst of the
+  heater has been seen ending, a part only inferred above it is not told
+  live (15.11.2026: 1255 W at noon, 1205 W in the morning, a shot of 16 s
+  on the clock as the machine was switched on). A pump seen on its own
+  first is, as before; the rules are not touched.
 - Phases, by difference: the pump stopping beneath the heater beside the
   milk, the draw back down at the milk once known quiet, ran on until the
   heater went off, not stopping as it came on (14.11.2026: a rinse of about
