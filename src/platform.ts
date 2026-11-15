@@ -1107,9 +1107,14 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     if (change.active) {
       this.log.info(`${device.name}: ${tracker.name}`);
     } else {
-      this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
       const lasted = change.since === undefined ? '' : ` after ${formatDuration((change.at - change.since) / 1000)}`;
-      this.log.info(`${device.name}: ${tracker.name} ended${lasted}`);
+      if (change.shortOfOn) {
+        // Known too short once it ended: not the phase after all.
+        this.log.info(`${device.name}: ${tracker.name} ended${lasted} — only ${formatDuration((change.until! - change.from!) / 1000)}, not counted`);
+      } else {
+        this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
+        this.log.info(`${device.name}: ${tracker.name} ended${lasted}`);
+      }
     }
   }
 
