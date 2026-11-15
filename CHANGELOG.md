@@ -24,6 +24,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Phases, by difference: the pump stopping beneath the heater beside the
+  milk, the draw back down at the milk once known quiet, ran on until the
+  heater went off, not stopping as it came on (14.11.2026: a rinse of about
+  7 s taken for a coffee of 16 s). And a phase on before its end was known
+  — with byDifference, the time above the band counting — is not counted
+  when it ends a draw shorter than **On after**: the coffee taken back
+  (14.11.2026, and 4.11.2026: a rinse of 5 s, the heater on over it for
+  long after).
 - **Coffee machine: a heater burst is not the grinder.** A reading lost in
   the heater's fall left a moment on the way, 890 W say, that was taken for
   a level, and the step down to it for the grinder stopping unseen beneath

@@ -254,6 +254,14 @@ export interface PhaseChange {
    */
   from?: number;
   until?: number;
+  /**
+   * With byDifference, on the change that turns it off: on while the pump
+   * seemed to run on beneath something else, the draw shorter than
+   * minSeconds once its end was known — not the phase after all, so not
+   * counted (14.11.2026: a rinse of about 7 s, the heater on over it
+   * stopping, a coffee by the time the heater went off).
+   */
+  shortOfOn?: boolean;
 }
 
 /** One phase, on or off. Time is passed in, as for the state machine. */
@@ -434,18 +442,22 @@ export class PhaseTracker {
       return;
     }
     this.#restLevel = left.watts < minWatts && !pumping && watts >= maxWatts ? { watts, at } : undefined;
-    if (pumping && this.#belowSince === undefined && watts >= maxWatts && this.#atAlone(watts, at)) {
-      // Settled at what the heater draws alone: the pump stopped beneath it on the way.
-      this.#stoppedBeneath(movedAt, left.watts - watts);
-      return;
-    }
     const step = watts - left.watts;
     if (pumping && this.#belowSince === undefined && this.#beneath !== undefined && -step >= maxWatts &&
       Math.abs(watts - this.#beneath) < minWatts / 2) {
       // Back down from a burst to what the pump started beside: it stopped
       // as the burst began (8.11.2026: a coffee of 23 s beside the milk, the
       // heater on and off after it, taken for 95 s until the milk stopped).
+      // Before the level known quiet below, which it may be too: the milk
+      // held alone before the pump started beside it (14.11.2026: a rinse
+      // of about 7 s beside the milk, the heater on over it stopping, taken
+      // for a coffee of 16 s until the heater went off).
       this.#stoppedAt(left.from ?? movedAt);
+      return;
+    }
+    if (pumping && this.#belowSince === undefined && watts >= maxWatts && this.#atAlone(watts, at)) {
+      // Settled at what the heater draws alone: the pump stopped beneath it on the way.
+      this.#stoppedBeneath(movedAt, left.watts - watts);
       return;
     }
     // Back down from a burst, the heater on and off again, the pump may have
@@ -710,7 +722,10 @@ export class PhaseTracker {
     }
     if (outLong || (belowLong && this.#phase.byDifference)) {
       this.#active = false;
-      const change = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
+      const change: PhaseChange = { active: false, at, since: this.#since, inBandMs: this.#inMs, from: this.#firstIn, until: this.#until() };
+      if (this.#phase.byDifference && change.from !== undefined && change.until !== undefined && change.until - change.from < minMs) {
+        change.shortOfOn = true;
+      }
       this.#forget();
       return change;
     }

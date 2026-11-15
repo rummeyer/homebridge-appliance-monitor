@@ -614,6 +614,31 @@ test('by difference: the pump stopped beneath the milk as the heater came on, ba
   assert.deepEqual(draws(coffeePhases.bezug, readings).map(({ from, until }) => ({ from, until })), [{ from: 8, until: 33 }], 'a coffee of 25 s, not of 95');
 });
 
+test('by difference: the pump stopped beneath the heater beside the milk, back down at the milk known quiet', () => {
+  // As the plug read it on 14.11.2026 from 08:24:50: the milk alone at
+  // 492-500 W for 20 s, the heater on over it once, the pump 55 W above it,
+  // the heater on over the pump stopping, and back down at the milk alone
+  // when the heater went off. The pump ran about 7 s; the rules had it run
+  // on until the heater went off, a coffee of 16 s.
+  const readings: [number, number][] = [
+    [0, 3.4], [1, 3.2], [2, 7.2], [3, 7.8], [4, 7.2], [6, 84.4], [7, 481], [8, 487.2], [9, 491.9], [11, 492.1], [12, 491.9],
+    [13, 492], [14, 678.2], [15, 1700], [16, 1710.4], [17, 1709.9], [18, 1707.2], [19, 1056.3], [20, 509.6], [21, 503.7], [22, 494.2], [23, 495.1],
+    [24, 496.6], [25, 497.6], [26, 497.5], [27, 497.7], [28, 499.3], [29, 499.4], [30, 499.8], [31, 499.9], [32, 499.8], [34, 500.5], [35, 555.7],
+    [36, 557.5], [37, 558], [39, 557.8], [40, 1310.5], [42, 1747.1], [43, 1719.9], [44, 1719.1], [45, 1718.2], [46, 1716.3], [47, 1716.8], [48, 1716.5],
+    [49, 1715.1], [50, 1715.3], [51, 794.5], [52, 515.2], [53, 503.1], [54, 503.2], [55, 503.3], [56, 503], [57, 503.4], [58, 503.1], [59, 502.9],
+    [60, 503.2], [61, 502.9], [62, 503.1], [63, 503.4], [64, 503.1], [65, 502.8], [66, 502.9], [67, 1273.7], [68, 1713.2], [69, 1712.2], [70, 1720.7],
+    [71, 1533.2], [72, 1234.7], [74, 1118.2], [75, 8.3], [76, 8], [77, 8.1],
+  ];
+  assert.deepEqual(draws(coffeePhases.pumpe, readings).map(({ from, until }) => ({ from, until })), [{ from: 35, until: 40 }], 'the pump until the heater came on, not until it went off');
+  assert.deepEqual(draws(coffeePhases.spuelen, readings), [{ from: 35, until: 40 }], 'a rinse');
+  // On before its end was known, the coffee is taken back when it ends: not counted.
+  const coffee = track(new PhaseTracker(coffeePhases.bezug), readings, 120);
+  assert.deepEqual(coffee.map(({ active, from, until, shortOfOn }) => ({ active, from: from! / S, until: until === undefined ? undefined : until / S, shortOfOn })), [
+    { active: true, from: 35, until: undefined, shortOfOn: undefined },
+    { active: false, from: 35, until: 40, shortOfOn: true },
+  ], 'on at 15 s with the heater, off as a draw of 5 s, not a coffee');
+});
+
 test('by difference: the pump alone a moment, then the heater on beside it, a band\'s size above what the heater draws alone', () => {
   // As the plug read it on 7.11.2026 from 07:02:40: the heater alone at
   // 1215 W, then the pump alone for 1.9 s, too short for the time above to
