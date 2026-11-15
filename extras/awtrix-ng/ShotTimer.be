@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.15
+# @version 5.16
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -16,6 +16,7 @@
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
 # @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends, Cold preheat at the most"
 # @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the countdown it starts with, made shorter, never longer, once the thermometer moves"
+# @config  early  number "Shots from"       default=10 min=0 max=120 unit=min help="Heating up from cold, a pump only shows as a shot this long before heated at most: earlier, the heater switching on was taken for it; 0: always"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
@@ -38,6 +39,7 @@ class ShotTimer
   var eta          # Unix seconds heated, as the countdown says: only ever sooner; nil before one
   var cold         # switched on after being off for Cold after, or for how long not known
   var cold_s, coldpre_s   # Cold after and Cold preheat, in seconds
+  var early_s      # Shots from, in seconds before heated
   var lead_ms, hold_ms
   var relay_topic  # the plug's relay, as Appliance Monitor tells it
   var plug_on      # the plug is switched on: on the display the whole time; nil until told
@@ -98,6 +100,7 @@ class ShotTimer
     self.plug_on = nil
     self.cold_s = int(store.get("cold") * 60)
     self.coldpre_s = int(store.get("coldpre") * 60)
+    self.early_s = int(store.get("early") * 60)
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
     self.as_bar = store.get("heatas") != "percent"
@@ -377,8 +380,28 @@ class ShotTimer
     end
   end
 
-  # The pump has been in its range for `seconds` already when the plugin knows.
+  # Heating up from cold, how long until heated as the countdown says, in seconds; nil once
+  # heated, from warm, or not known.
+  def to_heat()
+    if !self.running || !self.cold || self.heated()
+      return nil
+    end
+    var at = self.eta
+    if at == nil && self.since_s > 0
+      at = self.since_s + self.coldpre_s
+    end
+    return at == nil ? nil : at - epoch_ms() / 1000
+  end
+
+  # The pump has been in its range for `seconds` already when the plugin knows. Not a shot more
+  # than Shots from before heated from cold: nobody draws one that early, a thirsty one five
+  # minutes before at most, and the heater switching on cold, drawing more than it did warm, was
+  # taken for the pump beside it (15.11.2026: a shot of 16 s on the clock as it was switched on).
   def started(seconds)
+    var left = self.to_heat()
+    if self.early_s > 0 && left != nil && left > self.early_s
+      return
+    end
     timer.cancel(self.timer_id)
     self.t0 = now_ms() - int(seconds * 1000) - self.lead_ms
     self.stopped = nil

@@ -8,6 +8,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- ShotTimer 5.16: **Shots from**, 10 min by default: heating up from cold,
+  a pump shows as a shot only this long before heated at most, as the
+  countdown says; earlier, it is left out. Nobody draws one that early, and
+  the heater switching on cold was taken for the pump beside it
+  (15.11.2026: a shot of 16 s on the clock as the machine was switched on).
+  From warm, or once heated, every shot shows.
 - ShotTimer 5.15: a shot's result holds the count shown only a second above
   it, as rounding; two above is a start counted early, and the plugin's
   count is shown (15.11.2026: a shot of 21 s held at 23s).

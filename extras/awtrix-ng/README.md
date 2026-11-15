@@ -130,6 +130,7 @@ In AWTRIX NG's web page, on the **Apps** tab, behind the app's gear button:
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
 | Cold preheat | 30 min | How long a cold machine heats up. Without a thermometer, any at the most; with one, the time left shown until it rises fast enough to tell sooner. |
 | Plug delay | 5 s | How much later the plugin sees the pump than it started: 5 s for a plug that reports an average over 6 seconds, as the Eve Energy does; 0 for one that reports every second, as a Shelly does. |
+| Shots from | 10 min | Heating up from cold, a pump shows as a shot only this long before heated at most, as the countdown says: earlier it is left out, the heater switching on taken for it. 0 for always. |
 | Show result for | 20 s | |
 | Colours | | Result, heating, heated. The cup is drawn as it is. |
 

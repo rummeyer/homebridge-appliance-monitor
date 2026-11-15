@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.15
+# @version 5.16
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -15,6 +15,7 @@
 # @config heatas select "Heating up as" default=bar options=bar,percent
 # @config cold number "Cold after" default=45 min=0 max=1440 unit=min
 # @config coldpre number "Cold preheat" default=30 min=0 max=120 unit=min
+# @config early number "Shots from" default=10 min=0 max=120 unit=min
 # @config hold number "Show result for" default=20 min=1 max=600 unit=s
 # @config done color "Result" default=#30D158
 # @config hot color "Heating" default=#FF8C00
@@ -36,6 +37,7 @@ var hist
 var eta
 var cold
 var cold_s, coldpre_s
+var early_s
 var lead_ms, hold_ms
 var relay_topic
 var plug_on
@@ -95,6 +97,7 @@ self.relay_topic = base + "/relay"
 self.plug_on = nil
 self.cold_s = int(store.get("cold") * 60)
 self.coldpre_s = int(store.get("coldpre") * 60)
+self.early_s = int(store.get("early") * 60)
 self.lead_ms = int(store.get("lead") * 1000)
 self.hold_ms = int(store.get("hold") * 1000)
 self.as_bar = store.get("heatas") != "percent"
@@ -303,7 +306,21 @@ end
 self.built = -1
 end
 end
+def to_heat()
+if !self.running || !self.cold || self.heated()
+return nil
+end
+var at = self.eta
+if at == nil && self.since_s > 0
+at = self.since_s + self.coldpre_s
+end
+return at == nil ? nil : at - epoch_ms() / 1000
+end
 def started(seconds)
+var left = self.to_heat()
+if self.early_s > 0 && left != nil && left > self.early_s
+return
+end
 timer.cancel(self.timer_id)
 self.t0 = now_ms() - int(seconds * 1000) - self.lead_ms
 self.stopped = nil
