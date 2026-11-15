@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.14
+# @version 5.15
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -319,7 +319,7 @@ return
 end
 var again = self.shot == "done"
 self.final_s = int(seconds + 0.5)
-if !again && self.shown != nil && self.shown > self.final_s && self.shown - self.final_s <= 2
+if !again && self.shown != nil && self.shown > self.final_s && self.shown - self.final_s <= 1
 self.final_s = self.shown
 end
 if again

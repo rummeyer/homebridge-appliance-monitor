@@ -8,6 +8,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- ShotTimer 5.15: a shot's result holds the count shown only a second above
+  it, as rounding; two above is a start counted early, and the plugin's
+  count is shown (15.11.2026: a shot of 21 s held at 23s).
 - ShotTimer 5.14: heating up, the countdown reckons with the group warming
   slower the nearer it gets — as heading for 4 °C above **Preheated from**,
   the rate falling with the distance left — rather than at the last five
