@@ -20,7 +20,7 @@ import type { PhaseChange, PhaseConfig } from './phases.ts';
 const LEARN_EVERY_MS = 24 * 3_600_000;
 /** How long after starting it first learns, with nothing saved: Homebridge has enough to do then. */
 const FIRST_LEARN_MS = 2 * 60_000;
-/** A run the model started live, off this long by its likeliest way and the rules never on: over. */
+/** A run the model holds live, off this long by its likeliest way: over. */
 const LIVE_OFF_MS = 3000;
 /** Two starts of a phase this close are the same run's. */
 const SAME_START_MS = 1000;
@@ -45,8 +45,13 @@ interface Live {
   rules?: number;
   /** When its part was last off by the likeliest way. */
   offAt: number;
-  /** The run the model started: since when, when its part was last on, and first off after. */
-  started?: { since: number; onAt: number; offAt?: number };
+  /**
+   * The run the model holds: since when, when its part was last on, and first off after. One the
+   * rules started it takes over without telling its start again.
+   */
+  started?: { since: number; onAt: number; offAt?: number; bareOffAt?: number };
+  /** Whether the model ended the run the rules have on still: their end is not told again. */
+  endedLive?: boolean;
   /** From when the run the rules ended last was: not to be started again. */
   ended: number;
   /** From when the latest run started, by either: a correction of one before it comes too late. */
@@ -106,7 +111,7 @@ export class ModelShadow {
         const part = partOf(this.#watcher.params, phase);
         const since = likeliest.find((each) => each.part === part)?.since;
         const unseen = level !== undefined && part !== level.part && since !== undefined && since >= level.since;
-        this.#startLive(phase, unseen ? undefined : since, at);
+        this.#startLive(phase, unseen ? undefined : since, at, !likeliest.some((each) => each.part === this.#watcher.levelPart));
       }
     }
   }
@@ -128,8 +133,8 @@ export class ModelShadow {
    * ended as a 7 s rinse 5 s before the pump stopped); the model ends it.
    */
   holdsEnd(phase: string, at: number): boolean {
-    const started = this.#live.get(phase)?.started;
-    return started !== undefined && at - started.onAt < LIVE_OFF_MS;
+    const live = this.#live.get(phase);
+    return live?.endedLive === true || (live?.started !== undefined && at - live.started.onAt < LIVE_OFF_MS);
   }
 
   /** Where the run the model holds went off by the likeliest way, while it is. */
@@ -143,22 +148,34 @@ export class ModelShadow {
    * it late (10.11.2026: 11 s), as alone. Never from before the part was last
    * off by it as it went: what it later takes for on all along, a pump under
    * the heater after a rinse, may not have been (9.11.2026: 17 s early).
-   * `on` is since when the part is on by it, if it is.
+   * `on` is since when the part is on by it, if it is; `bare` whether the
+   * level part is off by it, the heater not hiding the rest.
    */
-  #startLive(phase: PhaseConfig, on: number | undefined, at: number): void {
+  #startLive(phase: PhaseConfig, on: number | undefined, at: number, bare: boolean): void {
     const live = this.#live.get(phase.name)!;
     const { started } = live;
     if (on === undefined) {
       live.offAt = at;
       if (started) {
         started.offAt ??= at;
+        if (bare) {
+          started.bareOffAt ??= at;
+        }
       }
-      // Over, the rules not having it (any more): its end, or a shot timer counts on.
-      if (started && at - started.onAt >= LIVE_OFF_MS && live.rules === undefined) {
+      // Over: its end, or a shot timer counts on. Also where the rules have it on still, a pump
+      // with the frother beside it they lose the end of (16.11.2026: a 24 s shot ending 67 s in),
+      // seen off with the heater off only: under the heater beside the frother the model loses
+      // the pump for a moment (5.11.2026: a 30 s shot ended 4 s in).
+      const over = live.rules === undefined
+        ? started && at - started.onAt >= LIVE_OFF_MS
+        : started?.bareOffAt !== undefined && at - started.bareOffAt >= LIVE_OFF_MS;
+      if (started && over) {
         const seconds = (started.offAt! - started.since) / 1000;
         live.started = undefined;
+        live.endedLive = live.rules !== undefined;
         live.sent = Math.round(seconds);
-        this.#log.info(`${this.#device}: model ended ${phase.name} after ${live.sent} s`);
+        const still = live.endedLive ? ', the rules having it on still' : '';
+        this.#log.info(`${this.#device}: model ended ${phase.name} after ${live.sent} s${still}`);
         this.#send!(phase.name, 'end', seconds);
       }
       return;
@@ -167,11 +184,16 @@ export class ModelShadow {
     if (started && started.since <= since + SAME_START_MS) {
       started.onAt = at;
       started.offAt = undefined;
+      started.bareOffAt = undefined;
       return;
     }
-    // Not one ended already, nor before its on after, nor where the rules had it as early.
-    if (since <= live.ended + SAME_START_MS || at - since < (phase.minSeconds ?? 5) * 1000 ||
-      (live.rules !== undefined && live.rules <= since + SAME_START_MS)) {
+    // Not one ended already, nor before its on after.
+    if (since <= live.ended + SAME_START_MS || live.endedLive || at - since < (phase.minSeconds ?? 5) * 1000) {
+      return;
+    }
+    // Where the rules had it as early: theirs, told already, the model holds from where they started.
+    if (live.rules !== undefined && live.rules <= since + SAME_START_MS) {
+      live.started = { since: live.rules, onAt: at };
       return;
     }
     live.started = { since, onAt: at };
@@ -200,6 +222,7 @@ export class ModelShadow {
     }
     live.ended = Math.max(live.started?.since ?? -Infinity, from);
     live.rules = undefined;
+    live.endedLive = undefined;
     if (!this.holdsEnd(phase, change.at)) {
       live.started = undefined;
     }

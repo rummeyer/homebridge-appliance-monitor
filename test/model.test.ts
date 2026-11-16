@@ -353,3 +353,53 @@ test('switched on hours later, a cold heater drawing more than the warm one last
   shadow.stop();
   assert.deepEqual(sent.filter(([, , , at]) => at >= noon), [], 'no shot on the clock');
 });
+
+test('a run the rules have on still, the frother beside it, the model ends live once it sees the pump off', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'model-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'model'));
+  writeFileSync(join(dir, 'model', 'Coffee%20machine.json'), JSON.stringify({ ...params, sessions: 12, steady: 1 }));
+  const quiet = { info: () => {}, debug: () => {}, warn: () => {} };
+  const sent: [string, string, number, number][] = [];
+  let now = 0;
+  const phases = PHASES.map((phase) => (phase.name === 'Coffee' ? { ...phase, minSeconds: 3 } : phase));
+  const shadow = new ModelShadow('Coffee machine', phases, dir, dir, 14, quiet, 0, (phase, when, seconds) => sent.push([phase, when, seconds, now]), ['Coffee']);
+  const warm = morning(30 * DAY, 77);
+  for (const sample of warm.samples) {
+    now = sample.at;
+    shadow.reading(sample.at, sample.watts);
+    shadow.tick(sample.at);
+  }
+  // A coffee with the frother coming on halfway, the heater beside both for a moment, then off
+  // before the pump stops: the rules, seeing the frother with the pump the same, keep it on.
+  const random = noise(9);
+  const start = warm.samples[0]!.at + 3_600_000;
+  const on = (from: number, until: number) => (s: number) => s >= from && s < until;
+  const pump = on(10, 34);
+  const milk = on(22, 80);
+  const heater = on(24, 30);
+  let held: boolean | undefined;
+  for (let s = 0; s < 120; s++) {
+    let watts = 9;
+    if (heater(s)) watts += 1240 - 20;
+    if (pump(s)) watts += 56;
+    if (milk(s)) watts += 494;
+    now = start + s * S;
+    shadow.reading(now, Math.round((watts + random() * 4) * 10) / 10);
+    shadow.tick(now);
+    if (s === 13) {
+      shadow.rule('Coffee', { active: true, at: now, from: start + 10 * S });
+    }
+    if (s === 80) {
+      held = shadow.holdsEnd('Coffee', now);
+      shadow.rule('Coffee', { active: false, at: now, since: start + 13 * S, from: start + 10 * S, until: start + 80 * S });
+    }
+  }
+  shadow.stop();
+  const ends = sent.filter(([phase, when, , at]) => phase === 'Coffee' && when === 'end' && at >= start);
+  assert.ok(ends.length >= 1, JSON.stringify(sent));
+  const [, , seconds, at] = ends[0]!;
+  assert.ok(Math.abs(seconds - 24) <= 2, `the coffee's 24 s, ended at ${seconds}`);
+  assert.ok(at - (start + 34 * S) <= 5 * S && at > start + 30 * S, `told ${(at - start) / S - 34} s after the pump stopped`);
+  assert.equal(held, true, "the rules' late end not told again");
+});

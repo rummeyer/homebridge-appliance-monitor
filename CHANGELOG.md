@@ -8,6 +8,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Model watching: a phase with start messages the rules have on still, the
+  model ends live once it sees its part off with the heater off — a pump
+  with the frother beside it, which the rules lose the end of (16.11.2026:
+  a 24 s shot counting on the clock to 1:07). The rules' late end is not
+  told again. Under the heater it waits for the rules, as the model loses
+  the pump there for a moment.
 - ShotTimer 5.16: **Shots from**, 10 min by default: heating up from cold,
   a pump shows as a shot only this long before heated at most, as the
   countdown says; earlier, it is left out. Nobody draws one that early, and
