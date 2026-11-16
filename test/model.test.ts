@@ -403,3 +403,37 @@ test('a run the rules have on still, the frother beside it, the model ends live 
   assert.ok(at - (start + 34 * S) <= 5 * S && at > start + 30 * S, `told ${(at - start) / S - 34} s after the pump stopped`);
   assert.equal(held, true, "the rules' late end not told again");
 });
+
+test('a pump coming on with the heater is told from its start once seen, not from when the heater went off', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'model-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, 'model'));
+  writeFileSync(join(dir, 'model', 'Coffee%20machine.json'), JSON.stringify({ ...params, sessions: 12, steady: 1 }));
+  const quiet = { info: () => {}, debug: () => {}, warn: () => {} };
+  const sent: [string, string, number, number][] = [];
+  let now = 0;
+  const phases = PHASES.map((phase) => (phase.name === 'Coffee' ? { ...phase, minSeconds: 3 } : phase));
+  const shadow = new ModelShadow('Coffee machine', phases, dir, dir, 14, quiet, 0, (phase, when, seconds) => sent.push([phase, when, seconds, now]), ['Coffee']);
+  const warm = morning(30 * DAY, 77);
+  for (const sample of warm.samples) {
+    now = sample.at;
+    shadow.reading(sample.at, sample.watts);
+    shadow.tick(sample.at);
+  }
+  // The heater and the pump on together, the heater off 8 s later: the pump seen alone only then.
+  const random = noise(11);
+  const start = warm.samples[0]!.at + 3_600_000;
+  for (let s = 0; s < 80; s++) {
+    let watts = 9;
+    if (s >= 10 && s < 18) watts += 1240;
+    if (s >= 10 && s < 34) watts += 56;
+    now = start + s * S;
+    shadow.reading(now, Math.round((watts + random() * 4) * 10) / 10);
+    shadow.tick(now);
+  }
+  shadow.stop();
+  const starts = sent.filter(([phase, when, , at]) => phase === 'Coffee' && when === 'start' && at >= start);
+  assert.equal(starts.length, 1, JSON.stringify(sent));
+  const [, , seconds, at] = starts[0]!;
+  assert.ok(Math.abs(at - seconds * S - (start + 10 * S)) <= 2 * S, `told from ${(at - seconds * S - start) / S} s, the pump on from 10 s`);
+});

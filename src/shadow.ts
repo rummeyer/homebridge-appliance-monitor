@@ -45,6 +45,8 @@ interface Live {
   rules?: number;
   /** When its part was last off by the likeliest way. */
   offAt: number;
+  /** When its part was last off by it with the heater off too, not hidden beneath it. */
+  bareOffAt: number;
   /**
    * The run the model holds: since when, when its part was last on, and first off after. One the
    * rules started it takes over without telling its start again.
@@ -85,7 +87,7 @@ export class ModelShadow {
     for (const { name, maxSeconds } of this.#phases) {
       // A phase only shown for a moment once over is not started live.
       const told = live.includes(name) && maxSeconds === undefined;
-      this.#live.set(name, { told, offAt: -Infinity, ended: -Infinity, latest: -Infinity });
+      this.#live.set(name, { told, offAt: -Infinity, bareOffAt: -Infinity, ended: -Infinity, latest: -Infinity });
     }
     const saved = readSaved(this.#path);
     if (saved && fits(saved, this.#phases)) {
@@ -156,6 +158,9 @@ export class ModelShadow {
     const { started } = live;
     if (on === undefined) {
       live.offAt = at;
+      if (bare) {
+        live.bareOffAt = at;
+      }
       if (started) {
         started.offAt ??= at;
         if (bare) {
@@ -171,6 +176,7 @@ export class ModelShadow {
         : started?.bareOffAt !== undefined && at - started.bareOffAt >= LIVE_OFF_MS;
       if (started && over) {
         const seconds = (started.offAt! - started.since) / 1000;
+        live.ended = Math.max(live.ended, started.since);
         live.started = undefined;
         live.endedLive = live.rules !== undefined;
         live.sent = Math.round(seconds);
@@ -196,12 +202,16 @@ export class ModelShadow {
       live.started = { since: live.rules, onAt: at };
       return;
     }
-    live.started = { since, onAt: at };
+    // Told from where the part came on by it, if it was not seen off since: the pump coming on
+    // with the heater, hidden beneath it until it goes off (16.11.2026: the clock 8 s late). Not
+    // a run ended already, which the part on all along would be: a rinse before the coffee.
+    const from = on > live.ended + SAME_START_MS ? Math.min(since, Math.max(on, live.bareOffAt)) : since;
+    live.started = { since: from, onAt: at };
     live.sent = undefined;
     live.latest = Math.max(live.latest, since);
-    const ahead = live.rules === undefined ? 'before the rules' : `${Math.round((live.rules - since) / 1000)} s before the rules had it`;
-    this.#log.info(`${this.#device}: model started ${phase.name} ${Math.round((at - since) / 1000)} s ago, ${ahead}`);
-    this.#send!(phase.name, 'start', (at - since) / 1000);
+    const ahead = live.rules === undefined ? 'before the rules' : `${Math.round((live.rules - from) / 1000)} s before the rules had it`;
+    this.#log.info(`${this.#device}: model started ${phase.name} ${Math.round((at - from) / 1000)} s ago, ${ahead}`);
+    this.#send!(phase.name, 'start', (at - from) / 1000);
   }
 
   /** A phase as the rules saw it. */

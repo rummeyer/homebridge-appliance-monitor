@@ -8,6 +8,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Model watching: a phase started live is told from where its part came on
+  by the model, if not seen off since with the heater off — a pump coming
+  on with the heater, hidden beneath it until the heater goes off, counted
+  from its own start rather than from then (16.11.2026: the clock 8 s
+  late; over the recordings since 28.10.2026 two shots, both now as the
+  model has them in hindsight). Not where that would be a run ended
+  already, as a rinse before the coffee.
 - Model watching: a phase with start messages the rules have on still, the
   model ends live once it sees its part off with the heater off — a pump
   with the frother beside it, which the rules lose the end of (16.11.2026:
