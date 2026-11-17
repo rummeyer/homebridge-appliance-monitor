@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.16
+# @version 5.17
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -10,6 +10,7 @@
 # @config  heat   text   "Heating phase"    default="Aufheizen" help="The phase while the machine heats up"
 # @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that is this phase shows as RINSE"
 # @config  rinsemax number "Rinse under"    default=15 min=0 max=60 unit=s help="Shorter runs show as RINSE as soon as the pump stops; 0: only the rinse phase says so"
+# @config  blip   number "Hide under"       default=4 min=0 max=15 unit=s help="Shorter runs are not shown at all: the heater switching off, its draw read as the pump for a moment; 0: all shown"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
@@ -26,6 +27,7 @@ import math
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed, rinse_s   # rinse_s: Rinse under, in seconds
+  var blip_s       # Hide under, in seconds
   var pump_topic, until_topic   # the pump phase, and where the plugin says its draw fell below its range
   var by_phase, on_after        # no shot messages: the pump phase starts and ends the shot; its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
@@ -82,6 +84,7 @@ class ShotTimer
     self.over_topic = base + "/overtime/at"
     self.rinse_topic = base + "/phase/" + store.get("rinse")
     self.rinse_s = store.get("rinsemax") == nil ? 15 : int(store.get("rinsemax"))
+    self.blip_s = store.get("blip") == nil ? 4 : int(store.get("blip"))
     self.rinsed = false
     self.temp_topic = store.get("temp")
     self.ready = store.get("ready")
@@ -421,6 +424,14 @@ class ShotTimer
     # by its length now, whatever the rules took it for.
     var again = self.shot == "done"
     self.final_s = int(seconds + 0.5)
+    # Shorter than Hide under: no run of the pump, the heater switching off through its range
+    # (17.11.2026: with an on after of 2 s, about one a day). Gone, not shown as a result.
+    if !again && self.final_s < self.blip_s
+      self.rinsed = true
+      timer.cancel(self.timer_id)
+      self.finish()
+      return
+    end
     # Not a second below the count it showed: that stopped where the plug's reading said, to the
     # second, and the plugin's own count rounds otherwise (13.11.2026: 23s, then SHOT 22s). Two
     # below is a start counted early, not rounding: the plugin's count holds (15.11.2026: a shot
@@ -545,13 +556,16 @@ class ShotTimer
     if self.shot == "run"
       shot_s = ((self.stopped != nil ? self.stopped : now) - self.t0) / 1000
     end
+    # Stopped short of Hide under: not shown, as if it had not started, until its end drops it.
+    var blip = self.stopped != nil && shot_s < self.blip_s
+    var run = self.shot == "run" && !blip
     if unix == self.built && shot_s == self.shown
       return
     end
     self.built = unix
     self.shown = shot_s
     self.bar = nil
-    if !self.on() && self.shot == "idle"
+    if !self.on() && (self.shot == "idle" || blip)
       self.line1 = nil
       self.line2 = nil
       return
@@ -561,7 +575,7 @@ class ShotTimer
     # Line 1: the shot while it runs and a while after, else heating up, else
     # every three seconds the other one of how long it has been on and how long
     # heating took.
-    if self.shot == "run"
+    if run
       # Stopped short of Rinse under: a rinse, said at once rather than when the plugin knows;
       # in the result's colour only once it is the plugin's count.
       var rinse = self.stopped != nil && shot_s < self.rinse_s

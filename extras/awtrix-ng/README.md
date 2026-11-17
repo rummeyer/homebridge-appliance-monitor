@@ -124,6 +124,7 @@ In AWTRIX NG's web page, on the **Apps** tab, behind the app's gear button:
 | Heating phase | `Aufheizen` | |
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
 | Rinse under | 15 s | A pump run shorter than this shows as RINSE as soon as the pump stops, before the plugin knows, and also one too short for the rinse phase; 0 for only the rinse phase. The rinse phase's "shorter than" is a good value. |
+| Hide under | 4 s | A pump run shorter than this is not shown at all, from when the pump stops: the heater switching off, its draw passing the pump's range for a moment, taken for the pump. 0 shows every run. |
 | Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
 | Preheated from | 38 °C | |
 | Heating up as | bar | How far it has heated up: `bar`, small blocks lighting up one after the other, or `percent`. |

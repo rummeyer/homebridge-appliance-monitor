@@ -21,6 +21,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   a 24 s shot counting on the clock to 1:07). The rules' late end is not
   told again. Under the heater it waits for the rules, as the model loses
   the pump there for a moment.
+- ShotTimer 5.17: **Hide under**, 4 s by default: a pump run shorter than
+  this is not shown, neither while it runs once it has stopped nor as a
+  result. With the pump's on after at 2 s, the heater switching off through
+  the pump's range starts a run about once a day; a rinse takes 5 s or more.
 - ShotTimer 5.16: **Shots from**, 10 min by default: heating up from cold,
   a pump shows as a shot only this long before heated at most, as the
   countdown says; earlier, it is left out. Nobody draws one that early, and
