@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.17
+# @version 5.19
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -12,7 +12,7 @@
 # @config blip number "Hide under" default=4 min=0 max=15 unit=s
 # @config lead number "Plug delay" default=5 min=0 max=30 unit=s
 # @config temp text "Temperature topic" default="deconz/Kaffeemaschine/temperature"
-# @config ready number "Preheated from" default=38 min=0 max=100 unit=°C
+# @config ready number "Preheated from" default=40 min=0 max=100 unit=°C
 # @config heatas select "Heating up as" default=bar options=bar,percent
 # @config cold number "Cold after" default=45 min=0 max=1440 unit=min
 # @config coldpre number "Cold preheat" default=30 min=0 max=120 unit=min
@@ -148,6 +148,7 @@ end
 end
 def temperature(v)
 if v != nil
+v = real(v)
 self.temp = v
 self.temp_s = epoch_ms() / 1000
 if self.running && self.temp0 == nil
@@ -464,7 +465,7 @@ if heating
 if self.thermo() && self.temp0 != nil && self.ready > self.temp0
 var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
 pct = pct < 0 ? 0 : (pct > 100 ? 100 : pct)
-var from_v = self.temp0
+var from_v = real(self.temp0)
 var from_s = self.temp0_s
 for r : self.hist
 if r[0] <= self.temp_s - 300 && r[0] >= from_s
@@ -480,10 +481,12 @@ end
 if at != nil && self.temp - self.temp0 >= 1 && rise > 0 && self.temp_s > from_s
 var top = self.ready + self.approach
 var mid = (self.temp + from_v) / 2.0
-var k = rise / (self.temp_s - from_s) / (top - mid)
+var k = rise / real(self.temp_s - from_s) / (top - mid)
+if k > 0
 var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k)
 if by_rate < at
 at = by_rate
+end
 end
 end
 if at != self.eta
@@ -497,23 +500,43 @@ if self.since_s > 0 && at > self.since_s
 var by_time = unix >= at ? 99 : (unix - self.since_s) * 100 / (at - self.since_s)
 pct = by_time > pct ? (by_time > 99 ? 99 : by_time) : pct
 end
-if self.as_bar
+var views = [nil]
+if at > unix
+views.push([[self.clock(at - unix), self.white]])
+end
+var off = self.idle_line(unix)
+if off != nil
+views.push(off)
+end
+if size(views) == 1
+views.push(self.pair("ON", self.clock(on_s), self.white))
+end
+var view = views[(unix / 3) % size(views)]
+if view != nil
+self.line2 = view
+elif self.as_bar
 self.bar = pct
 self.line2 = []
 else
 self.line2 = [[str(pct) + "%", self.white]]
 end
-if at > unix && (unix / 3) % 2 == 1
-self.bar = nil
-self.line2 = [[self.clock(at - unix), self.white]]
-end
-elif self.cold && self.since_s > 0
-self.line2 = [[self.clock(self.since_s + self.coldpre_s - unix), self.white]]
 else
-self.line2 = [[self.clock(on_s), self.white]]
+var left = self.cold && self.since_s > 0 ? self.since_s + self.coldpre_s - unix : -1
+var first = left >= 0 ? [[self.clock(left), self.white]] : [[self.clock(on_s), self.white]]
+var off = self.idle_line(unix)
+self.line2 = off != nil && (unix / 3) % 2 == 1 ? off : first
 end
 return
 end
+self.line2 = self.off_line(unix)
+end
+def idle_line(unix)
+if self.idle_at > self.since_s || (self.idle_at == 0 && self.idle_len > 0)
+return self.off_line(unix)
+end
+return nil
+end
+def off_line(unix)
 var off = 0
 if self.idle_at > self.since_s
 off = self.idle_at
@@ -525,12 +548,11 @@ off = self.over_at
 end
 var left = off - unix
 if off == 0
-self.line2 = nil
+return nil
 elif left <= 0
-self.line2 = [["OFF", self.warn]]
-else
-self.line2 = self.pair("OFF", self.clock(left), left < 60 ? self.warn : self.white)
+return [["OFF", self.warn]]
 end
+return self.pair("OFF", self.clock(left), left < 60 ? self.warn : self.white)
 end
 def draw()
 clear()
