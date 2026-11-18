@@ -85,7 +85,10 @@ short bursts can hold the phase on for hours. Any topic with degrees works; for 
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
 One that has sent nothing for fifteen minutes while the machine is on has
-gone quiet, and the app goes on as without one until it reads again.
+gone quiet, and the app goes on as without one until it reads again — for
+three minutes, once it has risen a degree heating up: it tells every half
+a minute or so then. Heated once the countdown is up, it stays heated when
+the thermometer comes back with a reading below.
 
 ## Installing
 

@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.19
+# @version 5.20
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -204,6 +204,9 @@ class ShotTimer
   # minutes. One that has gone quiet — a Zigbee sensor fallen off its network, at switching on
   # or halfway up — would hold it at HEATING for good; then it is as without one. A sensor that
   # only sends a change can say nothing for several minutes while a warm group starts to rise.
+  # Once it has risen a degree, heating up, it tells every half a minute or so: three minutes
+  # quiet then is one fallen off (18.11.2026: nothing from 36.8 °C for a quarter of an hour, the
+  # bar at its last tick all the while).
   def thermo()
     if self.temp == nil
       return false
@@ -213,13 +216,16 @@ class ShotTimer
     end
     var on = self.since_s > 0 ? self.since_s : self.temp0_s
     var last = self.temp_s > on ? self.temp_s : on
-    return epoch_ms() / 1000 - last < 900
+    var rising = !self.warm && self.temp0 != nil && self.temp - self.temp0 >= 1
+    return epoch_ms() / 1000 - last < (rising ? 180 : 900)
   end
 
   # Preheated: warm enough where there is a thermometer, and still when a reading dips below.
   # Without one, a heat exchanger's boiler is hot long before its group: once it has been on for
   # Cold preheat; from warm, once the heating phase has ended if that is sooner. It need not
   # end: the heater keeping the boiler hot every half a minute can hold it on for hours.
+  # A thermometer gone quiet as it rose: heated once the countdown is up, and kept so when it
+  # comes back with a reading below, rather than heating up again.
   def heated()
     if self.warm
       return true
@@ -227,7 +233,16 @@ class ShotTimer
     if self.thermo()
       return self.temp >= self.ready
     end
-    return (self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s) ||
+    var unix = epoch_ms() / 1000
+    if self.temp != nil && self.temp0 != nil && self.running
+      var at = self.eta != nil ? self.eta : (self.since_s > 0 ? self.since_s + self.coldpre_s : nil)
+      if at != nil && unix >= at
+        self.warm = true
+        self.keep()
+        return true
+      end
+    end
+    return (self.since_s > 0 && unix - self.since_s >= self.coldpre_s) ||
       (!self.cold && self.heat_done)
   end
 

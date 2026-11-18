@@ -8,6 +8,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- ShotTimer 5.20: heating up, a thermometer that has risen a degree and
+  then says nothing for three minutes has fallen off, not fifteen: it
+  tells every half a minute or so while the group warms. Heated then once
+  the countdown is up, and kept so when it comes back below (18.11.2026:
+  nothing from 36.8 °C for a quarter of an hour, the bar at its last tick
+  all the while).
 - ShotTimer 5.19: heating up, line 2 takes turns every three seconds with
   how far, how long until heated while there is some left, and when it is
   switched off once a coffee or a rinse has started Idle's count — the plug
