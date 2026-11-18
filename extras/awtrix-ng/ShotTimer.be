@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.10
+# @version 5.20
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -10,30 +10,38 @@
 # @config  heat   text   "Heating phase"    default="Aufheizen" help="The phase while the machine heats up"
 # @config  rinse  text   "Rinse phase"      default="Spülen" help="A pump run that is this phase shows as RINSE"
 # @config  rinsemax number "Rinse under"    default=15 min=0 max=60 unit=s help="Shorter runs show as RINSE as soon as the pump stops; 0: only the rinse phase says so"
+# @config  blip   number "Hide under"       default=4 min=0 max=15 unit=s help="Shorter runs are not shown at all: the heater switching off, its draw read as the pump for a moment; 0: all shown"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
-# @config  ready  number "Preheated from"   default=38 min=0 max=100 unit=°C help="Heated from this temperature"
+# @config  ready  number "Preheated from"   default=40 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
 # @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends, Cold preheat at the most"
-# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the time left shown until it rises fast enough to tell sooner"
+# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the countdown it starts with, made shorter, never longer, once the thermometer moves"
+# @config  early  number "Shots from"       default=10 min=0 max=120 unit=min help="Heating up from cold, a pump only shows as a shot this long before heated at most: earlier, the heater switching on was taken for it; 0: always"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  done   color  "Result"           default=#30D158
 # @config  hot    color  "Heating"          default=#FF8C00
 # @config  red    color  "Heated"           default=#FF3B30
+import math
+
 class ShotTimer
   var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
   var rinse_topic, rinsed, rinse_s   # rinse_s: Rinse under, in seconds
+  var blip_s       # Hide under, in seconds
   var pump_topic, until_topic   # the pump phase, and where the plugin says its draw fell below its range
   var by_phase, on_after        # no shot messages: the pump phase starts and ends the shot; its on after
   var temp_topic, ready, temp   # the temperature, nil until one came
+  var approach     # how far above Preheated from the group heads as it warms: its rate's end, in °C
   var temp0        # the temperature when it was switched on, the heating up's 0 %; nil while off
   var temp0_s, temp_s   # Unix seconds of temp0 and of the latest reading
   var heat_done    # the heating phase has ended since it was switched on: heated from warm, without a thermometer
   var pumped       # a coffee has been made since it was switched on: in use, not heating up any more
   var warm         # the thermometer has said heated since it was switched on, whatever it says now
   var hist         # [Unix seconds, temperature] of the readings since it was switched on
+  var eta          # Unix seconds heated, as the countdown says: only ever sooner; nil before one
   var cold         # switched on after being off for Cold after, or for how long not known
   var cold_s, coldpre_s   # Cold after and Cold preheat, in seconds
+  var early_s      # Shots from, in seconds before heated
   var lead_ms, hold_ms
   var relay_topic  # the plug's relay, as Appliance Monitor tells it
   var plug_on      # the plug is switched on: on the display the whole time; nil until told
@@ -76,9 +84,11 @@ class ShotTimer
     self.over_topic = base + "/overtime/at"
     self.rinse_topic = base + "/phase/" + store.get("rinse")
     self.rinse_s = store.get("rinsemax") == nil ? 15 : int(store.get("rinsemax"))
+    self.blip_s = store.get("blip") == nil ? 4 : int(store.get("blip"))
     self.rinsed = false
     self.temp_topic = store.get("temp")
     self.ready = store.get("ready")
+    self.approach = 4.0
     self.temp = nil
     self.temp0 = nil
     self.temp0_s = 0
@@ -87,11 +97,13 @@ class ShotTimer
     self.pumped = false
     self.warm = false
     self.hist = []
+    self.eta = nil
     self.cold = true
     self.relay_topic = base + "/relay"
     self.plug_on = nil
     self.cold_s = int(store.get("cold") * 60)
     self.coldpre_s = int(store.get("coldpre") * 60)
+    self.early_s = int(store.get("early") * 60)
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
     self.as_bar = store.get("heatas") != "percent"
@@ -161,6 +173,10 @@ class ShotTimer
 
   def temperature(v)
     if v != nil
+      # A whole degree comes as a whole number, and two of them made the rate's division one of
+      # whole numbers: 3 degrees in 334 s, 0 a second, and the countdown divided by it
+      # (18.11.2026, 32 °C and then 35 °C). Reals only.
+      v = real(v)
       self.temp = v
       self.temp_s = epoch_ms() / 1000
       # Switched on before the first reading came: that one is where it started.
@@ -188,6 +204,9 @@ class ShotTimer
   # minutes. One that has gone quiet — a Zigbee sensor fallen off its network, at switching on
   # or halfway up — would hold it at HEATING for good; then it is as without one. A sensor that
   # only sends a change can say nothing for several minutes while a warm group starts to rise.
+  # Once it has risen a degree, heating up, it tells every half a minute or so: three minutes
+  # quiet then is one fallen off (18.11.2026: nothing from 36.8 °C for a quarter of an hour, the
+  # bar at its last tick all the while).
   def thermo()
     if self.temp == nil
       return false
@@ -197,13 +216,16 @@ class ShotTimer
     end
     var on = self.since_s > 0 ? self.since_s : self.temp0_s
     var last = self.temp_s > on ? self.temp_s : on
-    return epoch_ms() / 1000 - last < 900
+    var rising = !self.warm && self.temp0 != nil && self.temp - self.temp0 >= 1
+    return epoch_ms() / 1000 - last < (rising ? 180 : 900)
   end
 
   # Preheated: warm enough where there is a thermometer, and still when a reading dips below.
   # Without one, a heat exchanger's boiler is hot long before its group: once it has been on for
   # Cold preheat; from warm, once the heating phase has ended if that is sooner. It need not
   # end: the heater keeping the boiler hot every half a minute can hold it on for hours.
+  # A thermometer gone quiet as it rose: heated once the countdown is up, and kept so when it
+  # comes back with a reading below, rather than heating up again.
   def heated()
     if self.warm
       return true
@@ -211,7 +233,16 @@ class ShotTimer
     if self.thermo()
       return self.temp >= self.ready
     end
-    return (self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s) ||
+    var unix = epoch_ms() / 1000
+    if self.temp != nil && self.temp0 != nil && self.running
+      var at = self.eta != nil ? self.eta : (self.since_s > 0 ? self.since_s + self.coldpre_s : nil)
+      if at != nil && unix >= at
+        self.warm = true
+        self.keep()
+        return true
+      end
+    end
+    return (self.since_s > 0 && unix - self.since_s >= self.coldpre_s) ||
       (!self.cold && self.heat_done)
   end
 
@@ -228,11 +259,16 @@ class ShotTimer
       # after the phase's off after, and running on if it comes back into it. The heater beside
       # the pump, above the range, counts on; the heater alone after it does not start it again.
       if self.shot == "run"
-        # Held where it is, never counted back: the plugin's own count at the end is the result.
-        if num(p, 0) <= 0
+        # Stopped where it says, less the plug's delay as the start is, not when it is told: that
+        # comes a reading or two later (11.11.2026: 15 s shown of a 10 s rinse). Never before the
+        # count's start, nor after now. The plugin's own count at the end is the result.
+        var until = num(p, 0)
+        if until <= 0
           self.stopped = nil
         elif self.stopped == nil
-          self.stopped = now_ms()
+          var now = now_ms()
+          var at = now - (epoch_ms() / 1000 - until) * 1000 - self.lead_ms
+          self.stopped = at > now ? now : (at < self.t0 ? self.t0 : at)
         end
       end
     elif t == self.relay_topic
@@ -325,6 +361,7 @@ class ShotTimer
     self.running = on
     self.since_s = at
     self.hist = []
+    self.eta = nil
     self.heat_done = false
     self.pumped = false
     self.temp0 = on ? self.temp : nil
@@ -338,13 +375,13 @@ class ShotTimer
   # or a restart, the app picks up where it was rather than heating up again from now.
   def keep()
     if self.running && self.since_s > 0
-      store.set("on", [self.since_s, self.temp0, self.temp0_s, self.cold, self.warm, self.heat_done, self.pumped])
+      store.set("on", [self.since_s, self.temp0, self.temp0_s, self.cold, self.warm, self.heat_done, self.pumped, self.eta])
     end
   end
 
   def recall()
     var k = store.get("on")
-    if k == nil || size(k) != 7
+    if k == nil || size(k) < 7
       return
     end
     # The plug found on, on connecting: when it was switched on is what was kept, if lately.
@@ -358,12 +395,35 @@ class ShotTimer
       self.warm = k[4] || self.warm
       self.heat_done = k[5] || self.heat_done
       self.pumped = k[6] || self.pumped
+      if size(k) > 7 && k[7] != nil && (self.eta == nil || k[7] < self.eta)
+        self.eta = k[7]
+      end
       self.built = -1
     end
   end
 
-  # The pump has been in its range for `seconds` already when the plugin knows.
+  # Heating up from cold, how long until heated as the countdown says, in seconds; nil once
+  # heated, from warm, or not known.
+  def to_heat()
+    if !self.running || !self.cold || self.heated()
+      return nil
+    end
+    var at = self.eta
+    if at == nil && self.since_s > 0
+      at = self.since_s + self.coldpre_s
+    end
+    return at == nil ? nil : at - epoch_ms() / 1000
+  end
+
+  # The pump has been in its range for `seconds` already when the plugin knows. Not a shot more
+  # than Shots from before heated from cold: nobody draws one that early, a thirsty one five
+  # minutes before at most, and the heater switching on cold, drawing more than it did warm, was
+  # taken for the pump beside it (15.11.2026: a shot of 16 s on the clock as it was switched on).
   def started(seconds)
+    var left = self.to_heat()
+    if self.early_s > 0 && left != nil && left > self.early_s
+      return
+    end
     timer.cancel(self.timer_id)
     self.t0 = now_ms() - int(seconds * 1000) - self.lead_ms
     self.stopped = nil
@@ -378,10 +438,32 @@ class ShotTimer
     if self.shot == "idle"
       return
     end
+    # A second end while the result shows: the plugin's model correcting the rules' count, as of
+    # a coffee whose start the heater hid (10.11.2026: 14 s, a rinse, then 25). Shot or rinse
+    # by its length now, whatever the rules took it for.
+    var again = self.shot == "done"
     self.final_s = int(seconds + 0.5)
+    # Shorter than Hide under: no run of the pump, the heater switching off through its range
+    # (17.11.2026: with an on after of 2 s, about one a day). Gone, not shown as a result.
+    if !again && self.final_s < self.blip_s
+      self.rinsed = true
+      timer.cancel(self.timer_id)
+      self.finish()
+      return
+    end
+    # Not a second below the count it showed: that stopped where the plug's reading said, to the
+    # second, and the plugin's own count rounds otherwise (13.11.2026: 23s, then SHOT 22s). Two
+    # below is a start counted early, not rounding: the plugin's count holds (15.11.2026: a shot
+    # of 21 s, started by the model a second early, the plug's delay on top, held at 23s).
+    # A later correction by the model is the plugin's say, up or down.
+    if !again && self.shown != nil && self.shown > self.final_s && self.shown - self.final_s <= 1
+      self.final_s = self.shown
+    end
     # Shorter than Rinse under, a rinse, as the plugin's own rinse phase has it; too short for
     # that phase's on after, a rinse all the same.
-    if self.final_s < self.rinse_s
+    if again
+      self.rinsed = self.final_s < self.rinse_s
+    elif self.final_s < self.rinse_s
       self.rinsed = true
     end
     self.shot = "done"
@@ -493,13 +575,16 @@ class ShotTimer
     if self.shot == "run"
       shot_s = ((self.stopped != nil ? self.stopped : now) - self.t0) / 1000
     end
+    # Stopped short of Hide under: not shown, as if it had not started, until its end drops it.
+    var blip = self.stopped != nil && shot_s < self.blip_s
+    var run = self.shot == "run" && !blip
     if unix == self.built && shot_s == self.shown
       return
     end
     self.built = unix
     self.shown = shot_s
     self.bar = nil
-    if !self.on() && self.shot == "idle"
+    if !self.on() && (self.shot == "idle" || blip)
       self.line1 = nil
       self.line2 = nil
       return
@@ -509,7 +594,7 @@ class ShotTimer
     # Line 1: the shot while it runs and a while after, else heating up, else
     # every three seconds the other one of how long it has been on and how long
     # heating took.
-    if self.shot == "run"
+    if run
       # Stopped short of Rinse under: a rinse, said at once rather than when the plugin knows;
       # in the result's colour only once it is the plugin's count.
       var rinse = self.stopped != nil && shot_s < self.rinse_s
@@ -535,7 +620,7 @@ class ShotTimer
         var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
         pct = pct < 0 ? 0 : (pct > 100 ? 100 : pct)
         # At the rate of the last five minutes: a heat exchanger's group hardly rises at first.
-        var from_v = self.temp0
+        var from_v = real(self.temp0)
         var from_s = self.temp0_s
         for r : self.hist
           if r[0] <= self.temp_s - 300 && r[0] >= from_s
@@ -543,42 +628,97 @@ class ShotTimer
             from_v = r[1]
           end
         end
-        # Cold preheat from switching on, until the rate says sooner: at first it hardly rises,
-        # and the rate alone says hours (7.11.2026: 3:00 at switching on). Past it, the rate.
+        # Cold preheat from switching on: the boiler heats inside first, and the thermometer
+        # outside notices only some fifteen minutes in. Once it moves, a degree up from where it
+        # started, the rate may make the countdown shorter, never longer: a countdown jumping
+        # back up by minutes as it runs out is worse than one waiting at its end (13.11.2026).
+        # Past it, the bar alone, until it is warm.
         var rise = self.temp - from_v
-        var at = self.since_s > 0 ? self.since_s + self.coldpre_s : 0
-        if rise > 0 && self.temp_s > from_s
-          var by_rate = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
-          if at <= unix || by_rate < at
-            at = by_rate
+        var at = self.eta
+        if at == nil && self.since_s > 0
+          at = self.since_s + self.coldpre_s
+        end
+        if at != nil && self.temp - self.temp0 >= 1 && rise > 0 && self.temp_s > from_s
+          # Not at the rate it rises now all the way: the group warms as anything towards a
+          # hotter one, the slower the nearer — 0.8 °C a minute at 30 °C, 0.4 at 36 (13.11.2026).
+          # As heading for Approach above Preheated from, the rate falling with the distance
+          # left to it. In a straight line the countdown ran out three minutes early as a rule,
+          # the bar's last tick standing still for them; so, a fifth of a minute (thirteen cold
+          # mornings, 29.10.–13.11.2026).
+          var top = self.ready + self.approach
+          var mid = (self.temp + from_v) / 2.0
+          var k = rise / real(self.temp_s - from_s) / (top - mid)
+          if k > 0
+            var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k)
+            if by_rate < at
+              at = by_rate
+            end
           end
         end
-        # How far by the time left too, where that is further: a heat exchanger's group hardly
-        # rises at first, and the temperature alone stands still for minutes (11.11.2026: 2 % after
-        # 6 min of Cold preheat's 30).
-        if at > unix && self.since_s > 0 && at > self.since_s
-          var by_time = (unix - self.since_s) * 100 / (at - self.since_s)
+        if at != self.eta
+          self.eta = at
+          self.keep()
+        end
+        if at == nil
+          at = 0
+        end
+        # How far by the time too, where that is further: a heat exchanger's group hardly rises at
+        # first, and the temperature alone stands still for minutes (11.11.2026: 2 % after 6 min of
+        # Cold preheat's 30). Past the countdown 99 %, not back to the temperature's.
+        if self.since_s > 0 && at > self.since_s
+          var by_time = unix >= at ? 99 : (unix - self.since_s) * 100 / (at - self.since_s)
           pct = by_time > pct ? (by_time > 99 ? 99 : by_time) : pct
         end
-        if self.as_bar
+        # Every three seconds the next of: how far, how long until heated while there is some
+        # left, and when it is switched off once a coffee or a rinse has started Idle's count.
+        # Not a 0:00 that stands still when it rises slower than so far; past the countdown and
+        # nothing else to tell, how long it has been on, rather than the bar alone at its last
+        # tick for as long as the thermometer keeps quiet (18.11.2026: a quarter of an hour).
+        var views = [nil]
+        if at > unix
+          views.push([[self.clock(at - unix), self.white]])
+        end
+        var off = self.idle_line(unix)
+        if off != nil
+          views.push(off)
+        end
+        if size(views) == 1
+          views.push(self.pair("ON", self.clock(on_s), self.white))
+        end
+        var view = views[(unix / 3) % size(views)]
+        if view != nil
+          self.line2 = view
+        elif self.as_bar
           self.bar = pct
           self.line2 = []
         else
           self.line2 = [[str(pct) + "%", self.white]]
         end
-        # Not a 0:00 that stands still when it rises slower than so far: the percentage then.
-        if at > unix && (unix / 3) % 2 == 1
-          self.bar = nil
-          self.line2 = [[self.clock(at - unix), self.white]]
-        end
-      elif self.cold && self.since_s > 0
-        # How long until preheated from cold.
-        self.line2 = [[self.clock(self.since_s + self.coldpre_s - unix), self.white]]
       else
-        self.line2 = [[self.clock(on_s), self.white]]
+        # How long until preheated from cold, else how long it has been on; taking turns with
+        # when it is switched off once Idle counts.
+        var left = self.cold && self.since_s > 0 ? self.since_s + self.coldpre_s - unix : -1
+        var first = left >= 0 ? [[self.clock(left), self.white]] : [[self.clock(on_s), self.white]]
+        var off = self.idle_line(unix)
+        self.line2 = off != nil && (unix / 3) % 2 == 1 ? off : first
       end
       return
     end
+    self.line2 = self.off_line(unix)
+  end
+
+  # Idle's countdown to switching off, once a pump run has started it; nil before. Heating up,
+  # a coffee does not end it, but the plug goes off five minutes after all the same.
+  def idle_line(unix)
+    if self.idle_at > self.since_s || (self.idle_at == 0 && self.idle_len > 0)
+      return self.off_line(unix)
+    end
+    return nil
+  end
+
+  # When it is switched off, by whichever comes first, Idle standing still at its full time while
+  # it is held; nil if neither is known.
+  def off_line(unix)
     var off = 0
     if self.idle_at > self.since_s
       off = self.idle_at
@@ -592,14 +732,13 @@ class ShotTimer
     end
     var left = off - unix
     if off == 0
-      self.line2 = nil
+      return nil
     elif left <= 0
       # Due, and the plug not off yet: a moment as a rule, longer when the pump ran just in time
       # and the count starts again. Not a 0:00 that stands still.
-      self.line2 = [["OFF", self.warn]]
-    else
-      self.line2 = self.pair("OFF", self.clock(left), left < 60 ? self.warn : self.white)
+      return [["OFF", self.warn]]
     end
+    return self.pair("OFF", self.clock(left), left < 60 ? self.warn : self.white)
   end
 
   def draw()

@@ -639,6 +639,61 @@ test('by difference: the pump stopped beneath the heater beside the milk, back d
   ], 'on at 15 s with the heater, off as a draw of 5 s, not a coffee');
 });
 
+test('by difference: the pump stopped as the heater came on beside the milk, then the coffee after it', () => {
+  // As the plug read it on 17.11.2026 from 14:12:40: the milk at 495 W, the heater on
+  // over it once (1764 W), the pump 57 W above the milk for 4 s, stopping as the heater
+  // came on again at what it drew beside the milk before, then the coffee beside the
+  // milk and alone until 90 s. The rules had it all one shot of 35 s.
+  const readings: [number, number][] = [
+    [0, 3.1], [1, 2.9], [2, 3.2], [3, 7.9], [4, 8.1], [5, 7.7], [6, 7.5], [7, 174.2], [8, 452.4], [9, 488.7], [10, 494.6],
+    [11, 495.2], [13, 494.9], [14, 494.6], [15, 494.7], [16, 495], [17, 494.7], [18, 494.8], [19, 494.5], [20, 494.3],
+    [21, 494.1], [22, 1220.9], [23, 1764.5], [24, 1764.8], [25, 1764], [26, 1762.8], [27, 547.5], [28, 505.1], [29, 495.2],
+    [32, 495.1], [33, 494.6], [35, 494.8], [36, 494.7], [37, 495], [38, 495.4], [39, 495.3], [41, 495.7], [42, 495.5],
+    [44, 495.8], [45, 496.9], [46, 497.3], [47, 498.2], [48, 499.5], [49, 499.8], [50, 499.9], [51, 500.2], [52, 500.8],
+    [53, 500.9], [54, 501.1], [55, 526.7], [56, 557.8], [57, 558.5], [58, 559.1], [59, 899.4], [60, 1755], [61, 1767.8],
+    [64, 1765.1], [65, 1763.1], [66, 1760.5], [67, 1609.5], [68, 580.2], [69, 560.3], [70, 560.4], [71, 561.3], [72, 561],
+    [73, 560.9], [74, 560.5], [75, 559.6], [76, 734.2], [77, 1343.3], [78, 1337.9], [79, 1337], [80, 1333.1], [81, 1332.1],
+    [82, 1330.9], [83, 1329.7], [84, 1242.1], [85, 132.5], [86, 62.8], [87, 62.5], [88, 62.6], [89, 62.5], [90, 8.3], [94, 432.3],
+    [95, 1483.2], [96, 1764.1], [98, 1280.8], [99, 1278.4], [100, 1276.6], [101, 1276.2], [102, 542.1], [103, 7], [104, 5.1],
+    [105, 4.7], [107, 5.2], [108, 4.9],
+  ];
+  assert.deepEqual(draws(coffeePhases.pumpe, readings).map(({ from, until }) => ({ from, until })),
+    [{ from: 55, until: 59 }, { from: 67, until: 90 }], 'the pump\'s 4 s, then a coffee of 23 s, not one of 35');
+  assert.deepEqual(draws(coffeePhases.bezug, readings).map(({ from, until }) => ({ from, until })), [{ from: 67, until: 90 }], 'a coffee of 23 s');
+});
+
+test('by difference: the pump alone again once the heater beside it goes off, not beside the milk coming on as it stops', () => {
+  // As the plug read it on 18.11.2026 from 12:43:35: the heater alone from rest (1248 W), then
+  // a coffee from 62 s, the heater on beside it at a band's size above that and off again, the
+  // pump alone, and the milk coming on as it stopped at 84 s, the heater over the milk until
+  // 158 s. The pump was still taken for beside the heater, and counted on beside the milk: a
+  // shot of 96 s.
+  const readings: [number, number][] = [
+    [0, 2], [1, 1.9], [2, 2], [4, 325.3], [5, 1248.6], [6, 1247.4], [7, 1246], [8, 1245.1], [9, 1243.5],
+    [10, 878.5], [11, 15.2], [12, 2], [17, 1.9], [18, 2], [23, 1.9], [24, 2], [26, 1.9], [27, 2], [30, 92.1],
+    [31, 1188.3], [32, 1254.1], [33, 1250.4], [34, 1249.5], [35, 1248.7], [37, 706.5], [38, 7.4], [39, 1.9],
+    [41, 2], [50, 1.9], [51, 2], [53, 1.9], [54, 2], [59, 1.9], [62, 38.5], [63, 58.2], [64, 58.1], [65, 1308.4],
+    [66, 1309.6], [67, 1308.1], [68, 1306.3], [69, 1302.1], [71, 1300.5], [72, 1299.2], [73, 1298.5], [74, 1298.3],
+    [75, 1063], [76, 54.9], [78, 56.1], [79, 56.2], [80, 61.2], [81, 60.6], [83, 60.2], [84, 327.1], [85, 483.7],
+    [86, 1494], [87, 1739.4], [88, 1737.8], [89, 1735.5], [90, 1733.4], [91, 1732.5], [92, 1576], [93, 547.4],
+    [94, 497], [95, 495.4], [96, 486.8], [97, 486.5], [98, 485.9], [99, 486], [100, 485.9], [101, 485.8],
+    [102, 485.9], [103, 485.7], [105, 485.9], [106, 486], [107, 485.8], [108, 485.7], [110, 1521], [111, 1722.4],
+    [112, 1738.7], [113, 1737.8], [114, 1738.1], [115, 1401.3], [116, 525.7], [117, 511.7], [118, 501.3],
+    [119, 490.5], [120, 487.2], [121, 487.4], [122, 487], [123, 487.2], [124, 487.7], [125, 487.9], [126, 488.9],
+    [127, 489.4], [128, 489.8], [129, 491.1], [130, 491.2], [132, 491.3], [133, 491.8], [135, 491.4], [136, 491.7],
+    [137, 492], [139, 938.4], [140, 1738.2], [141, 1748.2], [142, 1746.5], [143, 1745.7], [144, 1088.3],
+    [145, 517.5], [146, 505], [147, 501.3], [148, 501.5], [149, 501.7], [150, 501.8], [151, 502.3], [153, 503.1],
+    [154, 503.8], [155, 504.5], [156, 504.9], [157, 504.8], [158, 161.9], [159, 8.9], [160, 8.5], [161, 8.4],
+    [164, 8.3], [165, 8.4], [168, 8.5], [170, 8.4], [172, 72.5], [173, 1183.3], [174, 1263.4], [175, 1261.4],
+    [176, 1254.2], [177, 1251.3], [178, 595.9], [179, 5], [180, 4.8], [181, 4.7], [182, 4.8], [183, 4.7],
+    [185, 4.9]
+  ];
+  const [shot, ...rest] = draws(coffeePhases.pumpe, readings, 200);
+  assert.equal(shot!.from, 63);
+  assert.ok(shot!.until <= 95, `ended by the milk's start, not with the milk at 158 s: ${shot!.until}`);
+  assert.deepEqual(rest, [], 'nothing after it');
+});
+
 test('by difference: the pump alone a moment, then the heater on beside it, a band\'s size above what the heater draws alone', () => {
   // As the plug read it on 7.11.2026 from 07:02:40: the heater alone at
   // 1215 W, then the pump alone for 1.9 s, too short for the time above to

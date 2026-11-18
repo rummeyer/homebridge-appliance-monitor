@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.10
+# @version 5.20
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -9,30 +9,37 @@
 # @config heat text "Heating phase" default="Aufheizen"
 # @config rinse text "Rinse phase" default="Spülen"
 # @config rinsemax number "Rinse under" default=15 min=0 max=60 unit=s
+# @config blip number "Hide under" default=4 min=0 max=15 unit=s
 # @config lead number "Plug delay" default=5 min=0 max=30 unit=s
 # @config temp text "Temperature topic" default="deconz/Kaffeemaschine/temperature"
-# @config ready number "Preheated from" default=38 min=0 max=100 unit=°C
+# @config ready number "Preheated from" default=40 min=0 max=100 unit=°C
 # @config heatas select "Heating up as" default=bar options=bar,percent
 # @config cold number "Cold after" default=45 min=0 max=1440 unit=min
 # @config coldpre number "Cold preheat" default=30 min=0 max=120 unit=min
+# @config early number "Shots from" default=10 min=0 max=120 unit=min
 # @config hold number "Show result for" default=20 min=1 max=600 unit=s
 # @config done color "Result" default=#30D158
 # @config hot color "Heating" default=#FF8C00
 # @config red color "Heated" default=#FF3B30
+import math
 class ShotTimer
 var start_topic, end_topic, state_topic, since_topic, heat_topic, idle_topic, over_topic
 var rinse_topic, rinsed, rinse_s
+var blip_s
 var pump_topic, until_topic
 var by_phase, on_after
 var temp_topic, ready, temp
+var approach
 var temp0
 var temp0_s, temp_s
 var heat_done
 var pumped
 var warm
 var hist
+var eta
 var cold
 var cold_s, coldpre_s
+var early_s
 var lead_ms, hold_ms
 var relay_topic
 var plug_on
@@ -74,9 +81,11 @@ self.idle_topic = base + "/idle/at"
 self.over_topic = base + "/overtime/at"
 self.rinse_topic = base + "/phase/" + store.get("rinse")
 self.rinse_s = store.get("rinsemax") == nil ? 15 : int(store.get("rinsemax"))
+self.blip_s = store.get("blip") == nil ? 4 : int(store.get("blip"))
 self.rinsed = false
 self.temp_topic = store.get("temp")
 self.ready = store.get("ready")
+self.approach = 4.0
 self.temp = nil
 self.temp0 = nil
 self.temp0_s = 0
@@ -85,11 +94,13 @@ self.heat_done = false
 self.pumped = false
 self.warm = false
 self.hist = []
+self.eta = nil
 self.cold = true
 self.relay_topic = base + "/relay"
 self.plug_on = nil
 self.cold_s = int(store.get("cold") * 60)
 self.coldpre_s = int(store.get("coldpre") * 60)
+self.early_s = int(store.get("early") * 60)
 self.lead_ms = int(store.get("lead") * 1000)
 self.hold_ms = int(store.get("hold") * 1000)
 self.as_bar = store.get("heatas") != "percent"
@@ -137,6 +148,7 @@ end
 end
 def temperature(v)
 if v != nil
+v = real(v)
 self.temp = v
 self.temp_s = epoch_ms() / 1000
 if self.running && self.temp0 == nil
@@ -166,7 +178,8 @@ return true
 end
 var on = self.since_s > 0 ? self.since_s : self.temp0_s
 var last = self.temp_s > on ? self.temp_s : on
-return epoch_ms() / 1000 - last < 900
+var rising = !self.warm && self.temp0 != nil && self.temp - self.temp0 >= 1
+return epoch_ms() / 1000 - last < (rising ? 180 : 900)
 end
 def heated()
 if self.warm
@@ -175,7 +188,16 @@ end
 if self.thermo()
 return self.temp >= self.ready
 end
-return (self.since_s > 0 && epoch_ms() / 1000 - self.since_s >= self.coldpre_s) ||
+var unix = epoch_ms() / 1000
+if self.temp != nil && self.temp0 != nil && self.running
+var at = self.eta != nil ? self.eta : (self.since_s > 0 ? self.since_s + self.coldpre_s : nil)
+if at != nil && unix >= at
+self.warm = true
+self.keep()
+return true
+end
+end
+return (self.since_s > 0 && unix - self.since_s >= self.coldpre_s) ||
 (!self.cold && self.heat_done)
 end
 def warming()
@@ -185,10 +207,13 @@ end
 def machine(t, p)
 if t == self.until_topic
 if self.shot == "run"
-if num(p, 0) <= 0
+var until = num(p, 0)
+if until <= 0
 self.stopped = nil
 elif self.stopped == nil
-self.stopped = now_ms()
+var now = now_ms()
+var at = now - (epoch_ms() / 1000 - until) * 1000 - self.lead_ms
+self.stopped = at > now ? now : (at < self.t0 ? self.t0 : at)
 end
 end
 elif t == self.relay_topic
@@ -261,6 +286,7 @@ self.cold = !(fresh && self.since_s > 0 && epoch_ms() / 1000 - self.since_s < se
 self.running = on
 self.since_s = at
 self.hist = []
+self.eta = nil
 self.heat_done = false
 self.pumped = false
 self.temp0 = on ? self.temp : nil
@@ -270,12 +296,12 @@ self.temp0_s = epoch_ms() / 1000
 end
 def keep()
 if self.running && self.since_s > 0
-store.set("on", [self.since_s, self.temp0, self.temp0_s, self.cold, self.warm, self.heat_done, self.pumped])
+store.set("on", [self.since_s, self.temp0, self.temp0_s, self.cold, self.warm, self.heat_done, self.pumped, self.eta])
 end
 end
 def recall()
 var k = store.get("on")
-if k == nil || size(k) != 7
+if k == nil || size(k) < 7
 return
 end
 if self.running && self.since_s == 0 && self.plug_on && epoch_ms() / 1000 - k[0] < 21600
@@ -288,10 +314,27 @@ self.cold = k[3]
 self.warm = k[4] || self.warm
 self.heat_done = k[5] || self.heat_done
 self.pumped = k[6] || self.pumped
+if size(k) > 7 && k[7] != nil && (self.eta == nil || k[7] < self.eta)
+self.eta = k[7]
+end
 self.built = -1
 end
 end
+def to_heat()
+if !self.running || !self.cold || self.heated()
+return nil
+end
+var at = self.eta
+if at == nil && self.since_s > 0
+at = self.since_s + self.coldpre_s
+end
+return at == nil ? nil : at - epoch_ms() / 1000
+end
 def started(seconds)
+var left = self.to_heat()
+if self.early_s > 0 && left != nil && left > self.early_s
+return
+end
 timer.cancel(self.timer_id)
 self.t0 = now_ms() - int(seconds * 1000) - self.lead_ms
 self.stopped = nil
@@ -305,8 +348,20 @@ def ended(seconds)
 if self.shot == "idle"
 return
 end
+var again = self.shot == "done"
 self.final_s = int(seconds + 0.5)
-if self.final_s < self.rinse_s
+if !again && self.final_s < self.blip_s
+self.rinsed = true
+timer.cancel(self.timer_id)
+self.finish()
+return
+end
+if !again && self.shown != nil && self.shown > self.final_s && self.shown - self.final_s <= 1
+self.final_s = self.shown
+end
+if again
+self.rinsed = self.final_s < self.rinse_s
+elif self.final_s < self.rinse_s
 self.rinsed = true
 end
 self.shot = "done"
@@ -389,20 +444,22 @@ var shot_s = -1
 if self.shot == "run"
 shot_s = ((self.stopped != nil ? self.stopped : now) - self.t0) / 1000
 end
+var blip = self.stopped != nil && shot_s < self.blip_s
+var run = self.shot == "run" && !blip
 if unix == self.built && shot_s == self.shown
 return
 end
 self.built = unix
 self.shown = shot_s
 self.bar = nil
-if !self.on() && self.shot == "idle"
+if !self.on() && (self.shot == "idle" || blip)
 self.line1 = nil
 self.line2 = nil
 return
 end
 var on_s = self.since_s > 0 ? unix - self.since_s : 0
 var heating = self.warming()
-if self.shot == "run"
+if run
 var rinse = self.stopped != nil && shot_s < self.rinse_s
 self.line1 = self.pair(rinse ? "RINSE" : "SHOT", self.secs(shot_s), self.white)
 elif self.shot == "done"
@@ -418,7 +475,7 @@ if heating
 if self.thermo() && self.temp0 != nil && self.ready > self.temp0
 var pct = int((self.temp - self.temp0) * 100 / (self.ready - self.temp0))
 pct = pct < 0 ? 0 : (pct > 100 ? 100 : pct)
-var from_v = self.temp0
+var from_v = real(self.temp0)
 var from_s = self.temp0_s
 for r : self.hist
 if r[0] <= self.temp_s - 300 && r[0] >= from_s
@@ -427,34 +484,69 @@ from_v = r[1]
 end
 end
 var rise = self.temp - from_v
-var at = self.since_s > 0 ? self.since_s + self.coldpre_s : 0
-if rise > 0 && self.temp_s > from_s
-var by_rate = self.temp_s + int((self.ready - self.temp) * (self.temp_s - from_s) / rise)
-if at <= unix || by_rate < at
+var at = self.eta
+if at == nil && self.since_s > 0
+at = self.since_s + self.coldpre_s
+end
+if at != nil && self.temp - self.temp0 >= 1 && rise > 0 && self.temp_s > from_s
+var top = self.ready + self.approach
+var mid = (self.temp + from_v) / 2.0
+var k = rise / real(self.temp_s - from_s) / (top - mid)
+if k > 0
+var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k)
+if by_rate < at
 at = by_rate
 end
 end
-if at > unix && self.since_s > 0 && at > self.since_s
-var by_time = (unix - self.since_s) * 100 / (at - self.since_s)
+end
+if at != self.eta
+self.eta = at
+self.keep()
+end
+if at == nil
+at = 0
+end
+if self.since_s > 0 && at > self.since_s
+var by_time = unix >= at ? 99 : (unix - self.since_s) * 100 / (at - self.since_s)
 pct = by_time > pct ? (by_time > 99 ? 99 : by_time) : pct
 end
-if self.as_bar
+var views = [nil]
+if at > unix
+views.push([[self.clock(at - unix), self.white]])
+end
+var off = self.idle_line(unix)
+if off != nil
+views.push(off)
+end
+if size(views) == 1
+views.push(self.pair("ON", self.clock(on_s), self.white))
+end
+var view = views[(unix / 3) % size(views)]
+if view != nil
+self.line2 = view
+elif self.as_bar
 self.bar = pct
 self.line2 = []
 else
 self.line2 = [[str(pct) + "%", self.white]]
 end
-if at > unix && (unix / 3) % 2 == 1
-self.bar = nil
-self.line2 = [[self.clock(at - unix), self.white]]
-end
-elif self.cold && self.since_s > 0
-self.line2 = [[self.clock(self.since_s + self.coldpre_s - unix), self.white]]
 else
-self.line2 = [[self.clock(on_s), self.white]]
+var left = self.cold && self.since_s > 0 ? self.since_s + self.coldpre_s - unix : -1
+var first = left >= 0 ? [[self.clock(left), self.white]] : [[self.clock(on_s), self.white]]
+var off = self.idle_line(unix)
+self.line2 = off != nil && (unix / 3) % 2 == 1 ? off : first
 end
 return
 end
+self.line2 = self.off_line(unix)
+end
+def idle_line(unix)
+if self.idle_at > self.since_s || (self.idle_at == 0 && self.idle_len > 0)
+return self.off_line(unix)
+end
+return nil
+end
+def off_line(unix)
 var off = 0
 if self.idle_at > self.since_s
 off = self.idle_at
@@ -466,12 +558,11 @@ off = self.over_at
 end
 var left = off - unix
 if off == 0
-self.line2 = nil
+return nil
 elif left <= 0
-self.line2 = [["OFF", self.warn]]
-else
-self.line2 = self.pair("OFF", self.clock(left), left < 60 ? self.warn : self.white)
+return [["OFF", self.warn]]
 end
+return self.pair("OFF", self.clock(left), left < 60 ? self.warn : self.white)
 end
 def draw()
 clear()

@@ -12,7 +12,7 @@ topics:
 
 | When | Line 1 | Line 2 |
 |---|---|---|
-| Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, or by the time until then where that is further (the group hardly warms at first), as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then: until **Cold preheat** is up from switching on, or sooner once the rate it rose over the last five minutes says so, and past it by that rate; without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on |
+| Heating up, until the first coffee once heated | **HEATING**, heat waves over the cup | how far, from the temperature it was switched on at to **Preheated from**, or by the time until then where that is further (the group hardly warms at first), as a bar like the one AWTRIX NG boots with or as a percentage, every three seconds taking turns with how long until then: from **Cold preheat** as switched on, made shorter by the rate it rose over the last five minutes once the thermometer has moved a degree — the rate slowing as it nears 4 °C above **Preheated from**, as a group warms; never longer; and once a coffee or a rinse has started Idle's count, when it is switched off (**OFF**), in turn too. Past the countdown with nothing else to tell, how long it has been on (**ON**) in turn with the bar. Without a thermometer, from cold how long until **Cold preheat** is up, else how long it has been on, in turn with **OFF** once Idle counts |
 | Ready | how long it has been on (**ON**), every three seconds **HEATED** in red | when it is switched off (**OFF**), yellow in the last minute; while the machine is in use, which holds Idle, its full time standing still |
 | The pump running | **SHOT** and the seconds, counted on the clock | **OFF** |
 | After that, for 20 s | **SHOT** or **RINSE** and how long the pump ran, in green | **OFF** |
@@ -85,7 +85,10 @@ short bursts can hold the phase on for hours. Any topic with degrees works; for 
 [deconz-mqtt](https://github.com/rummeyer/deconz-mqtt) publishes it as
 `deconz/<name>/temperature`. Without one, leave **Temperature topic** empty.
 One that has sent nothing for fifteen minutes while the machine is on has
-gone quiet, and the app goes on as without one until it reads again.
+gone quiet, and the app goes on as without one until it reads again — for
+three minutes, once it has risen a degree heating up: it tells every half
+a minute or so then. Heated once the countdown is up, it stays heated when
+the thermometer comes back with a reading below.
 
 ## Installing
 
@@ -124,12 +127,14 @@ In AWTRIX NG's web page, on the **Apps** tab, behind the app's gear button:
 | Heating phase | `Aufheizen` | |
 | Rinse phase | `Spülen` | A pump run that turns out to be this phase shows as RINSE. |
 | Rinse under | 15 s | A pump run shorter than this shows as RINSE as soon as the pump stops, before the plugin knows, and also one too short for the rinse phase; 0 for only the rinse phase. The rinse phase's "shorter than" is a good value. |
+| Hide under | 4 s | A pump run shorter than this is not shown at all, from when the pump stops: the heater switching off, its draw passing the pump's range for a moment, taken for the pump. 0 shows every run. |
 | Temperature topic | `deconz/Kaffeemaschine/temperature` | Empty for none. |
-| Preheated from | 38 °C | |
+| Preheated from | 40 °C | |
 | Heating up as | bar | How far it has heated up: `bar`, small blocks lighting up one after the other, or `percent`. |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
 | Cold preheat | 30 min | How long a cold machine heats up. Without a thermometer, any at the most; with one, the time left shown until it rises fast enough to tell sooner. |
 | Plug delay | 5 s | How much later the plugin sees the pump than it started: 5 s for a plug that reports an average over 6 seconds, as the Eve Energy does; 0 for one that reports every second, as a Shelly does. |
+| Shots from | 10 min | Heating up from cold, a pump shows as a shot only this long before heated at most, as the countdown says: earlier it is left out, the heater switching on taken for it. 0 for always. |
 | Show result for | 20 s | |
 | Colours | | Result, heating, heated. The cup is drawn as it is. |
 

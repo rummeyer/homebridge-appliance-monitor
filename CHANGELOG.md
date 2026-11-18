@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.23.0] — 2026-11-18
+
 ### Changed
 
 - **Dashboard: the statistics in colour.** Each period's kWh from green, the
@@ -21,9 +23,42 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   `comingDown` or `byDifference`. The earlier names, and those before them,
   are still read; the settings page renames them as it opens, so the next
   Save writes the new ones.
+- **ShotTimer 5.20**, from 5.9:
+  - Heating up, the countdown starts at **Cold preheat** and only ever gets
+    shorter, the rate counting once the thermometer has moved a degree and
+    slowing as the group nears 4 °C above **Preheated from**; the bar moves
+    by the time too. Past the countdown the machine counts as heated.
+  - Heating up, line 2 takes turns every three seconds with how far, how
+    long until heated, and when it is switched off once a coffee or a rinse
+    has started Idle's count; past the countdown, how long it has been on.
+  - **Preheated from** is 40 °C by default, from 38 °C.
+  - A thermometer that has risen a degree heating up and then sends nothing
+    for three minutes has gone quiet, not after fifteen.
+  - **Hide under**, 4 s by default: a pump run shorter than this is not
+    shown — the heater switching off through the pump's range.
+  - **Shots from**, 10 min by default: heating up from cold, a pump shows
+    as a shot only this long before heated at most; the heater switching
+    on cold was taken for it.
+  - The count stops at the time the plugin says the draw fell below the
+    pump's range, less the plug delay, not when the message arrives; a
+    result is not a second or two below the count shown, and holds it only
+    a second above it.
+  - A second end while the result shows decides shot or rinse anew.
 
 ### Fixed
 
+- ShotTimer: heating up, the app stopped with a division by zero when two
+  readings of the thermometer were whole degrees.
+- Coffee machine: a pump seen beside the heater is alone again once the
+  draw settles in its band, the heater off — not still beside something,
+  all above the band counted as the pump until the draw fell below
+  (18.11.2026: a coffee of 22 s, the milk coming on as it stopped, a shot
+  of 96 s until the milk ended).
+- Coffee machine: a pump beside the milk seen stopping as the heater comes
+  on, when the heater lands at what it drew beside the milk before, and
+  the pump starting again once the heater is off, is a run of its own
+  (17.11.2026: 4 s, the heater, then a coffee of 22 s, a shot of 35 s on
+  the clock).
 - Phases, by difference: the pump stopping beneath the heater beside the
   milk, the draw back down at the milk once known quiet, ran on until the
   heater went off, not stopping as it came on (14.11.2026: a rinse of about
@@ -1294,7 +1329,9 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.0...HEAD
+[1.23.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.4...v1.23.0
+[1.22.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.3...v1.22.4
 [1.22.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.2...v1.22.3
 [1.22.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.1...v1.22.2
 [1.22.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.0...v1.22.1
