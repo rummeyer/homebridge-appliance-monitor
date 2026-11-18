@@ -6,77 +6,6 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Changed
-
-- ShotTimer 5.20: heating up, a thermometer that has risen a degree and
-  then says nothing for three minutes has fallen off, not fifteen: it
-  tells every half a minute or so while the group warms. Heated then once
-  the countdown is up, and kept so when it comes back below (18.11.2026:
-  nothing from 36.8 °C for a quarter of an hour, the bar at its last tick
-  all the while).
-- ShotTimer 5.19: heating up, line 2 takes turns every three seconds with
-  how far, how long until heated while there is some left, and when it is
-  switched off once a coffee or a rinse has started Idle's count — the plug
-  goes off five minutes after one, heated or not. Past the countdown, with
-  the thermometer quiet and nothing else to tell, how long it has been on,
-  rather than the bar alone at its last tick (18.11.2026: a quarter of an
-  hour). **Preheated from** is 40 °C by default, from 38 °C.
-- Phases: a pump seen beside the heater is alone again once the draw
-  settles in its band, the heater off — not still beside something, all
-  above the band counted as the pump until the draw fell below (18.11.2026:
-  a coffee of 22 s, the milk coming on as it stopped, a shot of 96 s until
-  the milk ended).
-- Phases: a pump beside the milk seen stopping as the heater comes on, when
-  the heater lands at what it drew beside the milk before — no pump in it —
-  and the pump starting again once the heater is off, a run of its own
-  (17.11.2026: 4 s, the heater, then a coffee of 22 s, a shot of 35 s on
-  the clock).
-- Model watching: a phase started live is told from where its part came on
-  by the model, if not seen off since with the heater off — a pump coming
-  on with the heater, hidden beneath it until the heater goes off, counted
-  from its own start rather than from then (16.11.2026: the clock 8 s
-  late; over the recordings since 28.10.2026 two shots, both now as the
-  model has them in hindsight). Not where that would be a run ended
-  already, as a rinse before the coffee.
-- Model watching: a phase with start messages the rules have on still, the
-  model ends live once it sees its part off with the heater off — a pump
-  with the frother beside it, which the rules lose the end of (16.11.2026:
-  a 24 s shot counting on the clock to 1:07). The rules' late end is not
-  told again. Under the heater it waits for the rules, as the model loses
-  the pump there for a moment.
-- ShotTimer 5.17: **Hide under**, 4 s by default: a pump run shorter than
-  this is not shown, neither while it runs once it has stopped nor as a
-  result. With the pump's on after at 2 s, the heater switching off through
-  the pump's range starts a run about once a day; a rinse takes 5 s or more.
-- ShotTimer 5.16: **Shots from**, 10 min by default: heating up from cold,
-  a pump shows as a shot only this long before heated at most, as the
-  countdown says; earlier, it is left out. Nobody draws one that early, and
-  the heater switching on cold was taken for the pump beside it
-  (15.11.2026: a shot of 16 s on the clock as the machine was switched on).
-  From warm, or once heated, every shot shows.
-- ShotTimer 5.15: a shot's result holds the count shown only a second above
-  it, as rounding; two above is a start counted early, and the plugin's
-  count is shown (15.11.2026: a shot of 21 s held at 23s).
-- ShotTimer 5.14: heating up, the countdown reckons with the group warming
-  slower the nearer it gets — as heading for 4 °C above **Preheated from**,
-  the rate falling with the distance left — rather than at the last five
-  minutes' rate all the way. In a straight line it ran out about three
-  minutes early, and the bar's last tick stood still for them; over the
-  cold mornings recorded since 29.10.2026, a fifth of a minute instead.
-- ShotTimer 5.13: heating up, the countdown starts at **Cold preheat** and
-  only ever gets shorter: the rate counts once the thermometer has moved a
-  degree, as the boiler heats inside first and the thermometer outside
-  notices some fifteen minutes in. It jumped back up by minutes as it ran
-  out, the rate slowing near the end. Past it, the bar alone, at 99 %, until
-  it is warm; kept across a restart of the clock.
-- ShotTimer 5.13: a shot's result is not a second or two below the count it
-  showed; a later correction by the model still is.
-- **Dashboard: the statistics in colour.** Each period's kWh from green, the
-  appliance that used least, to red, the one that used most, by its rank
-  among them, through yellow and orange; in each look its own shades — the
-  Home look's light ones over the wallpaper. What shows as 0.00 kWh stays
-  grey, parts and the total as they were.
-
 ### Added
 
 - **Recognise phases: By rules, a learned model watching.** A model of the
@@ -87,6 +16,40 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Model watching: a phase started live is told from where its part came on
+  by the model, if not seen off since with the heater off — a pump coming
+  on with the heater, hidden beneath it until the heater goes off, counted
+  from its own start rather than from then (16.11.2026: the clock 8 s
+  late; over the recordings since 28.10.2026 two shots, both now as the
+  model has them in hindsight). Not where that would be a run ended
+  already, as a rinse before the coffee.
+
+- Model watching: a phase with start messages the rules have on still, the
+  model ends live once it sees its part off with the heater off — a pump
+  with the frother beside it, which the rules lose the end of (16.11.2026:
+  a 24 s shot counting on the clock to 1:07). The rules' late end is not
+  told again. Under the heater it waits for the rules, as the model loses
+  the pump there for a moment.
+
+### Fixed
+
+- Model watching: switched on cold, hours after the last session, the
+  heater drawing more than it did warm then is not taken for the pump
+  beside it, and no shot is started live on the clock: until a burst of the
+  heater has been seen ending, a part only inferred above it is not told
+  live (15.11.2026: 1255 W at noon, 1205 W in the morning, a shot of 16 s
+  on the clock as the machine was switched on). A pump seen on its own
+  first is, as before; the rules are not touched.
+
+## [1.23.0] — 2026-11-18
+
+### Changed
+
+- **Dashboard: the statistics in colour.** Each period's kWh from green, the
+  appliance that used least, to red, the one that used most, by its rank
+  among them, through yellow and orange; in each look its own shades — the
+  Home look's light ones over the wallpaper. What shows as 0.00 kWh stays
+  grey, parts and the total as they were.
 - **Settings saved under names that match the settings page.** Idle's
   `idleOnMinutes` and `idleOnFrom` are `idleMinutes` and `idleFrom`; a
   phase's `minSeconds`, `holdSeconds` and `maxSeconds` are
@@ -95,21 +58,42 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   `comingDown` or `byDifference`. The earlier names, and those before them,
   are still read; the settings page renames them as it opens, so the next
   Save writes the new ones.
+- **ShotTimer 5.20**, from 5.9:
+  - Heating up, the countdown starts at **Cold preheat** and only ever gets
+    shorter, the rate counting once the thermometer has moved a degree and
+    slowing as the group nears 4 °C above **Preheated from**; the bar moves
+    by the time too. Past the countdown the machine counts as heated.
+  - Heating up, line 2 takes turns every three seconds with how far, how
+    long until heated, and when it is switched off once a coffee or a rinse
+    has started Idle's count; past the countdown, how long it has been on.
+  - **Preheated from** is 40 °C by default, from 38 °C.
+  - A thermometer that has risen a degree heating up and then sends nothing
+    for three minutes has gone quiet, not after fifteen.
+  - **Hide under**, 4 s by default: a pump run shorter than this is not
+    shown — the heater switching off through the pump's range.
+  - **Shots from**, 10 min by default: heating up from cold, a pump shows
+    as a shot only this long before heated at most; the heater switching
+    on cold was taken for it.
+  - The count stops at the time the plugin says the draw fell below the
+    pump's range, less the plug delay, not when the message arrives; a
+    result is not a second or two below the count shown, and holds it only
+    a second above it.
+  - A second end while the result shows decides shot or rinse anew.
 
 ### Fixed
 
-- ShotTimer 5.18: heating up, the app stopped with a division by zero when
-  two readings of the thermometer five minutes apart were whole degrees
-  (32 °C, then 35 °C): they came as whole numbers, and the rate they rose
-  at came out 0. Readings are taken as reals, and a rate of 0 leaves the
-  countdown as it was.
-- Model watching: switched on cold, hours after the last session, the
-  heater drawing more than it did warm then is not taken for the pump
-  beside it, and no shot is started live on the clock: until a burst of the
-  heater has been seen ending, a part only inferred above it is not told
-  live (15.11.2026: 1255 W at noon, 1205 W in the morning, a shot of 16 s
-  on the clock as the machine was switched on). A pump seen on its own
-  first is, as before; the rules are not touched.
+- ShotTimer: heating up, the app stopped with a division by zero when two
+  readings of the thermometer were whole degrees.
+- Coffee machine: a pump seen beside the heater is alone again once the
+  draw settles in its band, the heater off — not still beside something,
+  all above the band counted as the pump until the draw fell below
+  (18.11.2026: a coffee of 22 s, the milk coming on as it stopped, a shot
+  of 96 s until the milk ended).
+- Coffee machine: a pump beside the milk seen stopping as the heater comes
+  on, when the heater lands at what it drew beside the milk before, and
+  the pump starting again once the heater is off, is a run of its own
+  (17.11.2026: 4 s, the heater, then a coffee of 22 s, a shot of 35 s on
+  the clock).
 - Phases, by difference: the pump stopping beneath the heater beside the
   milk, the draw back down at the milk once known quiet, ran on until the
   heater went off, not stopping as it came on (14.11.2026: a rinse of about
@@ -1380,7 +1364,9 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.3...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.0...HEAD
+[1.23.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.4...v1.23.0
+[1.22.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.3...v1.22.4
 [1.22.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.2...v1.22.3
 [1.22.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.1...v1.22.2
 [1.22.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.0...v1.22.1
