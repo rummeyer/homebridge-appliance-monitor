@@ -306,6 +306,13 @@ export class PhaseTracker {
   #beside = false;
   /** The level the pump was last seen starting beside, while the draw counts: see #backBeneath. */
   #beneath: number | undefined;
+  /**
+   * Bursts above the band settled at while nothing counted, with the level they rose from, the
+   * latest last: the heater on beside the milk, say. See #stoppedAsBurst.
+   */
+  #bursts: { watts: number; from: number; at: number }[] = [];
+  /** The pump seen stopping as a burst began: the level it ran at, and what it ran beside. See #stoppedAsBurst. */
+  #resume: { with: number; beneath: number } | undefined;
 
   constructor(phase: PhaseConfig) {
     this.#phase = phase;
@@ -367,6 +374,7 @@ export class PhaseTracker {
     if (watts < this.#phase.minWatts) {
       this.#belowSince ??= at;
       this.#beside = false;
+      this.#resume = undefined;
       if (this.#restLevel !== undefined) {
         this.#alone = this.#restLevel;
         this.#restLevel = undefined;
@@ -442,6 +450,14 @@ export class PhaseTracker {
       return;
     }
     this.#restLevel = left.watts < minWatts && !pumping && watts >= maxWatts ? { watts, at } : undefined;
+    if (this.#beside && watts >= minWatts && watts < maxWatts) {
+      // Settled in the band: what the pump ran beside is gone, the pump alone again. Not beside
+      // anything any more, or all above the band counts as the pump until the draw falls below
+      // (18.11.2026: a coffee of 22 s, the heater on beside it and off, then the milk as it
+      // stopped — counted on beside the milk, a shot of 96 s).
+      this.#beside = false;
+      this.#beneath = undefined;
+    }
     const step = watts - left.watts;
     if (pumping && this.#belowSince === undefined && this.#beneath !== undefined && -step >= maxWatts &&
       Math.abs(watts - this.#beneath) < minWatts / 2) {
@@ -455,6 +471,14 @@ export class PhaseTracker {
       this.#stoppedAt(left.from ?? movedAt);
       return;
     }
+    if (pumping && this.#belowSince === undefined && step >= maxWatts && this.#stoppedAsBurst(watts, at)) {
+      // Up into a burst at what it drew beside what the pump started beside, no pump in it:
+      // the pump stopped as the burst began (17.11.2026: 4 s beside the milk, the heater on
+      // over it stopping, then the coffee of 22 s after it — taken for a shot of 35 s).
+      this.#resume = { with: left.watts, beneath: this.#beneath! };
+      this.#stoppedAt(movedAt);
+      return;
+    }
     if (pumping && this.#belowSince === undefined && watts >= maxWatts && this.#atAlone(watts, at)) {
       // Settled at what the heater draws alone: the pump stopped beneath it on the way.
       this.#stoppedBeneath(movedAt, left.watts - watts);
@@ -464,7 +488,14 @@ export class PhaseTracker {
     // started on the way, its step lost in the fall: from where the draw was
     // before the burst (6.11.2026: a coffee of 23 s started as the heater went
     // off beside the milk, only its last 7 s seen).
-    const lost = -step >= maxWatts && left.before !== undefined ? left.before : left.watts;
+    let lost = -step >= maxWatts && left.before !== undefined ? left.before : left.watts;
+    const resume = this.#resume;
+    if (!pumping && resume !== undefined && -step >= maxWatts && Math.abs(lost - resume.with) < minWatts / 2) {
+      // Back down from the burst the pump stopped as it began, at the level it ran at before:
+      // it started again, a run of its own, beside what it ran beside then.
+      lost = resume.beneath;
+      this.#resume = undefined;
+    }
     // Seen alone a moment, too short for its time above to count, the pump
     // settled at a band's size above what the heater draws alone: it runs on
     // beside it (7.11.2026: a coffee alone for 2 s, then the heater on beside
@@ -506,7 +537,24 @@ export class PhaseTracker {
     }
     if (!pumping) {
       this.#quietAt(watts, at);
+      if (step >= maxWatts) {
+        this.#bursts = [...this.#bursts.filter((burst) => at - burst.at <= ALONE_MS), { watts, from: left.watts, at }].slice(-QUIET_LEVELS);
+      }
     }
+  }
+
+  /**
+   * A burst settled at what one drew before, risen from what the pump was seen starting beside:
+   * the pump is not in it. Running on beside the burst, the draw would be the pump's step above.
+   */
+  #stoppedAsBurst(watts: number, at: number): boolean {
+    const beneath = this.#beneath;
+    if (beneath === undefined) {
+      return false;
+    }
+    const near = this.#phase.minWatts / 2;
+    return this.#bursts.some((burst) => at - burst.at <= ALONE_MS &&
+      Math.abs(burst.from - beneath) < near && Math.abs(burst.watts - watts) < near);
   }
 
   /** A level settled at above the band, nothing counting there, not even the pump starting beside it: see QUIET_LEVELS. */

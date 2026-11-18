@@ -8,6 +8,23 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- ShotTimer 5.19: heating up, line 2 takes turns every three seconds with
+  how far, how long until heated while there is some left, and when it is
+  switched off once a coffee or a rinse has started Idle's count — the plug
+  goes off five minutes after one, heated or not. Past the countdown, with
+  the thermometer quiet and nothing else to tell, how long it has been on,
+  rather than the bar alone at its last tick (18.11.2026: a quarter of an
+  hour). **Preheated from** is 40 °C by default, from 38 °C.
+- Phases: a pump seen beside the heater is alone again once the draw
+  settles in its band, the heater off — not still beside something, all
+  above the band counted as the pump until the draw fell below (18.11.2026:
+  a coffee of 22 s, the milk coming on as it stopped, a shot of 96 s until
+  the milk ended).
+- Phases: a pump beside the milk seen stopping as the heater comes on, when
+  the heater lands at what it drew beside the milk before — no pump in it —
+  and the pump starting again once the heater is off, a run of its own
+  (17.11.2026: 4 s, the heater, then a coffee of 22 s, a shot of 35 s on
+  the clock).
 - Model watching: a phase started live is told from where its part came on
   by the model, if not seen off since with the heater off — a pump coming
   on with the heater, hidden beneath it until the heater goes off, counted
@@ -75,6 +92,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- ShotTimer 5.18: heating up, the app stopped with a division by zero when
+  two readings of the thermometer five minutes apart were whole degrees
+  (32 °C, then 35 °C): they came as whole numbers, and the rate they rose
+  at came out 0. Readings are taken as reals, and a rate of 0 leaves the
+  countdown as it was.
 - Model watching: switched on cold, hours after the last session, the
   heater drawing more than it did warm then is not taken for the pump
   beside it, and no shot is started live on the clock: until a burst of the
