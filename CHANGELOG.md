@@ -17,7 +17,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Model watching: a phase started live is told from where its part came on
-  by the model, if not seen off since with the heater off â a pump coming
+  by the model, if not seen off since with the heater off — a pump coming
   on with the heater, hidden beneath it until the heater goes off, counted
   from its own start rather than from then (16.11.2026: the clock 8 s
   late; over the recordings since 28.10.2026 two shots, both now as the
@@ -25,7 +25,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   already, as a rinse before the coffee.
 
 - Model watching: a phase with start messages the rules have on still, the
-  model ends live once it sees its part off with the heater off â a pump
+  model ends live once it sees its part off with the heater off — a pump
   with the frother beside it, which the rules lose the end of (16.11.2026:
   a 24 s shot counting on the clock to 1:07). The rules' late end is not
   told again. Under the heater it waits for the rules, as the model loses
@@ -41,7 +41,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   on the clock as the machine was switched on). A pump seen on its own
   first is, as before; the rules are not touched.
 
-## [1.23.1] â 2026-11-19
+## [1.23.1] — 2026-11-19
 
 ### Fixed
 
@@ -50,13 +50,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   learned waited an hour for Finished and then the hour of its Idle, and
   was switched off by hand first (17.11.2026).
 
-## [1.23.0] â 2026-11-18
+## [1.23.0] — 2026-11-18
 
 ### Changed
 
 - **Dashboard: the statistics in colour.** Each period's kWh from green, the
   appliance that used least, to red, the one that used most, by its rank
-  among them, through yellow and orange; in each look its own shades â the
+  among them, through yellow and orange; in each look its own shades — the
   Home look's light ones over the wallpaper. What shows as 0.00 kWh stays
   grey, parts and the total as they were.
 - **Settings saved under names that match the settings page.** Idle's
@@ -70,16 +70,16 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - **ShotTimer 5.20**, from 5.9:
   - Heating up, the countdown starts at **Cold preheat** and only ever gets
     shorter, the rate counting once the thermometer has moved a degree and
-    slowing as the group nears 4 Â°C above **Preheated from**; the bar moves
+    slowing as the group nears 4 °C above **Preheated from**; the bar moves
     by the time too. Past the countdown the machine counts as heated.
   - Heating up, line 2 takes turns every three seconds with how far, how
     long until heated, and when it is switched off once a coffee or a rinse
     has started Idle's count; past the countdown, how long it has been on.
-  - **Preheated from** is 40 Â°C by default, from 38 Â°C.
+  - **Preheated from** is 40 °C by default, from 38 °C.
   - A thermometer that has risen a degree heating up and then sends nothing
     for three minutes has gone quiet, not after fifteen.
   - **Hide under**, 4 s by default: a pump run shorter than this is not
-    shown â the heater switching off through the pump's range.
+    shown — the heater switching off through the pump's range.
   - **Shots from**, 10 min by default: heating up from cold, a pump shows
     as a shot only this long before heated at most; the heater switching
     on cold was taken for it.
@@ -94,7 +94,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - ShotTimer: heating up, the app stopped with a division by zero when two
   readings of the thermometer were whole degrees.
 - Coffee machine: a pump seen beside the heater is alone again once the
-  draw settles in its band, the heater off â not still beside something,
+  draw settles in its band, the heater off — not still beside something,
   all above the band counted as the pump until the draw fell below
   (18.11.2026: a coffee of 22 s, the milk coming on as it stopped, a shot
   of 96 s until the milk ended).
@@ -107,7 +107,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   milk, the draw back down at the milk once known quiet, ran on until the
   heater went off, not stopping as it came on (14.11.2026: a rinse of about
   7 s taken for a coffee of 16 s). And a phase on before its end was known
-  â with byDifference, the time above the band counting â is not counted
+  — with byDifference, the time above the band counting — is not counted
   when it ends a draw shorter than **On after**: the coffee taken back
   (14.11.2026, and 4.11.2026: a rinse of 5 s, the heater on over it for
   long after).
@@ -118,7 +118,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   known to draw alone. In the recordings since 29.10.2026, three grinds
   fewer, all heater bursts; nothing else changes.
 
-## [1.22.4] â 2026-11-08
+## [1.22.4] — 2026-11-08
 
 ### Changed
 
@@ -141,7 +141,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   on over it, when the draw comes back down to the milk alone. It ran on
   until the milk stopped (8.11.2026: 23 s taken for 95 s).
 
-## [1.22.3] â 2026-11-06
+## [1.22.3] — 2026-11-06
 
 ### Fixed
 
@@ -167,7 +167,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   is now compared with the one before it (6.11.2026: a coffee of 23 s not
   counted, only its last 7 s shown).
 
-## [1.22.2] â 2026-11-02
+## [1.22.2] — 2026-11-02
 
 ### Changed
 
@@ -188,7 +188,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   about every second time, by how the readings fell between seconds: the
   pump's step down beneath the heater now counts it all along there too.
 
-## [1.22.1] â 2026-10-31
+## [1.22.1] — 2026-10-31
 
 ### Fixed
 
@@ -201,7 +201,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   before the heater came on beside it went unseen, though its stop beneath
   the heater was: its time from the start counts now (a rinse of 5 s).
 
-## [1.22.0] â 2026-10-29
+## [1.22.0] — 2026-10-29
 
 ### Added
 
@@ -220,7 +220,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   appliance's parts stay under it, and the arrow shows on the column
   sorted by only.
 - **By difference** tells the pump by its steps between levels: starting
-  beside the steam or the heater â a coffee drawn while the milk froths â
+  beside the steam or the heater — a coffee drawn while the milk froths —
   stopping beneath them, or seen only as it stops, having started with
   them. Settled back at what the heater draws alone, the pump has stopped.
 - A red sign at **By difference** for a plug that reports too seldom for it,
@@ -247,19 +247,19 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - A pump that stopped beneath the heater went unseen when the heater went
   off right after, a single reading later (2 s shown as 6).
 
-## [1.21.0] â 2026-10-28
+## [1.21.0] — 2026-10-28
 
 ### Changed
 
 - **Counts**, one choice per phase in place of two checkboxes: **Always**,
   **Coming down** (what was *On down*) or **By difference** (what was *Off on
-  drop*, `byDifference` in the config) â the two never went together. A
+  drop*, `byDifference` in the config) — the two never went together. A
   phase's settings with both on use by difference, and say so.
   `offOnDrop` and `offBelow` are read as `byDifference`.
 - The README says what a phase counts in a section of its own, and has new
   screenshots of the Power and Settings tabs.
 
-## [1.20.0] â 2026-10-28
+## [1.20.0] — 2026-10-28
 
 ### Changed
 
@@ -280,11 +280,11 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   20-second coffee.
 - Settings, Power tab: the phase row keeps its fit with the longer label.
 
-## [1.19.0] â 2026-10-27
+## [1.19.0] — 2026-10-27
 
 ### Changed
 
-- A phase's upper end is called **To**, so that a range reads From â¦ To.
+- A phase's upper end is called **To**, so that a range reads From … To.
 - With **Off below**, "On after" also counts the time above the range, from
   the draw entering it until it falls below. It then measures a draw as
   "Shorter than" does: a coffee on after 15 seconds and a rinse shorter than
@@ -298,7 +298,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   no arrows and are just wide enough, the name takes the rest, and each
   checkbox's label sits closer to it.
 
-## [1.18.0] â 2026-10-27
+## [1.18.0] — 2026-10-27
 
 ### Added
 
@@ -335,14 +335,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   warm machine whose heater comes on for seconds at a time takes minutes to;
   heated, heating up and the OFF time count from then.
 
-## [1.17.0] â 2026-10-26
+## [1.17.0] — 2026-10-26
 
 ### Added
 
 - Readings over MQTT, instead of a Matter pairing: an appliance can take
-  its watts and relay from a topic a plug publishes to â a number, or JSON
+  its watts and relay from a topic a plug publishes to — a number, or JSON
   with them under `apower` and `output`, a Shelly's keys, or keys of its
-  own â and whether it is connected from an online topic. For a Shelly
+  own — and whether it is connected from an online topic. For a Shelly
   whose Matter side has no power reading, as the Plug S Gen3's has not.
   `extras/shelly/power-mqtt.js` is a script for the Shelly that sends every
   change within a second, where its own status messages leave out small ones.
@@ -350,8 +350,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   own Matter pairing, a bridge's it shares (what **Pairing** was) and an
   MQTT topic; with the topic, nothing of pairing or polling is shown.
 - `extras/shelly/heating-led.js`: a coffee machine's heating up on a Shelly
-  plug's LED ring â red while it heats up, green once heated, dark while the
-  plug is off â from the heating phase and a thermometer, if there is one.
+  plug's LED ring — red while it heats up, green once heated, dark while the
+  plug is off — from the heating phase and a thermometer, if there is one.
 
 ### Changed
 
@@ -364,10 +364,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   belongs to: a new plug given the old one's name was not paired while the
   old one was known. The old pairing is let go only once the new one works.
   A code for a plug paired here already is that of the one plug no
-  appliance has any more â another appliance's old plug, moved over â or,
+  appliance has any more — another appliance's old plug, moved over — or,
   with none, the same plug's, as the Home app shows a new code each time.
 
-## [1.16.2] â 2026-10-26
+## [1.16.2] — 2026-10-26
 
 ### Added
 
@@ -398,7 +398,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   rose above it again, as the heater coming on after the pump had stopped
   made a 20 s coffee 36 s and a 5 s rinse 18.
 
-- `extras/awtrix-ng`, not part of the package â the coffee machine app, 3.4
+- `extras/awtrix-ng`, not part of the package — the coffee machine app, 3.4
   to 5.1:
   - While it heats up, line 2 shows how far, from the temperature it was
     switched on at to **Preheated from**, as a bar like the one AWTRIX NG
@@ -431,36 +431,36 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
     flashing the next app; after reconnecting, a switch-on time that came
     just before its state is kept rather than shown as 0:00.
   - On a TC001, install `ShotTimer.tc001.be`, made by `tc001.py`: a copy
-    without comments, help texts and the 16 Ã 16 cup, as `ShotTimer.be` has
+    without comments, help texts and the 16 × 16 cup, as `ShotTimer.be` has
     grown past the 24 KB a TC001 takes for a script.
   - 4.0 and 4.1, a setting for every topic, are gone again: they asked for
     more subscriptions than AWTRIX NG holds for an app. After them, set the
     settings again where yours differ from the defaults.
 
-## [1.16.1] â 2026-10-21
+## [1.16.1] — 2026-10-21
 
 ### Changed
 
 - The README links to the coffee machine app for AWTRIX NG on the AWTRIX
   Hub.
-- `extras/awtrix-ng`, not part of the package: the app runs on a 32Ã8
+- `extras/awtrix-ng`, not part of the package: the app runs on a 32×8
   TC001 too, a coffee made while heating up ends the heating up, it uses
-  less memory, and the two shot timer MQTT messages are optional â without
+  less memory, and the two shot timer MQTT messages are optional — without
   them the pump phase starts and ends the shot.
 
-## [1.16.0] â 2026-10-20
+## [1.16.0] — 2026-10-20
 
 ### Added
 
 - MQTT messages of your own: sent to any topic when a phase starts or ends,
-  with the appliance, the phase and how long it lasted filled in â a
+  with the appliance, the phase and how long it lasted filled in — a
   notification on a pixel clock, say. Set up on the **Power** tab, below the
   phases.
 - MQTT topics for counting down on a display: `<name>/since`, when the
   state began, and `<name>/overtime/at` and `<name>/idle/at`, when those
   turn on, all in Unix seconds.
 - `extras/awtrix-ng`: an app for an AWTRIX NG clock showing a coffee
-  machine â heating up, time on, time until it is switched off, and a shot
+  machine — heating up, time on, time until it is switched off, and a shot
   timer.
 
 ### Changed
@@ -478,7 +478,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - An appliance's cached accessory is renamed with `updateDisplayName`,
   as Homebridge means it to be.
 
-## [1.15.0] â 2026-10-18
+## [1.15.0] — 2026-10-18
 
 ### Added
 
@@ -490,7 +490,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   publishes: nothing sent to it changes anything. See the README's MQTT
   section.
 
-## [1.14.1] â 2026-10-18
+## [1.14.1] — 2026-10-18
 
 ### Changed
 
@@ -499,7 +499,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - One threshold for a plug drawing nothing, shared by everything that
   needs it; nothing changes in what it does.
 
-## [1.14.0] â 2026-10-18
+## [1.14.0] — 2026-10-18
 
 ### Changed
 
@@ -510,7 +510,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   the plug off on Idle does so once. Counted from the end of a phase, it
   likewise keeps counting once the appliance has switched itself off.
 
-## [1.13.1] â 2026-10-18
+## [1.13.1] — 2026-10-18
 
 ### Changed
 
@@ -519,12 +519,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   plug is gone.
 - New README screenshots of the settings and the dashboard, as of 1.13.0.
 
-## [1.13.0] â 2026-10-18
+## [1.13.0] — 2026-10-18
 
 ### Changed
 
 - The **Idle On** sensor is now called **Idle**, and its fields **Idle
-  after** and **Idle counted from**. A sensor still called "â¦ Idle On" in
+  after** and **Idle counted from**. A sensor still called "… Idle On" in
   the Home app is renamed on start and keeps its automations; one renamed
   there keeps its name. The config keys stay `idleOnMinutes` and
   `idleOnFrom`.
@@ -536,17 +536,17 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   hold. A standby phase from 0 W stayed on while the plug was gone, or
   switched off and reporting 0 W.
 - The relay's state is read on connecting, not only on its next change.
-- An unreachable appliance's dashboard tile shows â rather than what it
+- An unreachable appliance's dashboard tile shows – rather than what it
   drew last.
 
-## [1.12.3] â 2026-10-17
+## [1.12.3] — 2026-10-17
 
 ### Changed
 
 - New README screenshots of the dashboard in all three looks and of the
   settings, as of 1.12.2.
 
-## [1.12.2] â 2026-10-17
+## [1.12.2] — 2026-10-17
 
 ### Fixed
 
@@ -556,25 +556,25 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   bridge's pairing, the Device field now takes the pairing code's place
   next to Pairing.
 
-## [1.12.1] â 2026-10-17
+## [1.12.1] — 2026-10-17
 
 ### Changed
 
 - New README screenshots: the dashboard's Home look with the appliance
   icons, and the settings with the Icon list and Idle On's new hint.
 
-## [1.12.0] â 2026-10-17
+## [1.12.0] — 2026-10-17
 
 ### Added
 
 - **Icon** per appliance, under its name in the settings (`icon`): what
   its tile shows in the dashboard's Home look instead of an outlet. 64 to
-  pick from, in groups â washing machine, dryer, TV, coffee machine, desk
-  lamp, computer, car charger and more â from Material Symbols (Apache
+  pick from, in groups — washing machine, dryer, TV, coffee machine, desk
+  lamp, computer, car charger and more — from Material Symbols (Apache
   License 2.0), in the same filled, rounded look. HomeKit is not changed by
   it.
 
-## [1.11.2] â 2026-10-17
+## [1.11.2] — 2026-10-17
 
 ### Fixed
 
@@ -588,13 +588,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - The README tells how to switch an appliance off with a Home app
   automation on Idle On or Overtime.
 
-## [1.11.1] â 2026-10-17
+## [1.11.1] — 2026-10-17
 
 ### Changed
 
 - New Statistics screenshot in the README, with the bubble as of 1.11.0.
 
-## [1.11.0] â 2026-10-17
+## [1.11.0] — 2026-10-17
 
 ### Changed
 
@@ -609,9 +609,9 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 - Where cycle lengths are all over the place, Estimated duration shows
   their median ("median 45 min, lengths vary") instead of nothing. Before
-  the second cycle it says "still learning Â· 1 of 2 cycles".
+  the second cycle it says "still learning · 1 of 2 cycles".
 
-## [1.10.2] â 2026-10-15
+## [1.10.2] — 2026-10-15
 
 ### Changed
 
@@ -619,24 +619,24 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   machine's usual running times by programme fit on one line; on a narrow
   screen its values wrap instead of running off the edge.
 
-## [1.10.1] â 2026-10-15
+## [1.10.1] — 2026-10-15
 
 ### Changed
 
 - On the settings page, Idle On's two fields have a line of their own
   under In HomeKit, in the same columns as the fields above.
 
-## [1.10.0] â 2026-10-15
+## [1.10.0] — 2026-10-15
 
 ### Added
 
 - **Idle on counted from** a phase (`idleOnFrom`): Idle On turns on that
   many minutes after the phase last ended, while the plug still draws
-  power, and off when the phase runs again or the plug draws nothing â 10
+  power, and off when the phase runs again or the plug draws nothing — 10
   minutes after the last coffee, for a coffee machine that keeps itself
   warm and so never stops running.
 
-## [1.9.0] â 2026-10-15
+## [1.9.0] — 2026-10-15
 
 ### Added
 
@@ -647,7 +647,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   no usual running time before, has one per programme; the Statistics tab
   lists them. The last 20 cycles are kept, up from 10.
 
-## [1.8.1] â 2026-10-15
+## [1.8.1] — 2026-10-15
 
 ### Fixed
 
@@ -655,12 +655,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   like all their texts, with a 24-hour clock ("Thu 07:21"), whatever the
   browser's language; they followed the browser before ("Do., 07:21").
 
-## [1.8.0] â 2026-10-15
+## [1.8.0] — 2026-10-15
 
 ### Added
 
 - **Idle On**: an occupancy sensor, on once an appliance has drawn power
-  for `idleOnMinutes` without running â left on standby â and off when it
+  for `idleOnMinutes` without running — left on standby — and off when it
   runs again or draws nothing. Marked on the dashboard as well.
 
 ### Changed
@@ -670,7 +670,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   sensor becomes Overtime and keeps its automations.
 - Shorter hints for these fields in the settings; the README explains them.
 
-## [1.7.1] â 2026-10-15
+## [1.7.1] — 2026-10-15
 
 ### Fixed
 
@@ -679,15 +679,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   too, showed none. A part now counts standby only while its whole is
   not running either.
 
-## [1.7.0] â 2026-10-15
+## [1.7.0] — 2026-10-15
 
 ### Changed
 
 - The energy tables are narrower: last cycle, count and standby are no
   longer columns but in a bubble, shown on pointing anywhere in an
   appliance's row or tapping it, together with the usual running time. The columns left are the ones that add up to a total.
-- A period no appliance has a figure for yet â Last Year, in the first
-  year â is left out of the energy tables until one has.
+- A period no appliance has a figure for yet — Last Year, in the first
+  year — is left out of the energy tables until one has.
 
 ### Added
 
@@ -700,56 +700,56 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   ten cycles.
 - **Left On** (`leftOnMinutes`): an occupancy sensor in HomeKit, on once the
   appliance has been running this many minutes in one go, and off when it
-  finishes â for a notification about a TV on all night. Set under **In
+  finishes — for a notification about a TV on all night. Set under **In
   HomeKit** on the settings page; marked on the dashboard too.
 
-## [1.6.4] â 2026-10-14
+## [1.6.4] — 2026-10-14
 
 ### Changed
 
 - New README screenshots: the settings page with Part of, the Statistics tab
   and the dashboard with parts indented in italics under their appliance.
 
-## [1.6.3] â 2026-10-14
+## [1.6.3] — 2026-10-14
 
 ### Changed
 
 - **Part of** on the settings page offers *None* rather than a longer text
   that its field cut off.
 
-## [1.6.2] â 2026-10-14
+## [1.6.2] — 2026-10-14
 
 ### Changed
 
 - Running's **Not shown** on the settings page now says what it means: *Not
-  in HomeKit â still on the dashboard*, which keeps its tile either way.
+  in HomeKit — still on the dashboard*, which keeps its tile either way.
 - The energy tables list each appliance's parts right under it, indented
-  and in italics, and several parts by name; the note *part of â¦, not in
+  and in italics, and several parts by name; the note *part of …, not in
   the total* under their names is gone.
 
 ### Fixed
 
 - The Statistics tab on the settings page counted parts in the total too.
 
-## [1.6.1] â 2026-10-14
+## [1.6.1] — 2026-10-14
 
 ### Changed
 
 - **Part of**: while the appliance it is part of is switched off or draws
-  nothing, the part draws nothing too â on its tile, in its curve, its
-  energy and its cycles â even if its own meter still reports a few tenths
+  nothing, the part draws nothing too — on its tile, in its curve, its
+  energy and its cycles — even if its own meter still reports a few tenths
   of a watt. Once the whole draws again, the part's own reading counts.
 
-## [1.6.0] â 2026-10-14
+## [1.6.0] — 2026-10-14
 
 ### Added
 
-- **Part of**: an appliance whose plug is measured by another one too â a
-  lamp reporting its own watts, plugged into a metered socket strip â keeps
+- **Part of**: an appliance whose plug is measured by another one too — a
+  lamp reporting its own watts, plugged into a metered socket strip — keeps
   its own row and tile but stays out of the total in the statistics, the
   Total tile and the Total chart, so it is not counted twice (`partOf`).
 
-## [1.5.0] â 2026-10-14
+## [1.5.0] — 2026-10-14
 
 ### Added
 
@@ -760,7 +760,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   page offers it to choose from. Asked for, and tested with
   homebridge-shelly-matter, in #2.
 
-## [1.4.6] â 2026-10-14
+## [1.4.6] — 2026-10-14
 
 ### Changed
 
@@ -768,14 +768,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   than "Zuhause": everything else on the page is English.
 - New dashboard screenshots in the README.
 
-## [1.4.5] â 2026-10-14
+## [1.4.5] — 2026-10-14
 
 ### Changed
 
 - The Home look's phases are white on the chart, which reads better on its
   browns than black; on a running tile, white itself, they are dark grey.
 
-## [1.4.4] â 2026-10-14
+## [1.4.4] — 2026-10-14
 
 ### Changed
 
@@ -784,22 +784,22 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - In the dashboard's Home look the phases are black, in the tiles and on
   the chart, rather than in colours that hardly read on its browns.
 
-## [1.4.3] â 2026-10-14
+## [1.4.3] — 2026-10-14
 
 ### Changed
 
-- The Statistics tab of the settings page leaves out the marks Â¹ and * and
+- The Statistics tab of the settings page leaves out the marks ¹ and * and
   their notes too, and "Saved every five minutes": the README says how a
   period a plug joined partway through is counted.
 
-## [1.4.2] â 2026-10-14
+## [1.4.2] — 2026-10-14
 
 ### Changed
 
-- The dashboard's statistics leave out the marks Â¹ and *, whose notes it no
+- The dashboard's statistics leave out the marks ¹ and *, whose notes it no
   longer shows. The settings page keeps both.
 
-## [1.4.1] â 2026-10-14
+## [1.4.1] — 2026-10-14
 
 ### Changed
 
@@ -807,7 +807,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   app, an appliance takes the icon of its Running switch, outlet or sensor,
   not of a phase switch.
 
-## [1.4.0] â 2026-10-14
+## [1.4.0] — 2026-10-14
 
 ### Added
 
@@ -815,14 +815,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   use while the appliance runs, for the outlet's icon in the Home app. Like
   the switch it only shows: tapping it switches nothing.
 
-## [1.3.2] â 2026-10-14
+## [1.3.2] — 2026-10-14
 
 ### Changed
 
-- The dashboard's statistics have no notes below them; what Â¹ and * mean is
+- The dashboard's statistics have no notes below them; what ¹ and * mean is
   in the README.
 
-## [1.3.1] â 2026-10-14
+## [1.3.1] — 2026-10-14
 
 ### Changed
 
@@ -830,7 +830,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   a phone.
 - Its statistics are headed **Energy** instead of "Energy and counts".
 
-## [1.3.0] â 2026-10-14
+## [1.3.0] — 2026-10-14
 
 ### Added
 
@@ -849,14 +849,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - The Power tab of the settings page opens on "Last 6 hours".
 - The dashboard's tiles are all the same size.
 
-## [1.2.3] â 2026-10-07
+## [1.2.3] — 2026-10-07
 
 ### Changed
 
 - New dashboard screenshots in the README, with the version and the round
   theme icon.
 
-## [1.2.2] â 2026-10-07
+## [1.2.2] — 2026-10-07
 
 ### Added
 
@@ -865,7 +865,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   **General**: `http://` with this machine's address on the network and the
   port.
 
-## [1.2.1] â 2026-10-07
+## [1.2.1] — 2026-10-07
 
 ### Added
 
@@ -873,12 +873,12 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   (`dashboard`), on port 8582 unless **Dashboard port** says otherwise. A
   config from 1.2.0 with only a port keeps its dashboard on.
 
-## [1.2.0] â 2026-10-07
+## [1.2.0] — 2026-10-07
 
 ### Added
 
 - **Dashboard**: with **Dashboard port** (`dashboardPort`) set, the plugin
-  serves a read-only web page â no Homebridge login â with a tile per
+  serves a read-only web page — no Homebridge login — with a tile per
   appliance (its power now, running for how long, the cycle so far, its
   phases), a Total tile, the power chart and the statistics. It updates
   itself, and has a light, dark and system switch. Nothing can be changed
@@ -889,7 +889,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 - The Power and Statistics tabs and the dashboard share one implementation
   of the chart data, the statistics table and the chart's pointer.
 
-## [1.1.3] â 2026-10-07
+## [1.1.3] — 2026-10-07
 
 ### Fixed
 
@@ -900,7 +900,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 - New screenshots in the README, with **On down**.
 
-## [1.1.2] â 2026-10-07
+## [1.1.2] — 2026-10-07
 
 ### Changed
 
@@ -910,7 +910,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   `onDown` once the option is changed there.
 - The checkboxes of a phase are spaced evenly.
 
-## [1.1.1] â 2026-10-07
+## [1.1.1] — 2026-10-07
 
 ### Changed
 
@@ -918,10 +918,10 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   (shorter than "From above") and in the config (`rampDown`). A phase that
   still has `fromAbove` keeps working, and the settings page writes it as
   `rampDown` once the option is changed there.
-- The Ã that removes a phase is smaller, so that a phase's line fits the
+- The × that removes a phase is smaller, so that a phase's line fits the
   Homebridge window again.
 
-## [1.1.0] â 2026-10-07
+## [1.1.0] — 2026-10-07
 
 ### Added
 
@@ -933,14 +933,14 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   came from; with nothing there, the phase counts. The chart on the Power
   tab shows the phase the same way.
 
-## [1.0.3] â 2026-10-07
+## [1.0.3] — 2026-10-07
 
 ### Changed
 
 - `package.json` names `supports-hap` among its keywords, as Homebridge asks
   of a plugin up for verification. Nothing changes in how the plugin works.
 
-## [1.0.2] â 2026-10-07
+## [1.0.2] — 2026-10-07
 
 ### Fixed
 
@@ -948,7 +948,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   makes it forget the plugs it had not reached yet. They stayed paired but
   got no readings until they were paired again.
 
-## [1.0.1] â 2026-10-06
+## [1.0.1] — 2026-10-06
 
 ### Fixed
 
@@ -956,7 +956,7 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   watched at all: the plugin asks every 2 seconds instead and says so in the
   log. The Settings tab shows under the field that 2 is the least.
 
-## [1.0.0] â 2026-10-06
+## [1.0.0] — 2026-10-06
 
 The first stable release. Nothing changes in how the plugin works or in its
 config, so an update from 0.18 needs no steps.
@@ -980,7 +980,7 @@ config, so an update from 0.18 needs no steps.
   ask SURE?, one for reading the plugin's files, one for waiting on the
   plugin; the running level before learning is worked out in one place.
 
-## [0.18.4] â 2026-10-05
+## [0.18.4] — 2026-10-05
 
 ### Fixed
 
@@ -996,15 +996,15 @@ config, so an update from 0.18 needs no steps.
   relay; where learned values and the **Count** checkbox are; how the finish
   time follows from the longest pause. New screenshots of all three tabs.
 
-## [0.18.3] â 2026-10-05
+## [0.18.3] — 2026-10-05
 
 ### Changed
 
 - The Statistics tab shows a week or a month a plug was added in partway
-  through, from the day it was added, marked Â¹ like a part of a year. Until now
+  through, from the day it was added, marked ¹ like a part of a year. Until now
   those stayed empty until a whole one had been counted.
 
-## [0.18.2] â 2026-10-03
+## [0.18.2] — 2026-10-03
 
 ### Changed
 
@@ -1013,9 +1013,9 @@ config, so an update from 0.18 needs no steps.
 ### Fixed
 
 - The button that removes a phase shows a drawn cross, now in its middle in
-  the Homebridge UI too; the "Ã" before sat where the font put it.
+  the Homebridge UI too; the "×" before sat where the font put it.
 
-## [0.18.1] â 2026-10-03
+## [0.18.1] — 2026-10-03
 
 ### Changed
 
@@ -1026,21 +1026,21 @@ config, so an update from 0.18 needs no steps.
 
 ### Fixed
 
-- The Ã that removes a phase sits in the middle of its button, which is as
+- The × that removes a phase sits in the middle of its button, which is as
   high as the fields beside it.
 
-## [0.18.0] â 2026-10-03
+## [0.18.0] — 2026-10-03
 
 ### Changed
 
 - Phases are edited on the Power tab only, below the chart, as the list the
-  Settings tab had: one line per phase, Ã to remove one, **+ Add phase** for
+  Settings tab had: one line per phase, × to remove one, **+ Add phase** for
   an empty line. A green level marker adds a line with its range. The chart
   follows a change a moment later.
 - The Settings tab lists the phases in a table, to read.
 - The **New phase** form on the Power tab is gone.
 
-## [0.17.0] â 2026-10-03
+## [0.17.0] — 2026-10-03
 
 ### Changed
 
@@ -1048,7 +1048,7 @@ config, so an update from 0.18 needs no steps.
   30 seconds when it shows more than a day. It holds still while a stretch
   is marked. The **Reload** button is gone.
 
-## [0.16.1] â 2026-10-02
+## [0.16.1] — 2026-10-02
 
 ### Changed
 
@@ -1058,7 +1058,7 @@ config, so an update from 0.18 needs no steps.
 - New screenshots in the README, and the README covers the learned values
   shown in the settings. The dark screenshots are the light ones for now.
 
-## [0.16.0] â 2026-10-02
+## [0.16.0] — 2026-10-02
 
 ### Added
 
@@ -1077,14 +1077,14 @@ config, so an update from 0.18 needs no steps.
   across the chart now marks a cycle to learn from. The two have panels of
   their own. Pointing at a marker shows no time line, and pressing on one
   starts no drag. Dragging no longer selects the text around the chart.
-- Learning from a cycle that ends with nothing drawn after it â switched off
-  at the plug â no longer takes 0 W for standby and puts the running level
+- Learning from a cycle that ends with nothing drawn after it — switched off
+  at the plug — no longer takes 0 W for standby and puts the running level
   at 2 W. Standby is then taken from the highest steady low level inside the
   cycle (a computer asleep over lunch), or the running level stays as it is.
   For a cycle marked by hand, the reading before it is not taken for standby
   either, since the marked start is never exact.
 
-## [0.15.1] â 2026-10-02
+## [0.15.1] — 2026-10-02
 
 ### Changed
 
@@ -1095,7 +1095,7 @@ config, so an update from 0.18 needs no steps.
   Cycle: when it finished and how long it ran. Its text is no longer
   greyed out by the Homebridge UI's table style.
 
-## [0.15.0] â 2026-10-01
+## [0.15.0] — 2026-10-01
 
 ### Added
 
@@ -1103,16 +1103,16 @@ config, so an update from 0.18 needs no steps.
   cycle, from running to finished. Point at it for when it finished and how
   long it ran. Reset data empties it too.
 
-## [0.14.2] â 2026-10-01
+## [0.14.2] — 2026-10-01
 
 ### Changed
 
 - The thresholds under More read as two sentences to fill in: **Running**
-  when above â¦ W for at least â¦ s, **Finished** when below that for â¦ s.
+  when above … W for at least … s, **Finished** when below that for … s.
   Empty fields show what applies instead in faint italics, so they are not
   taken for values.
 
-## [0.14.1] â 2026-10-01
+## [0.14.1] — 2026-10-01
 
 ### Fixed
 
@@ -1121,7 +1121,7 @@ config, so an update from 0.18 needs no steps.
   showed only what it used after the restart. Both are now saved with the
   state, every five minutes and on shutdown.
 
-## [0.14.0] â 2026-10-01
+## [0.14.0] — 2026-10-01
 
 ### Added
 
@@ -1153,7 +1153,7 @@ config, so an update from 0.18 needs no steps.
   of its own, and the thresholds are a small table: **Running** (power above,
   for at least) and **Finished** (quiet for), each with a short hint.
 
-## [0.13.0] â 2026-10-01
+## [0.13.0] — 2026-10-01
 
 ### Added
 
@@ -1165,13 +1165,13 @@ config, so an update from 0.18 needs no steps.
 - Shorter help texts on the settings page; the details are in the README.
 - The Power tab opens on "Last 12 hours" instead of "Last 6 hours".
 
-## [0.12.1] â 2026-10-01
+## [0.12.1] — 2026-10-01
 
 ### Added
 
 - "Last 12 hours" on the Power tab.
 
-## [0.12.0] â 2026-10-01
+## [0.12.0] — 2026-10-01
 
 ### Changed
 
@@ -1186,23 +1186,23 @@ config, so an update from 0.18 needs no steps.
   is switched off, as it did by default. The settings page drops the old keys
   when it saves.
 
-## [0.11.3] â 2026-10-01
+## [0.11.3] — 2026-10-01
 
 ### Changed
 
 - Settings and Power stay on the same appliance: switching tabs opens the
   other on the one just picked.
 
-## [0.11.2] â 2026-10-01
+## [0.11.2] — 2026-10-01
 
 ### Fixed
 
-- An error while handling a reading or a tick â a full disk when saving, say â
+- An error while handling a reading or a tick — a full disk when saving, say —
   is logged instead of ending the child bridge. So is a failure to stop the
   Matter controller on shutdown, and a data folder from the plugin's earlier
   name that cannot be moved.
 
-## [0.11.1] â 2026-10-01
+## [0.11.1] — 2026-10-01
 
 ### Fixed
 
@@ -1216,7 +1216,7 @@ config, so an update from 0.18 needs no steps.
   settings say that the statistics do not depend on how many days of
   recordings are kept.
 
-## [0.11.0] â 2026-10-01
+## [0.11.0] — 2026-10-01
 
 ### Added
 
@@ -1224,7 +1224,7 @@ config, so an update from 0.18 needs no steps.
   appliance (`runningAs: "occupancy"`): a desk is taken while it draws power,
   free when not. Changing it replaces the switch or sensor in HomeKit.
 
-## [0.10.3] â 2026-10-01
+## [0.10.3] — 2026-10-01
 
 ### Changed
 
@@ -1233,7 +1233,7 @@ config, so an update from 0.18 needs no steps.
   Running keeps the appliance's name. A phase switch still called by the
   former default is renamed; one renamed in the Home app is left alone.
 
-## [0.10.2] â 2026-10-01
+## [0.10.2] — 2026-10-01
 
 ### Changed
 
@@ -1241,20 +1241,20 @@ config, so an update from 0.18 needs no steps.
   first click turns it into **SURE?**, the second deletes. Left alone, it is
   Delete again after five seconds.
 
-## [0.10.1] â 2026-10-01
+## [0.10.1] — 2026-10-01
 
 ### Changed
 
-- The accessory is called after the appliance followed by "Monitor" â
-  "Kaffeemaschine Monitor" â to tell it apart from the plug's own accessory.
+- The accessory is called after the appliance followed by "Monitor" —
+  "Kaffeemaschine Monitor" — to tell it apart from the plug's own accessory.
 
-## [0.10.0] â 2026-10-01
+## [0.10.0] — 2026-10-01
 
 ### Added
 
 - **Shorter than** per phase (`maxSeconds`): only draws shorter than this
   are the phase, to tell apart what draws the same power for different
-  times â a coffee machine's rinse from a coffee. Such a phase goes on for a
+  times — a coffee machine's rinse from a coffee. Such a phase goes on for a
   moment once the draw is over, when its length is known. The
   Curve tab shows it where the draw was.
 
@@ -1271,7 +1271,7 @@ config, so an update from 0.18 needs no steps.
 - No more "could not ask for power" lines in the debug log when Homebridge
   shuts down.
 
-## [0.9.0] â 2026-10-01
+## [0.9.0] — 2026-10-01
 
 ### Changed
 
@@ -1285,34 +1285,34 @@ config, so an update from 0.18 needs no steps.
 - Finished going back to Off is no longer a setting, since Finished is now a
   moment in HomeKit.
 
-## [0.8.0] â 2026-10-01
+## [0.8.0] — 2026-10-01
 
 ### Changed
 
-- The Settings tab is the plugin's own form: pick an appliance from a list â
-  sorted, paired ones ticked â and see only its settings, with its phases one
+- The Settings tab is the plugin's own form: pick an appliance from a list —
+  sorted, paired ones ticked — and see only its settings, with its phases one
   row each. "+ Add" starts a new one with a name to change, "Delete" asks
   first. Only what differs from the default is written to the config.
 - The Curve tab opens on the last six hours.
 - The README shows the Settings, Curve and Statistics tabs, in light and dark.
 
-## [0.7.0] â 2026-10-01
+## [0.7.0] — 2026-10-01
 
 ### Added
 
 - The Statistics tab counts how often each appliance finished, or how often
-  a phase ticked "Count in statistics" happened â coffees drawn rather than
+  a phase ticked "Count in statistics" happened — coffees drawn rather than
   mornings the machine was on. All of them are counted all along, so ticking
   another phase loses nothing.
 - An icon, and the usual badges at the top of the README.
 
-## [0.6.1] â 2026-10-01
+## [0.6.1] — 2026-10-01
 
 ### Changed
 
 - The Curve tab lists the plugs in alphabetical order.
 
-## [0.6.0] â 2026-10-01
+## [0.6.0] — 2026-10-01
 
 The first published version.
 
@@ -1321,13 +1321,13 @@ The first published version.
 **Plugs**
 
 - Pairs Matter plugs and power meters as a second controller, next to Apple
-  Home, with the setup code from the Home app â over Thread or Wi-Fi, with no
+  Home, with the setup code from the Home app — over Thread or Wi-Fi, with no
   Bluetooth and no extra service to run. Tried with the Eve Energy (Thread) and
   the Shelly Plug PM Gen3 (Wi-Fi).
 - Reads power from the standard Electrical Power Measurement cluster, which
   is where the Home app reads it; nothing vendor-specific.
 - Asks a plug for its power every few seconds (`pollSeconds`), for plugs that
-  report too seldom to see something short â the Eve Energy reports once a
+  report too seldom to see something short — the Eve Energy reports once a
   minute, a coffee runs through in half of one. A plug that draws nothing is
   not asked.
 
@@ -1347,8 +1347,8 @@ The first published version.
 
 **Phases**
 
-- Ranges of power an appliance works in â heating, spinning, a coffee or milk
-  being frothed â each with an optional occupancy sensor. A phase may be open
+- Ranges of power an appliance works in — heating, spinning, a coffee or milk
+  being frothed — each with an optional occupancy sensor. A phase may be open
   at the top ("1000 W and up"), and ends only once the draw has been out of
   range for a while, so a heater switched by a thermostat is one phase.
 
