@@ -6,6 +6,15 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.23.1] — 2026-11-19
+
+### Fixed
+
+- **Idle counts from when the appliance went quiet,** not from when that had
+  lasted long enough to call it finished. A desk with an hour of pauses
+  learned waited an hour for Finished and then the hour of its Idle, and
+  was switched off by hand first (17.11.2026).
+
 ## [1.23.0] — 2026-11-18
 
 ### Changed
@@ -1329,7 +1338,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.0...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.1...HEAD
+[1.23.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.0...v1.23.1
 [1.23.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.4...v1.23.0
 [1.22.4]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.3...v1.22.4
 [1.22.3]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.2...v1.22.3
