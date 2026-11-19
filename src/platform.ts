@@ -1238,6 +1238,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const appliance = this.#appliances.get(device.name);
     this.#tellRunning(transition.at);
     if (appliance) {
+      const { cycle } = transition;
+      if (cycle && !cycle.switchedOff && device.idleMinutes !== undefined && device.idleFrom === undefined && !this.#runsWithin(appliance)) {
+        // Not running since it went quiet, not since that was long enough to call it finished:
+        // a desk quiet for its hour of pauses before Finished then waited another hour for
+        // Idle, and was switched off by hand first (17.11.2026).
+        this.#setIdleSince(appliance, cycle.startedAt + cycle.seconds * 1000);
+      }
       this.#checkTimed(appliance, transition.at);
     }
     this.#store?.update(device.name, {
