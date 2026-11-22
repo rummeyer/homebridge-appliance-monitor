@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.20
+# @version 5.22
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -15,7 +15,7 @@
 # @config ready number "Preheated from" default=40 min=0 max=100 unit=°C
 # @config heatas select "Heating up as" default=bar options=bar,percent
 # @config cold number "Cold after" default=45 min=0 max=1440 unit=min
-# @config coldpre number "Cold preheat" default=30 min=0 max=120 unit=min
+# @config coldpre number "Cold preheat" default=40 min=0 max=120 unit=min
 # @config early number "Shots from" default=10 min=0 max=120 unit=min
 # @config hold number "Show result for" default=20 min=1 max=600 unit=s
 # @config done color "Result" default=#30D158
@@ -85,7 +85,7 @@ self.blip_s = store.get("blip") == nil ? 4 : int(store.get("blip"))
 self.rinsed = false
 self.temp_topic = store.get("temp")
 self.ready = store.get("ready")
-self.approach = 4.0
+self.approach = 1.0
 self.temp = nil
 self.temp0 = nil
 self.temp0_s = 0
@@ -485,15 +485,26 @@ end
 end
 var rise = self.temp - from_v
 var at = self.eta
-if at == nil && self.since_s > 0
-at = self.since_s + self.coldpre_s
+var cap = self.since_s > 0 ? self.since_s + self.coldpre_s : nil
+if at == nil
+at = cap
+end
+var peak = self.temp0
+for r : self.hist
+if r[1] > peak
+peak = r[1]
+end
+end
+var fell = self.temp < peak - 0.15
+if fell && cap != nil
+at = cap
 end
 if at != nil && self.temp - self.temp0 >= 1 && rise > 0 && self.temp_s > from_s
 var top = self.ready + self.approach
 var mid = (self.temp + from_v) / 2.0
 var k = rise / real(self.temp_s - from_s) / (top - mid)
 if k > 0
-var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k)
+var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k) + 60
 if by_rate < at
 at = by_rate
 end

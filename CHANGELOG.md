@@ -6,6 +6,21 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- ShotTimer 5.22: heating up, a temperature fallen back below the highest
+  it read since switching on lets the countdown say later again, up to
+  **Cold preheat**: switched on warm, the group rose to 34.4 °C, fell back
+  to 33.4 and crept on, and the countdown stood at 0:00 for seven minutes
+  (22.11.2026).
+- ShotTimer 5.21: heating up, the countdown is pessimistic — rather HEATED
+  a little before it runs out than a 0:00 standing still. The rate slows as
+  the group nears 1 °C above **Preheated from**, not 4 °C, with a minute on
+  top; **Cold preheat**, which it starts at, is 40 min by default, from 30:
+  cold mornings took up to 38. Over the warm-ups since 28.10.2026 it ran out
+  early in 28 of 41, by up to eight minutes; now in 2, by half a minute at
+  most.
+
 ## [1.23.1] — 2026-11-19
 
 ### Fixed

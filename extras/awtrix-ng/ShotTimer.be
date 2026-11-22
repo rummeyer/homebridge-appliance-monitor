@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.20
+# @version 5.22
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -16,7 +16,7 @@
 # @config  ready  number "Preheated from"   default=40 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
 # @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends, Cold preheat at the most"
-# @config  coldpre number "Cold preheat"    default=30 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the countdown it starts with, made shorter, never longer, once the thermometer moves"
+# @config  coldpre number "Cold preheat"    default=40 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the countdown it starts with, made shorter, never longer, once the thermometer moves"
 # @config  early  number "Shots from"       default=10 min=0 max=120 unit=min help="Heating up from cold, a pump only shows as a shot this long before heated at most: earlier, the heater switching on was taken for it; 0: always"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  done   color  "Result"           default=#30D158
@@ -38,7 +38,7 @@ class ShotTimer
   var pumped       # a coffee has been made since it was switched on: in use, not heating up any more
   var warm         # the thermometer has said heated since it was switched on, whatever it says now
   var hist         # [Unix seconds, temperature] of the readings since it was switched on
-  var eta          # Unix seconds heated, as the countdown says: only ever sooner; nil before one
+  var eta          # Unix seconds heated, as the countdown says: sooner only, unless it fell back; nil before one
   var cold         # switched on after being off for Cold after, or for how long not known
   var cold_s, coldpre_s   # Cold after and Cold preheat, in seconds
   var early_s      # Shots from, in seconds before heated
@@ -88,7 +88,7 @@ class ShotTimer
     self.rinsed = false
     self.temp_topic = store.get("temp")
     self.ready = store.get("ready")
-    self.approach = 4.0
+    self.approach = 1.0
     self.temp = nil
     self.temp0 = nil
     self.temp0_s = 0
@@ -635,21 +635,39 @@ class ShotTimer
         # Past it, the bar alone, until it is warm.
         var rise = self.temp - from_v
         var at = self.eta
-        if at == nil && self.since_s > 0
-          at = self.since_s + self.coldpre_s
+        var cap = self.since_s > 0 ? self.since_s + self.coldpre_s : nil
+        if at == nil
+          at = cap
+        end
+        # Fallen back below the highest it read since switching on: what said sooner said it of a
+        # rise that did not last, and the countdown may say later again, Cold preheat at the most.
+        # Switched on warm, it rose to 34.4 °C, fell back to 33.4 and crept on: the countdown
+        # stood at 0:00 from 11:13, heated at 11:20 (22.11.2026).
+        var peak = self.temp0
+        for r : self.hist
+          if r[1] > peak
+            peak = r[1]
+          end
+        end
+        var fell = self.temp < peak - 0.15
+        if fell && cap != nil
+          at = cap
         end
         if at != nil && self.temp - self.temp0 >= 1 && rise > 0 && self.temp_s > from_s
           # Not at the rate it rises now all the way: the group warms as anything towards a
           # hotter one, the slower the nearer — 0.8 °C a minute at 30 °C, 0.4 at 36 (13.11.2026).
           # As heading for Approach above Preheated from, the rate falling with the distance
           # left to it. In a straight line the countdown ran out three minutes early as a rule,
-          # the bar's last tick standing still for them; so, a fifth of a minute (thirteen cold
-          # mornings, 29.10.–13.11.2026).
+          # the bar's last tick standing still for them (thirteen cold mornings, 29.10.–13.11.2026).
+          # Pessimistic, as it can only get shorter: heading for 1 °C above, and a minute on top.
+          # Heading for 4 °C, it still ran out early in 28 of 41 warm-ups, up to two minutes, and
+          # Cold preheat at 30 minutes in six, up to eight; now in 2 of 41, by half a minute at
+          # most, the temperature coming every half a minute (28.10.–21.11.2026).
           var top = self.ready + self.approach
           var mid = (self.temp + from_v) / 2.0
           var k = rise / real(self.temp_s - from_s) / (top - mid)
           if k > 0
-            var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k)
+            var by_rate = self.temp_s + int(math.log((top - self.temp) / (top - self.ready)) / k) + 60
             if by_rate < at
               at = by_rate
             end
