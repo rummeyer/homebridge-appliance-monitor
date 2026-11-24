@@ -21,6 +21,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
   early in 28 of 41, by up to eight minutes; now in 2, by half a minute at
   most.
 
+### Fixed
+
+- Dashboard: in Safari the Home look's backdrop covered part of the window
+  only, white beside and beneath it — the page's zoom, a fifth smaller, is now
+  on the content rather than the root, and the page paints its own ground
+  under all.
+
 ## [1.23.1] — 2026-11-19
 
 ### Fixed
