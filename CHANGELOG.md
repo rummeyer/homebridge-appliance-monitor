@@ -6,6 +6,18 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- ShotTimer 5.23: heating up from cold, the countdown starts from how long
+  the machine took before rather than at **Cold preheat**. The clock keeps
+  its last twenty warm-ups, from where the temperature started to
+  **Preheated from**, and starts at the longest of the last five from within
+  3 °C of where it starts now, with three minutes on top, once there are
+  three of them; **Cold preheat** at the most and until then. From 21 °C the
+  machine took 17 to 38 min, lately around 20; the countdown started at 40
+  every morning. Played over the warm-ups since 28.10.2026, it starts nearer
+  by 3.4 min on average, too short once, by two minutes.
+
 ## [1.23.2] — 2026-11-24
 
 ### Changed

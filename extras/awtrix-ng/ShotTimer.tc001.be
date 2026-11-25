@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.22
+# @version 5.23
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -39,6 +39,7 @@ var hist
 var eta
 var cold
 var cold_s, coldpre_s
+var pre_s
 var early_s
 var lead_ms, hold_ms
 var relay_topic
@@ -100,6 +101,7 @@ self.relay_topic = base + "/relay"
 self.plug_on = nil
 self.cold_s = int(store.get("cold") * 60)
 self.coldpre_s = int(store.get("coldpre") * 60)
+self.pre_s = self.coldpre_s
 self.early_s = int(store.get("early") * 60)
 self.lead_ms = int(store.get("lead") * 1000)
 self.hold_ms = int(store.get("hold") * 1000)
@@ -154,6 +156,7 @@ self.temp_s = epoch_ms() / 1000
 if self.running && self.temp0 == nil
 self.temp0 = v
 self.temp0_s = self.temp_s
+self.estimate()
 self.keep()
 end
 if self.running && !self.warm
@@ -164,6 +167,7 @@ end
 end
 if self.running && v >= self.ready && !self.warm
 self.warm = true
+self.learn()
 self.keep()
 end
 self.built = -1
@@ -190,7 +194,7 @@ return self.temp >= self.ready
 end
 var unix = epoch_ms() / 1000
 if self.temp != nil && self.temp0 != nil && self.running
-var at = self.eta != nil ? self.eta : (self.since_s > 0 ? self.since_s + self.coldpre_s : nil)
+var at = self.eta != nil ? self.eta : (self.since_s > 0 ? self.since_s + self.pre_s : nil)
 if at != nil && unix >= at
 self.warm = true
 self.keep()
@@ -293,6 +297,52 @@ self.temp0 = on ? self.temp : nil
 self.warm = on && self.temp != nil && self.temp >= self.ready
 self.idle_len = 0
 self.temp0_s = epoch_ms() / 1000
+self.estimate()
+end
+def learn()
+if !self.cold || self.since_s <= 0 || self.temp0 == nil || self.temp0 > self.ready - 1
+return
+end
+var took = self.temp_s - self.since_s
+if took < 300 || took > 7200
+return
+end
+var heats = store.get("heats")
+if heats == nil
+heats = []
+end
+if size(heats) > 0 && heats[size(heats) - 1][0] == self.since_s
+return
+end
+heats.push([self.since_s, self.temp0, took])
+while size(heats) > 20
+heats.remove(0)
+end
+store.set("heats", heats)
+end
+def estimate()
+self.pre_s = self.coldpre_s
+var heats = store.get("heats")
+if heats == nil || self.temp0 == nil || self.temp0 >= self.ready
+return
+end
+var longest = 0
+var n = 0
+var i = size(heats) - 1
+while i >= 0 && n < 5
+var h = heats[i]
+var d = h[1] - self.temp0
+if d <= 3 && d >= -3
+n += 1
+if h[2] > longest
+longest = h[2]
+end
+end
+i -= 1
+end
+if n >= 3 && longest + 180 < self.pre_s
+self.pre_s = longest + 180
+end
 end
 def keep()
 if self.running && self.since_s > 0
@@ -314,6 +364,7 @@ self.cold = k[3]
 self.warm = k[4] || self.warm
 self.heat_done = k[5] || self.heat_done
 self.pumped = k[6] || self.pumped
+self.estimate()
 if size(k) > 7 && k[7] != nil && (self.eta == nil || k[7] < self.eta)
 self.eta = k[7]
 end
@@ -326,7 +377,7 @@ return nil
 end
 var at = self.eta
 if at == nil && self.since_s > 0
-at = self.since_s + self.coldpre_s
+at = self.since_s + self.pre_s
 end
 return at == nil ? nil : at - epoch_ms() / 1000
 end
@@ -485,7 +536,7 @@ end
 end
 var rise = self.temp - from_v
 var at = self.eta
-var cap = self.since_s > 0 ? self.since_s + self.coldpre_s : nil
+var cap = self.since_s > 0 ? self.since_s + self.pre_s : nil
 if at == nil
 at = cap
 end

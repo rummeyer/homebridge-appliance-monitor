@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.22
+# @version 5.23
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -16,7 +16,7 @@
 # @config  ready  number "Preheated from"   default=40 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
 # @config  cold   number "Cold after"       default=45 min=0 max=1440 unit=min help="No thermometer: off this long, it heats for Cold preheat; else until the heating phase ends, Cold preheat at the most"
-# @config  coldpre number "Cold preheat"    default=40 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the countdown it starts with, made shorter, never longer, once the thermometer moves"
+# @config  coldpre number "Cold preheat"    default=40 min=0 max=120 unit=min help="How long a cold machine heats up: without a thermometer, any at the most; with one, the countdown it starts with until it has seen three warm-ups from about the same temperature, made shorter, never longer, once the thermometer moves"
 # @config  early  number "Shots from"       default=10 min=0 max=120 unit=min help="Heating up from cold, a pump only shows as a shot this long before heated at most: earlier, the heater switching on was taken for it; 0: always"
 # @config  hold   number "Show result for"  default=20 min=1 max=600 unit=s
 # @config  done   color  "Result"           default=#30D158
@@ -41,6 +41,7 @@ class ShotTimer
   var eta          # Unix seconds heated, as the countdown says: sooner only, unless it fell back; nil before one
   var cold         # switched on after being off for Cold after, or for how long not known
   var cold_s, coldpre_s   # Cold after and Cold preheat, in seconds
+  var pre_s        # how long this switching on takes to heat up from cold, by the warm-ups seen before
   var early_s      # Shots from, in seconds before heated
   var lead_ms, hold_ms
   var relay_topic  # the plug's relay, as Appliance Monitor tells it
@@ -103,6 +104,7 @@ class ShotTimer
     self.plug_on = nil
     self.cold_s = int(store.get("cold") * 60)
     self.coldpre_s = int(store.get("coldpre") * 60)
+    self.pre_s = self.coldpre_s
     self.early_s = int(store.get("early") * 60)
     self.lead_ms = int(store.get("lead") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
@@ -183,6 +185,7 @@ class ShotTimer
       if self.running && self.temp0 == nil
         self.temp0 = v
         self.temp0_s = self.temp_s
+        self.estimate()
         self.keep()
       end
       # For the rate it rises at, while it heats up.
@@ -194,6 +197,7 @@ class ShotTimer
       end
       if self.running && v >= self.ready && !self.warm
         self.warm = true
+        self.learn()
         self.keep()
       end
       self.built = -1
@@ -235,7 +239,7 @@ class ShotTimer
     end
     var unix = epoch_ms() / 1000
     if self.temp != nil && self.temp0 != nil && self.running
-      var at = self.eta != nil ? self.eta : (self.since_s > 0 ? self.since_s + self.coldpre_s : nil)
+      var at = self.eta != nil ? self.eta : (self.since_s > 0 ? self.since_s + self.pre_s : nil)
       if at != nil && unix >= at
         self.warm = true
         self.keep()
@@ -368,6 +372,64 @@ class ShotTimer
     self.warm = on && self.temp != nil && self.temp >= self.ready
     self.idle_len = 0
     self.temp0_s = epoch_ms() / 1000
+    self.estimate()
+  end
+
+  # Heated from cold, as the thermometer said: how long it took from where it started, kept on the
+  # clock, the last twenty. Not one the countdown ended without it, nor one started warm already,
+  # nor one of a few minutes from cold, a reading gone wrong (31.10.2026: 0.9 min from 23.2 °C).
+  def learn()
+    if !self.cold || self.since_s <= 0 || self.temp0 == nil || self.temp0 > self.ready - 1
+      return
+    end
+    var took = self.temp_s - self.since_s
+    if took < 300 || took > 7200
+      return
+    end
+    var heats = store.get("heats")
+    if heats == nil
+      heats = []
+    end
+    if size(heats) > 0 && heats[size(heats) - 1][0] == self.since_s
+      return
+    end
+    heats.push([self.since_s, self.temp0, took])
+    while size(heats) > 20
+      heats.remove(0)
+    end
+    store.set("heats", heats)
+  end
+
+  # How long heating up from cold will take, as the countdown starts: by the last five warm-ups
+  # from within 3 °C of where it starts now, the longest and three minutes on top, once there are
+  # three of them; Cold preheat at the most, and before. It can only get shorter, so rather long
+  # than short. The same machine took 17 to 38 min from 21 °C, 13 to 28 from 26 °C. Played over
+  # the cold warm-ups of 28.10.–24.11.2026, it started 3.4 min nearer on average than Cold
+  # preheat's 40, and too short once, by two minutes; the longest but one was short seven times,
+  # by up to seven and a half.
+  def estimate()
+    self.pre_s = self.coldpre_s
+    var heats = store.get("heats")
+    if heats == nil || self.temp0 == nil || self.temp0 >= self.ready
+      return
+    end
+    var longest = 0
+    var n = 0
+    var i = size(heats) - 1
+    while i >= 0 && n < 5
+      var h = heats[i]
+      var d = h[1] - self.temp0
+      if d <= 3 && d >= -3
+        n += 1
+        if h[2] > longest
+          longest = h[2]
+        end
+      end
+      i -= 1
+    end
+    if n >= 3 && longest + 180 < self.pre_s
+      self.pre_s = longest + 180
+    end
   end
 
   # What is known of this switching on, kept on the clock by its since: the temperature it started
@@ -395,6 +457,7 @@ class ShotTimer
       self.warm = k[4] || self.warm
       self.heat_done = k[5] || self.heat_done
       self.pumped = k[6] || self.pumped
+      self.estimate()
       if size(k) > 7 && k[7] != nil && (self.eta == nil || k[7] < self.eta)
         self.eta = k[7]
       end
@@ -410,7 +473,7 @@ class ShotTimer
     end
     var at = self.eta
     if at == nil && self.since_s > 0
-      at = self.since_s + self.coldpre_s
+      at = self.since_s + self.pre_s
     end
     return at == nil ? nil : at - epoch_ms() / 1000
   end
@@ -635,7 +698,7 @@ class ShotTimer
         # Past it, the bar alone, until it is warm.
         var rise = self.temp - from_v
         var at = self.eta
-        var cap = self.since_s > 0 ? self.since_s + self.coldpre_s : nil
+        var cap = self.since_s > 0 ? self.since_s + self.pre_s : nil
         if at == nil
           at = cap
         end
