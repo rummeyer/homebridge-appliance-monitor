@@ -6,6 +6,20 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **By difference, looked at again by sums.** A phase By difference that
+  sends an end message is looked at again five seconds after it ends: every
+  level the draw held in the last four minutes is something on its own or
+  that and the phase's step on top — a level a step above another held within
+  a minute and a half. Where that sees the run otherwise, its end message goes
+  out again with the length by sums: a shot timer showing it takes the later
+  one. Nothing is known of what the other levels are; the step is the phase's
+  own, from the draw. Over the coffee machine's runs of 11.–25.11.2026, a
+  coffee being 20–23 s and a rinse 7–10 s, 51 of 58 as they were, against 46
+  by the rules alone (25.11.2026: a coffee of 23 s beside the milk and the
+  heater, told as a rinse of 4 s).
+
 ### Changed
 
 - ShotTimer 5.23: heating up from cold, the countdown starts from how long

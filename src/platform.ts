@@ -49,6 +49,7 @@ import type { PhaseChange } from './phases.ts';
 import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, OFF_WATTS } from './power.ts';
 import { fillMessage, MqttPublisher, parseOnline, parseReading, phaseTopic, stateTopics } from './mqtt.ts';
 import { PowerRecorder, readSamples } from './recorder.ts';
+import { HindsightSums } from './sums.ts';
 import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
 import { clearResets, pendingResets } from './resets.ts';
@@ -95,6 +96,8 @@ interface Appliance {
    * node has been read, none for an appliance that chose one; see bridged.ts.
    */
   accept: Set<number> | 'all';
+  /** Phases by difference that send an end message, looked at again by sums: see sums.ts. */
+  sums?: HindsightSums;
 }
 
 /**
@@ -231,6 +234,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
           for (const tracker of appliance.phases) {
             this.#onPhase(appliance, tracker, tracker.tick(now));
           }
+          this.#correctBySums(appliance, now);
           this.#publish(appliance);
         });
       }
@@ -757,6 +761,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       accept: device.deviceId || device.endpoint !== undefined ? new Set<number>() : 'all' as const,
       timed: {},
       idleSince: record.idleSince,
+      sums: this.#correctsBySums(device) ? new HindsightSums() : undefined,
     };
     this.#appliances.set(device.name, appliance);
     this.#tellRunning(Date.now());
@@ -911,6 +916,8 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.#onPhase(appliance, tracker, tracker.reading(now, watts));
       }
     }
+    appliance.sums?.reading(now, appliance.relayOff ? 0 : watts ?? 0);
+    this.#correctBySums(appliance, now);
     this.#passOn(appliance, now);
     this.#publish(appliance);
   }
@@ -1063,6 +1070,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
     }
     this.#sendMessages(device, tracker.name, change);
+    const ended = !change.active || change.short;
+    if (appliance.sums && ended && !change.shortOfOn && change.from !== undefined) {
+      const phase = device.phases?.find(({ name }) => name === tracker.name);
+      if (phase?.byDifference && device.messages?.some((m) => m.phase === tracker.name.trim() && m.when === 'end')) {
+        appliance.sums.ended(phase, change.from, change.until ?? change.at, change.at);
+      }
+    }
     if (change.short) {
       appliance.accessory?.phaseHappened(tracker.name);
       this.#mqtt?.pulse(phaseTopic(this.#mqttPrefix, device.name, tracker.name));
@@ -1081,6 +1095,30 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       } else {
         this.#store?.increment(device.name, phaseKey(tracker.name), change.at);
         this.log.info(`${device.name}: ${tracker.name} ended${lasted}`);
+      }
+    }
+  }
+
+  /** Whether a phase by difference sends an end message: its length is looked at again by sums. */
+  #correctsBySums(device: DeviceConfig): boolean {
+    return (device.phases ?? []).some(({ name, byDifference }) => byDifference &&
+      (device.messages ?? []).some((message) => message.phase === name.trim() && message.when === 'end'));
+  }
+
+  /**
+   * Runs whose length the sums see otherwise, once the levels around them are known: their end
+   * message again, with the length by sums. A display showing the length takes the later one.
+   */
+  #correctBySums(appliance: Appliance, now: number): void {
+    const { device, sums } = appliance;
+    if (!sums || !this.#mqtt) {
+      return;
+    }
+    for (const { phase, seconds, was } of sums.due(now)) {
+      this.log.info(`${device.name}: ${phase} ${formatDuration(seconds)} by sums, was ${formatDuration(was)}`);
+      const name = phase.trim();
+      for (const message of (device.messages ?? []).filter((m) => m.phase === name && m.when === 'end')) {
+        this.#mqtt.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: name, seconds }));
       }
     }
   }

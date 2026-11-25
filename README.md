@@ -424,6 +424,27 @@ other, never both and never neither. Choose it for both, and for a phase a
 shot timer follows. Not for heating: its thermostat drops below the range while
 it lasts, which is not the end of it.
 
+##### Looked at again, by sums
+
+Live, the steps can be lost: the pump starting at the same moment as the
+milk, or stopping as the heater goes off. A phase By difference that sends an
+**end message** is looked at again five seconds after it ends, over the last
+four minutes of the draw, by sums: every level held is either something on its
+own, or that **and the pump's step on top** — a level the pump's step above
+another one held within a minute and a half. Nothing needs to be known of what
+the other levels are. The milk frothing alone reads 502 W, with the pump 555;
+the heater and the milk 1704, with the pump 1757: the pump ran wherever the
+draw stood a step above a level held nearby, whatever else switched with it.
+The step is the phase's own, as the draw shows it: rising from rest into its
+range, or, without that, its range's size up or down between two levels.
+
+Seen otherwise than the rules told it, the **end message is sent again** with
+the length by sums, and the log says so (*Pumpe 23 s by sums, was 4 s*); a
+shot timer still showing the result takes the later one. Against the coffee
+machine's runs of 11.–25.11.2026, a coffee being 20–23 s and a rinse 7–10 s,
+51 of 58 came out as they were, against 46 by the rules alone. The live start
+and the phase's switch in HomeKit are the rules'.
+
 ## In the Home app
 
 Each appliance is one accessory, "Washing machine Monitor" say, to tell it
