@@ -6,6 +6,8 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.24.0] — 2026-11-25
+
 ### Added
 
 - **By difference, looked at again by sums.** A phase By difference that
@@ -1388,7 +1390,8 @@ The first published version.
 - A short log: one line per plug on start, what a plug offers once when it is
   paired, then only what changes.
 
-[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.2...HEAD
+[Unreleased]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.24.0...HEAD
+[1.24.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.2...v1.24.0
 [1.23.2]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.1...v1.23.2
 [1.23.1]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.23.0...v1.23.1
 [1.23.0]: https://github.com/rummeyer/homebridge-appliance-monitor/compare/v1.22.4...v1.23.0
