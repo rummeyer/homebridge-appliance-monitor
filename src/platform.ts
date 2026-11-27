@@ -50,6 +50,7 @@ import { activePowerWatts, formatDuration, formatWatts, isActivePower, isOnOff, 
 import { fillMessage, MqttPublisher, parseOnline, parseReading, phaseTopic, stateTopics } from './mqtt.ts';
 import { PowerRecorder, readSamples } from './recorder.ts';
 import { HindsightSums } from './sums.ts';
+import type { SumsEvent } from './sums.ts';
 import { answer, takeRequests } from './requests.ts';
 import type { PluginRequest } from './requests.ts';
 import { clearResets, pendingResets } from './resets.ts';
@@ -96,7 +97,7 @@ interface Appliance {
    * node has been read, none for an appliance that chose one; see bridged.ts.
    */
   accept: Set<number> | 'all';
-  /** Phases by difference that send an end message, looked at again by sums: see sums.ts. */
+  /** Phases by difference that send messages, told by sums beside the rules: see sums.ts. */
   sums?: HindsightSums;
 }
 
@@ -234,7 +235,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
           for (const tracker of appliance.phases) {
             this.#onPhase(appliance, tracker, tracker.tick(now));
           }
-          this.#correctBySums(appliance, now);
+          this.#tellBySums(appliance, now);
           this.#publish(appliance);
         });
       }
@@ -761,7 +762,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       accept: device.deviceId || device.endpoint !== undefined ? new Set<number>() : 'all' as const,
       timed: {},
       idleSince: record.idleSince,
-      sums: this.#correctsBySums(device) ? new HindsightSums() : undefined,
+      sums: this.#bySums(device),
     };
     this.#appliances.set(device.name, appliance);
     this.#tellRunning(Date.now());
@@ -917,7 +918,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
       }
     }
     appliance.sums?.reading(now, appliance.relayOff ? 0 : watts ?? 0);
-    this.#correctBySums(appliance, now);
+    this.#tellBySums(appliance, now);
     this.#passOn(appliance, now);
     this.#publish(appliance);
   }
@@ -1069,12 +1070,13 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
         this.#setIdleSince(appliance, Math.max(appliance.idleSince, change.at));
       }
     }
-    this.#sendMessages(device, tracker.name, change);
-    const ended = !change.active || change.short;
-    if (appliance.sums && ended && !change.shortOfOn && change.from !== undefined) {
-      const phase = device.phases?.find(({ name }) => name === tracker.name);
-      if (phase?.byDifference && device.messages?.some((m) => m.phase === tracker.name.trim() && m.when === 'end')) {
-        appliance.sums.ended(phase, change.from, change.until ?? change.at, change.at);
+    // A start the sums told already is not told again: a shot timer would count from later.
+    this.#sendMessages(device, tracker.name, change, appliance.sums?.holdsStart(tracker.name) ?? false);
+    if (appliance.sums && change.from !== undefined) {
+      if (change.active && !change.short) {
+        appliance.sums.rulesStarted(tracker.name, change.from);
+      } else {
+        appliance.sums.rulesEnded(tracker.name, change.from, change.until ?? change.at, change.at, !change.shortOfOn);
       }
     }
     if (change.short) {
@@ -1099,27 +1101,45 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  /** Whether a phase by difference sends an end message: its length is looked at again by sums. */
-  #correctsBySums(device: DeviceConfig): boolean {
-    return (device.phases ?? []).some(({ name, byDifference }) => byDifference &&
-      (device.messages ?? []).some((message) => message.phase === name.trim() && message.when === 'end'));
+  /** The sums beside the rules, for the phases by difference that send messages: see sums.ts. */
+  #bySums(device: DeviceConfig): HindsightSums | undefined {
+    const phases = (device.phases ?? []).filter(({ name, byDifference }) => byDifference &&
+      (device.messages ?? []).some((message) => message.phase === name.trim()));
+    return phases.length > 0 ? new HindsightSums(phases) : undefined;
   }
 
   /**
-   * Runs whose length the sums see otherwise, once the levels around them are known: their end
-   * message again, with the length by sums. A display showing the length takes the later one.
+   * What the sums tell beside the rules: a run started live the rules do not see yet, its end,
+   * a run the rules never saw, started and ended at once, and a length corrected — its end
+   * message again, which a display showing the length takes over the earlier one.
    */
-  #correctBySums(appliance: Appliance, now: number): void {
+  #tellBySums(appliance: Appliance, now: number): void {
     const { device, sums } = appliance;
-    if (!sums || !this.#mqtt) {
+    if (!sums) {
       return;
     }
-    for (const { phase, seconds, was } of sums.due(now)) {
-      this.log.info(`${device.name}: ${phase} ${formatDuration(seconds)} by sums, was ${formatDuration(was)}`);
-      const name = phase.trim();
-      for (const message of (device.messages ?? []).filter((m) => m.phase === name && m.when === 'end')) {
-        this.#mqtt.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: name, seconds }));
+    for (const event of sums.due(now)) {
+      this.#logBySums(device, event);
+      const name = event.phase.trim();
+      const moments: ('start' | 'end')[] = event.kind === 'start' ? ['start'] : event.missed ? ['start', 'end'] : ['end'];
+      for (const when of moments) {
+        for (const message of (device.messages ?? []).filter((m) => m.phase === name && m.when === when)) {
+          this.#mqtt?.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: name, seconds: event.seconds }));
+        }
       }
+    }
+  }
+
+  #logBySums(device: DeviceConfig, event: SumsEvent): void {
+    const what = `${device.name}: ${event.phase.trim()}`;
+    if (event.kind === 'start') {
+      this.log.info(`${what} by sums, on top of what ran ${formatDuration(event.seconds)} ago`);
+    } else if (event.missed) {
+      this.log.info(`${what} ${formatDuration(event.seconds)} by sums, not seen by the rules`);
+    } else if (event.was !== undefined) {
+      this.log.info(`${what} ${formatDuration(event.seconds)} by sums, was ${formatDuration(event.was)}`);
+    } else {
+      this.log.info(`${what} ended by sums after ${formatDuration(event.seconds)}`);
     }
   }
 
@@ -1127,7 +1147,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
    * The appliance's own MQTT messages for this phase starting or ending. A
    * short phase, known only once it is over, starts and ends at once.
    */
-  #sendMessages(device: DeviceConfig, phase: string, change: PhaseChange): void {
+  #sendMessages(device: DeviceConfig, phase: string, change: PhaseChange, startedBySums: boolean): void {
     if (!this.#mqtt || !device.messages?.length) {
       return;
     }
@@ -1137,7 +1157,7 @@ export class ApplianceMonitorPlatform implements DynamicPlatformPlugin {
     const moments: ['start' | 'end', number][] = change.short
       ? [['start', ended - from], ['end', ended - from]]
       : [[change.active ? 'start' : 'end', (change.active ? change.at : ended) - from]];
-    for (const [when, ms] of moments) {
+    for (const [when, ms] of moments.filter(([when]) => when === 'end' || !startedBySums)) {
       for (const message of device.messages.filter((m) => m.phase === name && m.when === when)) {
         this.#mqtt.send(message.topic, fillMessage(message.payload ?? '', { appliance: device.name, phase: name, seconds: ms / 1000 }));
       }

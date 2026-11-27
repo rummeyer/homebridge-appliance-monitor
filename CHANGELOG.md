@@ -6,6 +6,23 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **By sums, beside the rules: on live, and runs the rules never saw.** A
+  phase By difference that sends messages is started by sums as soon as its
+  level is held for a second reading on top of the one beneath, where the
+  rules do not have it on yet — the pump coming on beside the heater or the
+  milk, which the rules see only as it stops, if at all; from rest, a second
+  before them. The rules' start for the same run is not sent again; their end
+  ends it, or else the sums do once the level beneath has held five seconds.
+  A run of 5 s or more the rules never saw is told once it is over, its start
+  and end at once. Corrections of a length come within 20 s of its end only:
+  later, the levels at the far end of the draw kept are cut off. Over the
+  coffee machine's runs of 28.10.–27.11.2026, 12 runs came out right that did
+  not before, none the other way (27.11.2026: a rinse of 10 s beneath the milk
+  and the heater, not on the clock at all). What the learned model on the
+  branch `phase-recognition` did live, without a model: the branch is gone.
+
 ## [1.24.0] — 2026-11-25
 
 ### Added
