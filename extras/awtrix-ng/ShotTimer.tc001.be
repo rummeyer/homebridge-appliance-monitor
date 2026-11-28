@@ -1,7 +1,7 @@
 # @name ShotTimer
 # @desc Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author Oliver Rummeyer
-# @version 5.23
+# @version 5.24
 # @config base text "Appliance topic" default="appliance-monitor/Kaffeemaschine"
 # @config shot text "Shot topic" default="shot-timer"
 # @config pump text "Pump phase" default="Pumpe"
@@ -11,6 +11,7 @@
 # @config rinsemax number "Rinse under" default=15 min=0 max=60 unit=s
 # @config blip number "Hide under" default=4 min=0 max=15 unit=s
 # @config lead number "Plug delay" default=5 min=0 max=30 unit=s
+# @config runout number "Run-out" default=0 min=0 max=10 unit=s
 # @config temp text "Temperature topic" default="deconz/Kaffeemaschine/temperature"
 # @config ready number "Preheated from" default=40 min=0 max=100 unit=°C
 # @config heatas select "Heating up as" default=bar options=bar,percent
@@ -42,6 +43,7 @@ var cold_s, coldpre_s
 var pre_s
 var early_s
 var lead_ms, hold_ms
+var runout_ms
 var relay_topic
 var plug_on
 var cup
@@ -104,6 +106,7 @@ self.coldpre_s = int(store.get("coldpre") * 60)
 self.pre_s = self.coldpre_s
 self.early_s = int(store.get("early") * 60)
 self.lead_ms = int(store.get("lead") * 1000)
+self.runout_ms = store.get("runout") == nil ? 0 : int(store.get("runout") * 1000)
 self.hold_ms = int(store.get("hold") * 1000)
 self.as_bar = store.get("heatas") != "percent"
 self.bar = nil
@@ -216,7 +219,7 @@ if until <= 0
 self.stopped = nil
 elif self.stopped == nil
 var now = now_ms()
-var at = now - (epoch_ms() / 1000 - until) * 1000 - self.lead_ms
+var at = now - (epoch_ms() / 1000 - until) * 1000 - self.lead_ms - self.runout_ms
 self.stopped = at > now ? now : (at < self.t0 ? self.t0 : at)
 end
 end
@@ -268,7 +271,7 @@ elif t == self.pump_topic && self.by_phase
 if p == "ON" && self.shot != "run"
 self.started(self.on_after)
 elif p == "OFF" && self.shot == "run"
-self.ended(((self.stopped != nil ? self.stopped : now_ms()) - self.t0) / 1000.0)
+self.ended(((self.stopped != nil ? self.stopped + self.runout_ms : now_ms()) - self.t0) / 1000.0)
 end
 elif t == self.rinse_topic
 if p == "ON" && self.shot != "idle"
@@ -400,8 +403,12 @@ if self.shot == "idle"
 return
 end
 var again = self.shot == "done"
-self.final_s = int(seconds + 0.5)
-if !again && self.final_s < self.blip_s
+var pumped = int(seconds + 0.5)
+self.final_s = pumped - self.runout_ms / 1000
+if self.final_s < 0
+self.final_s = 0
+end
+if !again && pumped < self.blip_s
 self.rinsed = true
 timer.cancel(self.timer_id)
 self.finish()
@@ -495,7 +502,7 @@ var shot_s = -1
 if self.shot == "run"
 shot_s = ((self.stopped != nil ? self.stopped : now) - self.t0) / 1000
 end
-var blip = self.stopped != nil && shot_s < self.blip_s
+var blip = self.stopped != nil && shot_s + self.runout_ms / 1000 < self.blip_s
 var run = self.shot == "run" && !blip
 if unix == self.built && shot_s == self.shown
 return

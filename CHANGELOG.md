@@ -6,6 +6,13 @@ adheres to [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- ShotTimer 5.24: **Run-out** — how long the pump runs on after the coffee has
+  stopped, left off the count and the result. A plug cannot tell it from the
+  shot by its draw; set it once by a stopwatch (2 s on the machine here: a shot
+  of 20 s showed 22). Plug delay for a plug reporting every second: 1 s.
+
 ## [1.25.0] — 2026-11-27
 
 ### Added

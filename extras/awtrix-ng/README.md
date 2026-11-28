@@ -133,7 +133,8 @@ In AWTRIX NG's web page, on the **Apps** tab, behind the app's gear button:
 | Heating up as | bar | How far it has heated up: `bar`, small blocks lighting up one after the other, or `percent`. |
 | Cold after | 45 min | Without a thermometer: off this long, it starts cold. |
 | Cold preheat | 40 min | How long a cold machine heats up. Without a thermometer, any at the most; with one, the time left shown until it rises fast enough to tell sooner — and only until the clock has seen three warm-ups from about the same temperature: it keeps how long the last twenty took and starts from those. |
-| Plug delay | 5 s | How much later the plugin sees the pump than it started: 5 s for a plug that reports an average over 6 seconds, as the Eve Energy does; 0 for one that reports every second, as a Shelly does. |
+| Plug delay | 5 s | How much later the plugin sees the pump than it started: 5 s for a plug that reports an average over 6 seconds, as the Eve Energy does; 1 s for one that reports every second, as a Shelly does — its reading comes a second after the pump started. |
+| Run-out | 0 s | How long the pump runs on after the coffee has stopped. Some machines keep it running a moment, at a draw a plug cannot tell from the shot's (one here: 53–57 W after, 56–60 W during); the count stops that much earlier and the result is that much shorter. 2 s made a shot timed at 20 s by a stopwatch show 20, not 22. 0: the pump's whole run. |
 | Shots from | 10 min | Heating up from cold, a pump shows as a shot only this long before heated at most, as the countdown says: earlier it is left out, the heater switching on taken for it. 0 for always. |
 | Show result for | 20 s | |
 | Colours | | Result, heating, heated. The cup is drawn as it is. |

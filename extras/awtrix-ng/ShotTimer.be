@@ -1,7 +1,7 @@
 # @name    ShotTimer
 # @desc    Coffee machine from Appliance Monitor: heating up, running time, time until it switches off, and a shot timer
 # @author  Oliver Rummeyer
-# @version 5.23
+# @version 5.24
 # Source and setup: https://github.com/rummeyer/homebridge-appliance-monitor/tree/main/extras/awtrix-ng
 # @config  base   text   "Appliance topic"  default="appliance-monitor/Kaffeemaschine" help="Appliance Monitor's topic prefix and the machine's name"
 # @config  shot   text   "Shot topic"       default="shot-timer" help="Where the shot's start and end messages come; empty: the pump phase starts and ends it"
@@ -12,6 +12,7 @@
 # @config  rinsemax number "Rinse under"    default=15 min=0 max=60 unit=s help="Shorter runs show as RINSE as soon as the pump stops; 0: only the rinse phase says so"
 # @config  blip   number "Hide under"       default=4 min=0 max=15 unit=s help="Shorter runs are not shown at all: the heater switching off, its draw read as the pump for a moment; 0: all shown"
 # @config  lead   number "Plug delay"       default=5 min=0 max=30 unit=s help="How much later the plug reports the pump than it starts; 0 for a plug that reports at once"
+# @config  runout number "Run-out"          default=0 min=0 max=10 unit=s help="How long the pump runs on after the coffee has stopped, at a draw the plug cannot tell from the shot's: left off the count and the result; 0: the pump's whole run"
 # @config  temp   text   "Temperature topic" default="deconz/Kaffeemaschine/temperature" help="A thermometer on the machine; empty: heated once the heating phase ends"
 # @config  ready  number "Preheated from"   default=40 min=0 max=100 unit=°C help="Heated from this temperature"
 # @config  heatas select "Heating up as"    default=bar options=bar,percent help="How far it has heated up: a bar as on the boot screen, or a percentage"
@@ -44,6 +45,7 @@ class ShotTimer
   var pre_s        # how long this switching on takes to heat up from cold, by the warm-ups seen before
   var early_s      # Shots from, in seconds before heated
   var lead_ms, hold_ms
+  var runout_ms    # Run-out: how long the pump runs on after the coffee, left off the count
   var relay_topic  # the plug's relay, as Appliance Monitor tells it
   var plug_on      # the plug is switched on: on the display the whole time; nil until told
   var cup          # x, y, red, green, blue of each pixel of the cup and saucer, a byte each
@@ -107,6 +109,8 @@ class ShotTimer
     self.pre_s = self.coldpre_s
     self.early_s = int(store.get("early") * 60)
     self.lead_ms = int(store.get("lead") * 1000)
+    # Not there on a clock set up before 5.24: none.
+    self.runout_ms = store.get("runout") == nil ? 0 : int(store.get("runout") * 1000)
     self.hold_ms = int(store.get("hold") * 1000)
     self.as_bar = store.get("heatas") != "percent"
     self.bar = nil
@@ -271,7 +275,9 @@ class ShotTimer
           self.stopped = nil
         elif self.stopped == nil
           var now = now_ms()
-          var at = now - (epoch_ms() / 1000 - until) * 1000 - self.lead_ms
+          # And less the run-out: the pump running on after the coffee is not the shot
+          # (28.11.2026: 20 s by a stopwatch, the pump 22 s, its last 2 at 56 W).
+          var at = now - (epoch_ms() / 1000 - until) * 1000 - self.lead_ms - self.runout_ms
           self.stopped = at > now ? now : (at < self.t0 ? self.t0 : at)
         end
       end
@@ -335,7 +341,8 @@ class ShotTimer
       if p == "ON" && self.shot != "run"
         self.started(self.on_after)
       elif p == "OFF" && self.shot == "run"
-        self.ended(((self.stopped != nil ? self.stopped : now_ms()) - self.t0) / 1000.0)
+        # The pump's whole run, as the plugin would tell it: ended takes the run-out off once.
+        self.ended(((self.stopped != nil ? self.stopped + self.runout_ms : now_ms()) - self.t0) / 1000.0)
       end
     elif t == self.rinse_topic
       # A rinse is known once it is over: as the pump's end comes, just before or after.
@@ -505,10 +512,16 @@ class ShotTimer
     # a coffee whose start the heater hid (10.11.2026: 14 s, a rinse, then 25). Shot or rinse
     # by its length now, whatever the rules took it for.
     var again = self.shot == "done"
-    self.final_s = int(seconds + 0.5)
+    var pumped = int(seconds + 0.5)
+    # The plugin counts the pump's whole run; the shot is that less the run-out.
+    self.final_s = pumped - self.runout_ms / 1000
+    if self.final_s < 0
+      self.final_s = 0
+    end
     # Shorter than Hide under: no run of the pump, the heater switching off through its range
-    # (17.11.2026: with an on after of 2 s, about one a day). Gone, not shown as a result.
-    if !again && self.final_s < self.blip_s
+    # (17.11.2026: with an on after of 2 s, about one a day). Gone, not shown as a result. By the
+    # pump's run, the run-out with it.
+    if !again && pumped < self.blip_s
       self.rinsed = true
       timer.cancel(self.timer_id)
       self.finish()
@@ -639,7 +652,8 @@ class ShotTimer
       shot_s = ((self.stopped != nil ? self.stopped : now) - self.t0) / 1000
     end
     # Stopped short of Hide under: not shown, as if it had not started, until its end drops it.
-    var blip = self.stopped != nil && shot_s < self.blip_s
+    # By the pump's run: the count stopped the run-out earlier.
+    var blip = self.stopped != nil && shot_s + self.runout_ms / 1000 < self.blip_s
     var run = self.shot == "run" && !blip
     if unix == self.built && shot_s == self.shown
       return
